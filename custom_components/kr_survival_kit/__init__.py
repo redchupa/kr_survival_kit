@@ -13,6 +13,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PLATFORMS
 from .inventory import Inventory, InventoryError, RevisionConflict, summarize
+from .mqtt_publish import MqttPublisher, async_remove_discovery
 
 
 def _lot(value):
@@ -49,6 +50,11 @@ async def async_setup_entry(hass, entry):
     await inventory.load()
     entry.runtime_data = inventory
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.add_update_listener(_options_updated))
+    if entry.options.get("mqtt_enabled", False) or entry.options.get("mqtt_cleanup_pending", False):
+        publisher = MqttPublisher(hass, entry, inventory)
+        hass.data.setdefault(DOMAIN, {})[entry.entry_id] = publisher
+        publisher.start()
     if not hass.services.has_service(DOMAIN, "set_item"):
         hass.services.async_register(
             DOMAIN, "set_item", _set_item(hass), schema=SET_SCHEMA,
@@ -67,11 +73,23 @@ async def async_setup_entry(hass, entry):
 
 async def async_unload_entry(hass, entry):
     """Unload sensors and actions."""
+    publisher = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+    if publisher is not None:
+        await publisher.close()
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         for service in ("set_item", "delete_item", "get_inventory"):
             hass.services.async_remove(DOMAIN, service)
     return unloaded
+
+
+async def _options_updated(hass, entry):
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_remove_entry(hass, entry):
+    if entry.options.get("mqtt_enabled", False) or entry.options.get("mqtt_cleanup_pending", False):
+        await async_remove_discovery(hass, entry)
 
 
 async def _admin_inventory(hass, call):

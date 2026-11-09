@@ -1,4 +1,12 @@
 {
+  "options": {
+    "step": {
+      "init": {
+        "title": "MQTT sensors",
+        "data": {"mqtt_enabled": "Publish aggregate MQTT sensors"}
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {

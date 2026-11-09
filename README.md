@@ -4,7 +4,7 @@
 
 **인쇄해서 쓰기** · 로컬 빌드에서 `output/pdf/kr-survival-kit-a4.pdf`를 열면 흑백 A4 행동 안내와 가족 기록지를 받을 수 있습니다. `output/offline.html`은 파일 하나를 복사해 인터넷 없이 읽을 수 있습니다.
 
-**Home Assistant로 시작하기** · `output/ha-guide.md`는 내장 Markdown 카드의 내용으로 사용할 수 있습니다. P2에서 로컬 재고와 집계 센서를 구현했습니다. 재고 편집 화면과 MQTT Discovery는 이후 단계입니다.
+**Home Assistant로 시작하기** · `output/ha-guide.md`는 내장 Markdown 카드의 내용으로 사용할 수 있습니다. 로컬 재고와 집계 센서가 있으며, P3에서 선택형 MQTT Discovery를 추가했습니다. 재고 편집 화면은 P4 작업입니다.
 
 현재 자료는 **공개 전 검토용**입니다. 공습·평시 준비, 경계·화생방·핵경보, 정전·단수 안내를 담았습니다. 현재 발령된 재난문자·방송과 현장 지시를 먼저 따르세요. 전화·인터넷이 끊긴 경우를 첫 화면과 인쇄물 상단에 따로 안내합니다. 가족 연락처와 실제 대피소 정보는 인쇄한 공란에 손으로 적어 개인 보관하세요.
 
@@ -65,10 +65,27 @@ data:
 - 격리된 WSL Ubuntu 24.04, Python 3.14.10, **Home Assistant Core 2026.11.0**에서 `tests/ha_smoke.py` 통과. 실제 HA 설정 흐름으로 통합을 추가하고 브로커 없이 집계 센서 3개를 생성했습니다. 관리자 action으로 저장 후 센서가 갱신되었고, 오래된 revision·비관리자 조회·강제 저장 실패는 거부되었습니다. HA 인스턴스를 중지하고 같은 설정 디렉터리에서 새 인스턴스를 시작해 revision, 목표량, 부족 센서 값이 복원됨을 확인했습니다. 테스트 HA의 선택적 FFmpeg/터보JPEG 의존성 경고는 이 통합 검증의 실패가 아니었습니다.
 - 재현 명령(저장소 `public/`에서): Windows PowerShell은 `$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'; py -3.14 -m pytest -q tests/test_inventory.py -p pytest_asyncio.plugin`; Linux/WSL의 격리 Python 환경(`homeassistant==2026.11.0`)은 `python tests/ha_smoke.py`입니다. Windows의 HA 테스트 플러그인은 `fcntl`을 요구하므로 실제 HA 검증은 WSL에서 실행했습니다.
 
-### P3 인계
+## P3 선택형 MQTT 센서
 
-P3에서는 **기존 HA MQTT 통합을 재사용**하는 기본 꺼짐 옵션의 읽기 전용 Discovery를 구현합니다. `Inventory.snapshot`이 로컬 원본이고 `summarize(...)`가 세 집계의 계산 경로입니다. 발행 데이터는 이 숫자와 기술 식별자만 포함하고 개인 재고·약품·위치 정보는 제외합니다. 저장 성공 이후의 `inventory.listeners`와 현지 자정 재계산을 발행 경로에 연결하되, MQTT 장애가 로컬 action과 저장을 막지 않게 합니다.
+**설정 → 기기 및 서비스 → KR Survival Kit → 구성**에서 MQTT 센서 발행을 켤 수 있습니다. 기존 HA MQTT 통합이 브로커에 연결되어 있어야 합니다. 이 옵션의 기본값은 꺼짐입니다. HA MQTT 통합에서 설정한 Discovery prefix를 사용하며, birth 메시지 설정은 그대로 둡니다. 연결 상태 알림으로 재연결을 감지합니다.
 
-- 설치 ID와 고정 metric ID로 Discovery ID·토픽을 만들고 HA MQTT의 현재 discovery prefix와 birth 설정을 읽어 사용합니다. Discovery 설정만 retained, 상태는 QoS 1·non-retained로 발행합니다. 초기 시험값은 60초 재발행과 `expire_after: 180`입니다.
-- 연결·저장 성공·재연결 때 현재 스냅샷을 발행합니다. 비활성화·제거 때 retained Discovery를 빈 메시지로 지우고 실패하면 정리 미완료를 알리는 재시도/수동 절차를 문서화합니다. MQTT 수신 토픽이나 쓰기 명령은 만들지 않습니다.
-- 실제 테스트 브로커에서 Discovery 생성/삭제, QoS 중복, HA·브로커 각각의 재시작, 단절 중 재고 수정, 상태 만료와 복구를 확인합니다. P4의 카드와 대시보드 편집 UI는 이번 P2에 포함하지 않았습니다.
+세 센서는 `shortage_count`, `needs_check_count`, `expiring_count`의 숫자만 전송합니다. Discovery 설정은 retained QoS 1, 상태는 non-retained QoS 1입니다. 연결·재연결 때 최신 스냅샷을 보내고, 이후 재고 변경 직후와 60초 간격으로 전송합니다. 상태 메시지가 180초 동안 없으면 MQTT 센서는 unavailable이 됩니다. 센서 상태는 비상 경보나 대피 판단에 사용하지 마세요.
+
+발행을 끄면 retained Discovery 설정 3개를 빈 메시지로 지웁니다. 브로커가 끊겼다면 `mqtt_cleanup_pending` 옵션이 남고 연결 복구 후 다시 정리합니다. 통합을 제거할 때 브로커가 끊겨 정리에 실패했다면 브로커 관리자에서 아래 패턴의 retained 토픽 3개를 삭제하세요. `<prefix>`는 HA MQTT 통합의 Discovery prefix이고 `<entry_id>`는 이 통합의 config entry ID입니다.
+
+```text
+<prefix>/sensor/kr_survival_kit_<entry_id>/shortage_count/config
+<prefix>/sensor/kr_survival_kit_<entry_id>/needs_check_count/config
+<prefix>/sensor/kr_survival_kit_<entry_id>/expiring_count/config
+```
+
+### P3 검증 결과 (2026-11-10)
+
+- 격리된 WSL Ubuntu 24.04의 **HA Core 2026.11.0**과 실제 **Mosquitto 2.0.18**에서 `tests/ha_mqtt_smoke.py` 통과. MQTT 통합의 UI 설정 흐름을 사용해 브로커를 연결하고, KR Survival Kit 옵션 흐름으로 발행을 켰습니다. 새 구독자에게 retained Discovery 3개가 전달되고 상태 메시지는 보존되지 않는 것을 확인했습니다.
+- 실제 MQTT 센서 3개가 생성되었고, 테스트에서 만료 시간을 3초로 낮춰 unavailable 전환과 새 상태 발행 후 숫자 복구를 확인했습니다. 상태를 중복 발행해도 metric별 엔터티는 하나씩 유지됐습니다. 제품 설정은 180초 만료·60초 재발행입니다.
+- 브로커 종료 중 관리자 action으로 재고를 저장했습니다. 브로커 재시작 뒤 최신 부족 건수 1이 발행됐고, HA 인스턴스 재시작 후에도 재고 revision과 발행이 복원됐습니다. 브로커를 다시 중단한 상태에서 발행을 끄자 정리 대기가 기록됐으며, 재연결 후 빈 retained Discovery 메시지 3개가 발행되고 정리 대기가 해제됐습니다. 새 구독자는 삭제된 Discovery를 받지 않았습니다. 브로커 단절 직후 HA MQTT 자체의 birth 발행 실패 로그가 발생했으나 이후 복구됐습니다.
+- 재현은 Linux/WSL의 격리 Python에 `homeassistant==2026.11.0`과 HA MQTT 통합 요구사항인 `paho-mqtt==2.1.0`, 실행 파일 `mosquitto`가 필요합니다. `public/`에서 `python tests/ha_mqtt_smoke.py`를 실행합니다. 테스트는 임시 HA 설정과 별도 포트 18885의 브로커를 생성하고 종료합니다. P2 회귀 테스트 6개와 기존 안내 테스트 8개도 통과했습니다.
+
+### P4 인계
+
+내장 Sections·Markdown·Tile로 상황 안내와 인쇄판 접근을 먼저 배치하고, 전용 카드는 `get_inventory` 응답의 `catalog`, `items`, `summary`, `revision`으로 목표·lot·표시 기한·마지막 실사일을 보여주세요. 수정은 관리자 action의 `set_item`/`delete_item`을 사용하고 revision 충돌이나 저장 실패를 사용자에게 표시하세요. MQTT 옵션과 센서가 unavailable이어도 로컬 재고 화면은 계속 작동해야 합니다. 휴대전화 375px, 200% 확대, 키보드, 밝은/어두운 테마에서 검증하세요.
