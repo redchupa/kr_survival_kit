@@ -1,0 +1,12 @@
+{
+  "domain": "kr_survival_kit",
+  "name": "KR Survival Kit",
+  "version": "0.1.0",
+  "documentation": "https://github.com/redchupa/kr_survival_kit",
+  "issue_tracker": "https://github.com/redchupa/kr_survival_kit/issues",
+  "codeowners": [],
+  "config_flow": true,
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "requirements": []
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "items": [
+    {"id":"drinking-water","name":"생수","tier":"rotation","unit":"ml","date_kind":"expiry","source_ids":["supplies"]},
+    {"id":"shelf-stable-meal","name":"평소 먹는 상온 간편식","tier":"rotation","unit":"개","date_kind":"expiry","source_ids":["supplies"]},
+    {"id":"canned-food","name":"평소 먹는 통조림","tier":"rotation","unit":"개","date_kind":"expiry","source_ids":["supplies"]},
+    {"id":"hygiene","name":"휴지·물티슈","tier":"rotation","unit":"개","date_kind":"inspection","source_ids":["mois-guide"]},
+    {"id":"flashlight","name":"손전등","tier":"owned","unit":"개","date_kind":"inspection","source_ids":["power"]},
+    {"id":"batteries","name":"호환 건전지","tier":"owned","unit":"개","date_kind":"inspection","source_ids":["supplies"]},
+    {"id":"backpack","name":"대피용 배낭","tier":"owned","unit":"개","date_kind":"inspection","source_ids":["supplies"]},
+    {"id":"blanket","name":"담요","tier":"owned","unit":"개","date_kind":"inspection","source_ids":["supplies"]},
+    {"id":"first-aid-kit","name":"기본 응급처치 용품 세트","tier":"owned","unit":"개","date_kind":"inspection","source_ids":["supplies"]},
+    {"id":"infant-supplies","name":"평소 쓰는 영유아 용품","tier":"household","unit":"개","date_kind":"inspection","source_ids":["mois-guide"]},
+    {"id":"prescription-preparedness","name":"개인 처방약 준비 점검","tier":"household","unit":"개","date_kind":"inspection","source_ids":["supplies"]},
+    {"id":"radio","name":"건전지로 쓰는 수신 라디오","tier":"optional","unit":"개","date_kind":"inspection","source_ids":["mois-guide","supplies"]},
+    {"id":"water-container","name":"추가 급수용 용기","tier":"optional","unit":"개","date_kind":"inspection","source_ids":["water","facilities"]}
+  ]
+}

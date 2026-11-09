@@ -1,0 +1,16 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "KR Survival Kit",
+        "description": "Keep a local household inventory in Home Assistant.",
+        "data": {
+          "inspection_days": "Days until a stock check is due"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Already configured"
+    }
+  }
+}

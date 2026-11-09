@@ -1,0 +1,45 @@
+get_inventory:
+  name: Get inventory
+  description: Return the local inventory snapshot, revision, and item statuses. Administrator only.
+set_item:
+  name: Set inventory item
+  description: Replace one item's target and lots using the revision from get_inventory. Administrator only.
+  fields:
+    item_id:
+      name: Item ID
+      required: true
+      example: drinking-water
+    revision:
+      name: Current revision
+      required: true
+      example: 0
+    applicable:
+      name: Applies to household
+      required: true
+      example: true
+    target:
+      name: Household target
+      required: true
+      example: 5000
+    lots:
+      name: Purchase lots
+      description: List of lot_id, quantity, and expires_on (ISO date or null).
+      required: true
+      example: '[{"lot_id":"bottles-1","quantity":2000,"expires_on":"2027-02-01"}]'
+    confirm:
+      name: Confirm physical inspection
+      description: Set true only after checking the actual item and quantity.
+      required: true
+      example: false
+delete_item:
+  name: Delete inventory item
+  description: Delete a household record using the current revision. Administrator only.
+  fields:
+    item_id:
+      name: Item ID
+      required: true
+      example: drinking-water
+    revision:
+      name: Current revision
+      required: true
+      example: 1

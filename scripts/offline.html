@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>KR Survival Kit | 가정 비상 안내</title>
+  <style>
+  $styles
+  </style>
+</head>
+<body>
+  <a class="skip screen-only" href="#scenarios">상황별 안내로 건너뛰기</a>
+  <main class="wrap">
+    <header class="hero screen-only">
+      <p class="kicker">KR SURVIVAL KIT <span>한국 가정 비상 대비</span></p>
+      <h1>가정 비상 안내</h1>
+      <p class="priority">$official_first</p>
+      <aside class="comms" aria-labelledby="comms-title">
+        <h2 id="comms-title">$comms_title</h2>
+        <p><strong>$comms_action</strong> $comms_note</p>
+        <p class="references">출처 $comms_sources</p>
+      </aside>
+      <div class="actions">
+        <a href="#scenarios">상황별 안내 보기</a>
+        <button type="button" onclick="window.print()">A4 두 장 인쇄</button>
+      </div>
+      <p class="stamp">$stamp</p>
+    </header>
+
+    <section class="screen-only section" id="scenarios" tabindex="-1" aria-labelledby="scenarios-title">
+      <p class="kicker">01 / 상황 선택</p>
+      <h2 id="scenarios-title">상황별 첫 행동</h2>
+      <nav class="index" aria-label="상황 바로가기">$index</nav>
+      <div class="cards">$cards</div>
+    </section>
+
+    <section class="sheet print-only" aria-labelledby="print-title">
+      <p class="kicker">KR SURVIVAL KIT / 01</p>
+      <h2 id="print-title">가정 비상 행동 안내</h2>
+      <p class="priority">$official_first</p>
+      <div class="comms">
+        <h3>$comms_title</h3>
+        <p><strong>$comms_action</strong> $comms_note</p>
+      </div>
+      <div class="print-rows">$print_rows</div>
+      <div class="print-sources">
+        <h3>공식 참고 자료</h3>
+        <p>$print_sources</p>
+      </div>
+      <p class="stamp">$stamp · 1 / 2</p>
+    </section>
+
+    <section class="sheet household section" id="household" aria-labelledby="household-title">
+      <p class="kicker">KR SURVIVAL KIT / 02</p>
+      <h2 id="household-title">우리 가족 비상 기록지</h2>
+      <p>평소에 확인해 손으로 적고, 가족 모두가 아는 곳에 보관하세요.</p>
+      <div class="form-grid">
+        <section class="form-block">
+          <h3>대피소 1</h3>
+          <p class="write-line">이름 · 주소</p>
+          <p class="write-line">출입구 · 도보로 가는 길</p>
+        </section>
+        <section class="form-block">
+          <h3>대피소 2</h3>
+          <p class="write-line">이름 · 주소</p>
+          <p class="write-line">출입구 · 도보로 가는 길</p>
+        </section>
+        <section class="form-block">
+          <h3>전화 없이 만나는 약속</h3>
+          <p>대피를 먼저 하고 현장 지시에 따라 이동할 수 있을 때 만나요.</p>
+          <p class="write-line">기본 집결 장소</p>
+          <p class="write-line">기본 장소에 갈 수 없을 때 만날 곳</p>
+          <p class="write-line">통화가 가능할 때 연락할 사람 · 번호</p>
+        </section>
+        <section class="form-block">
+          <h3>다음 점검</h3>
+          <p class="write-line">대피소·연락처 확인일</p>
+          <p class="write-line">도움이 필요한 사람 · 챙길 물품</p>
+        </section>
+      </div>
+      <p class="practice"><strong>5분 훈련</strong>　공습경보 뒤 전기와 통화가 끊겼다고 가정하세요. 첫 행동, 소식을 확인할 방법, 이동이 가능해진 뒤 만날 곳을 종이에서 찾아보세요.</p>
+      <p class="stamp">$stamp<span class="print-only"> · 2 / 2</span></p>
+    </section>
+
+    <section class="screen-only section sources" aria-labelledby="sources-title">
+      <p class="kicker">03 / 참고 자료</p>
+      <h2 id="sources-title">공식 출처</h2>
+      <p>링크를 열 때는 인터넷 연결이 필요합니다.</p>
+      <ol>$screen_sources</ol>
+    </section>
+  </main>
+</body>
+</html>
