@@ -4,7 +4,7 @@
 
 **인쇄해서 쓰기** · 로컬 빌드에서 `output/pdf/kr-survival-kit-a4.pdf`를 열면 흑백 A4 행동 안내와 가족 기록지를 받을 수 있습니다. `output/offline.html`은 파일 하나를 복사해 인터넷 없이 읽을 수 있습니다.
 
-**Home Assistant로 시작하기** · `output/ha-guide.md`는 내장 Markdown 카드의 내용으로 사용할 수 있습니다. 로컬 재고와 집계 센서가 있으며, P3에서 선택형 MQTT Discovery를 추가했습니다. 재고 편집 화면은 P4 작업입니다.
+**Home Assistant로 시작하기** · `output/dashboard.yaml`은 상황 안내, 인쇄 링크, 재고 카드를 담은 Sections 대시보드입니다. 로컬 재고와 집계 센서, 선택형 MQTT Discovery를 사용할 수 있습니다.
 
 현재 자료는 **공개 전 검토용**입니다. 공습·평시 준비, 경계·화생방·핵경보, 정전·단수 안내를 담았습니다. 현재 발령된 재난문자·방송과 현장 지시를 먼저 따르세요. 전화·인터넷이 끊긴 경우를 첫 화면과 인쇄물 상단에 따로 안내합니다. 가족 연락처와 실제 대피소 정보는 인쇄한 공란에 손으로 적어 개인 보관하세요.
 
@@ -86,6 +86,33 @@ data:
 - 브로커 종료 중 관리자 action으로 재고를 저장했습니다. 브로커 재시작 뒤 최신 부족 건수 1이 발행됐고, HA 인스턴스 재시작 후에도 재고 revision과 발행이 복원됐습니다. 브로커를 다시 중단한 상태에서 발행을 끄자 정리 대기가 기록됐으며, 재연결 후 빈 retained Discovery 메시지 3개가 발행되고 정리 대기가 해제됐습니다. 새 구독자는 삭제된 Discovery를 받지 않았습니다. 브로커 단절 직후 HA MQTT 자체의 birth 발행 실패 로그가 발생했으나 이후 복구됐습니다.
 - 재현은 Linux/WSL의 격리 Python에 `homeassistant==2026.11.0`과 HA MQTT 통합 요구사항인 `paho-mqtt==2.1.0`, 실행 파일 `mosquitto`가 필요합니다. `public/`에서 `python tests/ha_mqtt_smoke.py`를 실행합니다. 테스트는 임시 HA 설정과 별도 포트 18885의 브로커를 생성하고 종료합니다. P2 회귀 테스트 6개와 기존 안내 테스트 8개도 통과했습니다.
 
-### P4 인계
+## P4 Home Assistant 대시보드 설치
 
-내장 Sections·Markdown·Tile로 상황 안내와 인쇄판 접근을 먼저 배치하고, 전용 카드는 `get_inventory` 응답의 `catalog`, `items`, `summary`, `revision`으로 목표·lot·표시 기한·마지막 실사일을 보여주세요. 수정은 관리자 action의 `set_item`/`delete_item`을 사용하고 revision 충돌이나 저장 실패를 사용자에게 표시하세요. MQTT 옵션과 센서가 unavailable이어도 로컬 재고 화면은 계속 작동해야 합니다. 휴대전화 375px, 200% 확대, 키보드, 밝은/어두운 테마에서 검증하세요.
+`public/`에서 안내와 대시보드를 생성합니다. PDF 생성에는 앞 절의 Playwright와 Chromium이 필요합니다.
+
+```text
+python scripts/build_guides.py --pdf
+python scripts/build_dashboard.py
+```
+
+HA의 설정 폴더에 통합 폴더를 `custom_components/kr_survival_kit/`로 복사한 뒤 HA를 재시작하고 **설정 → 기기 및 서비스 → 통합 추가 → KR Survival Kit**로 설정합니다. 아래 세 공개 파일만 HA 설정 폴더의 `www/`에 복사합니다. HA의 `/local` 경로는 인증 없이 열리므로 가구 재고나 연락처를 이 폴더에 넣지 마세요.
+
+| 원본 | HA 설정 폴더의 목적지 |
+| --- | --- |
+| `custom_components/kr_survival_kit/www/kr-survival-kit-card.js` | `www/kr-survival-kit-card.js` |
+| `output/pdf/kr-survival-kit-a4.pdf` | `www/kr-survival-kit-a4.pdf` |
+| `output/offline.html` | `www/kr-survival-kit-offline.html` |
+
+**설정 → 대시보드**에서 `KR Survival Kit` 대시보드를 만들고 URL을 `kr-survival-kit`으로 지정합니다. 리소스 `/local/kr-survival-kit-card.js`를 JavaScript 모듈로 등록하고, 대시보드의 원시 설정 편집기에 `output/dashboard.yaml` 내용을 붙여 넣습니다. 첫 보기 상단의 **상황별 행동요령 열기**는 두 번째 보기로 연결됩니다. 다른 대시보드 URL을 쓴다면 `output/dashboard.yaml`의 `/kr-survival-kit/guide`도 맞춰 수정하세요. 새 HA에서 집계 센서의 entity ID는 생성된 예시와 같았지만 기존 HA에서는 달라질 수 있습니다. Tile 3개의 `entity`를 실제 부족·확인 필요·기한 임박 센서 ID와 대조해 수정하세요. PDF와 HTML 링크를 열어 파일이 내려오는지 확인하고, HTML은 비상 전에 기기에 저장하세요.
+
+재고 카드는 관리자 action의 `get_inventory`, `set_item`, `delete_item`을 호출합니다. 목표량은 품목 단위인 `ml` 또는 `개`의 정수이며, 구매 단위마다 수량과 표시 기한을 입력합니다. 실사 체크박스를 직접 선택했을 때만 오늘 날짜를 마지막 실사일로 기록합니다. 동시 수정 오류가 나면 새 revision을 불러오면서 입력을 유지하고 재확인을 요청합니다. 저장 실패도 입력을 유지합니다. 카드와 기본 집계 센서는 MQTT 옵션이 꺼져 있어도 로컬 재고를 표시합니다.
+
+### P4 검증 결과 (2026-11-10)
+
+- 격리된 HA Core 2026.11.0의 실제 대시보드에서 Markdown 안내, Tile 집계, 사용자 정의 재고 카드가 렌더링됐습니다. 375px 화면에서 안내와 인쇄 링크를 찾고, **상황별 행동요령 열기**에서 별도 보기로 이동해 행동요령 본문을 확인했습니다. 관리자 계정으로 생수 목표량·구매 단위 수량·표시 기한을 저장해 화면에 반영되는 것을 확인했습니다. PDF와 오프라인 HTML은 HA의 `/local`에서 각각 HTTP 200으로 열렸습니다.
+- 200% 확대에서 Tile 텍스트가 잘리는 문제를 발견해 Tile을 한 줄 너비로 바꾼 뒤 다시 확인했습니다. Tab과 Enter로 재고 편집과 구매 단위 추가가 가능했습니다. 밝은 테마와 어두운 테마를 화면으로 확인했습니다. 어두운 테마의 상태 색상 대비를 조정했습니다.
+- 카드가 편집 중일 때 다른 관리자 action으로 revision을 먼저 변경한 시험에서 충돌 안내와 입력 보존을 확인했습니다. 저장 실패를 흉내 낸 카드 시험에서도 입력이 유지됐고 이후 다시 저장할 수 있었습니다. 격리 HA에는 MQTT 통합을 설정하지 않았으며 재고 조회와 수정이 작동했습니다. 실제 휴대전화와 실물 프린터 검증은 P5에서 수행해야 합니다.
+
+### P5 인계
+
+깨끗한 HA 설치·업데이트·삭제와 Marketplace 배포 메타데이터를 검증하고, 실제 휴대전화와 프린터로 5분 탁상훈련을 진행하세요. 공개 전에는 가족 원본이나 개인 재고가 Git 히스토리·릴리스 파일·화면 캡처에 없는지 검사하고, 공습·정전 등 행동 문구의 출처와 `draft` 상태를 사람이 다시 검토해야 합니다. GitHub 게시와 운영 HA 적용은 이 검증 이후에 진행하세요.
