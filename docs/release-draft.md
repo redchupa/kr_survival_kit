@@ -1,12 +1,12 @@
 # 0.1.0 공개 프리뷰 릴리스 초안
 
-현재 상태는 **공개 보류**입니다. 콘텐츠 버전 `0.1.0-draft.5`를 검토 완료 버전으로 올리고 인쇄물을 다시 생성한 뒤 본문을 확정합니다.
+현재 상태는 **공개 보류**입니다. 콘텐츠 버전 `0.1.0-draft.6`를 검토 완료 버전으로 올리고 인쇄물을 다시 생성한 뒤 본문을 확정합니다.
 
 ## 제공 파일
 
 - `custom_components/kr_survival_kit/` · HA 2026.11.0에서 시험한 로컬 재고 통합.
-- `kr-survival-kit-a4.pdf` · 즉시 행동, 시간대별 대응, 시나리오 전환표, 준비 계산, 가족 기록지 A4 7쪽.
-- `kr-survival-kit-offline.html` · 인터넷 없이 여는 단일 HTML.
+- `kr-survival-kit-a4.pdf` · 경보별 첫 행동, 대피 후 점검, 가족 기록칸을 담은 A4 단면 한 장.
+- `kr-survival-kit-offline.html` · 시간대별 대응, 전환표, 준비 계산을 인터넷 없이 보는 파일. 인쇄하면 한 장 행동 카드가 나옵니다.
 - `dashboard.yaml` · Sections 대시보드 원시 설정.
 - `kr-survival-kit-card.js` · 재고 카드 리소스. 통합 폴더에도 포함됩니다.
 

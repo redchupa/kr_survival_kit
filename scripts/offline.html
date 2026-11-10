@@ -24,7 +24,7 @@
       <div class="actions">
         <a href="#scenarios">상황별 안내 보기</a>
         <a href="#first-day">시간대별 대응 보기</a>
-        <button type="button" onclick="window.print()">A4 $page_count쪽 인쇄</button>
+        <button type="button" onclick="window.print()">A4 한 장 행동 카드 인쇄</button>
       </div>
       <p class="stamp">$stamp</p>
     </header>
@@ -38,30 +38,45 @@
 
     <section class="sheet quick-sheet print-only" aria-labelledby="print-title">
       <header class="sheet-head">
-        <p class="kicker">KR SURVIVAL KIT / 01 · 즉시 행동</p>
-        <h2 id="print-title">가정 비상 행동 안내</h2>
-        <p>받은 경보나 지금 겪는 상황을 찾아 첫 행동부터 확인하세요.</p>
+        <p class="kicker">KR SURVIVAL KIT · 한 장 행동 카드</p>
+        <h1 id="print-title">가정 비상 행동 안내</h1>
       </header>
       <p class="priority">$official_first</p>
       <div class="comms">
-        <h3>$comms_title</h3>
-        <p><strong>$comms_action</strong> $comms_note</p>
+        <p><strong class="comms-label">$comms_title</strong> $comms_action $comms_note</p>
       </div>
+      <h2 class="paper-heading">01　경보·장애별 첫 행동</h2>
       <div class="print-rows">$print_rows</div>
+      <section class="paper-section" aria-labelledby="paper-checkpoints-title">
+        <h2 class="paper-heading" id="paper-checkpoints-title">02　대피한 뒤 확인할 일</h2>
+        <dl class="paper-checkpoints">$print_checkpoints</dl>
+        <p class="paper-condition">$print_condition</p>
+      </section>
+      <section class="paper-section" aria-labelledby="paper-household-title">
+        <h2 class="paper-heading" id="paper-household-title">03　우리 가족 약속</h2>
+        <p>미리 적어 두세요. 만나는 곳은 현장 지시에 따라 이동할 수 있을 때 이용하세요.</p>
+        <div class="paper-form">
+          <p class="paper-field"><strong>대피소 1</strong> · 주소와 출입구</p>
+          <p class="paper-field"><strong>대피소 2</strong> · 주소와 출입구</p>
+          <p class="paper-field"><strong>기본 집결 장소</strong></p>
+          <p class="paper-field"><strong>대체 집결 장소</strong></p>
+          <p class="paper-field"><strong>연락할 사람과 번호</strong> · 연결될 때</p>
+          <p class="paper-field"><strong>이동·돌봄에 필요한 도움</strong></p>
+        </div>
+      </section>
       <footer class="sheet-foot">
-        <p class="print-index">02 첫 24시간　 03 단전·단수　 04 이동　 05 전환표　 06 준비 계산　 07 가족 기록지</p>
         <p class="references">공식 참고 자료 · $print_sources</p>
-        <p class="stamp">$stamp · 1 / $page_count</p>
+        <p class="stamp">$stamp</p>
       </footer>
     </section>
 
-    <div class="playbook" aria-label="시간대별 행동 안내">
+    <div class="screen-only playbook" aria-label="시간대별 행동 안내">
       $playbook
     </div>
 
-    <section class="sheet household section" id="household" aria-labelledby="household-title">
+    <section class="screen-only household section" id="household" aria-labelledby="household-title">
       <header class="sheet-head">
-        <p class="kicker">KR SURVIVAL KIT / 0$page_count · 가구 작성용</p>
+        <p class="kicker">가구 작성용</p>
         <h2 id="household-title">우리 가족 비상 기록지</h2>
         <p>평소에 확인해 손으로 적고, 가족 모두가 아는 곳에 보관하세요.</p>
       </header>
@@ -91,7 +106,7 @@
       </div>
       <footer class="sheet-foot">
         <p class="practice"><strong>5분 훈련</strong>　공습경보 뒤 전기와 통화가 끊겼다고 가정하세요. 첫 행동, 소식을 확인할 방법, 이동이 가능해진 뒤 만날 곳을 종이에서 찾아보세요.</p>
-        <p class="stamp">$stamp<span class="print-only"> · $page_count / $page_count</span></p>
+        <p class="stamp">$stamp</p>
       </footer>
     </section>
 

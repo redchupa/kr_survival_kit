@@ -20,7 +20,7 @@ def main():
         f"**{guide['official_first']}**\n\n"
         f"**{comms['title']}**\n\n{comms['first_action']} {comms['paper_note']}\n\n"
         "[상황별 행동요령 열기](/kr-survival-kit/guide)\n\n"
-        "[인쇄용 A4 PDF 저장](/local/kr-survival-kit-a4.pdf) · "
+        "[A4 한 장 행동 카드 저장](/local/kr-survival-kit-a4.pdf) · "
         "[오프라인 HTML 저장](/local/kr-survival-kit-offline.html)\n\n"
         f"안내 버전 {guide['content_version']} · 종이판도 같은 버전인지 확인하세요."
     )

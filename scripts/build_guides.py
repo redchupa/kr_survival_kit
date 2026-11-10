@@ -14,6 +14,7 @@ ROOT = SCRIPTS.parent
 CONTENT = ROOT / "custom_components" / "kr_survival_kit" / "content"
 OUTPUT = ROOT / "output"
 ID = re.compile(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
+PAPER_SCENARIOS = ("air-raid", "nuclear-alert", "civil-warning", "cbrn-alert", "power-outage", "water-outage")
 
 
 def line(value, field):
@@ -79,8 +80,8 @@ def validate_guide(guide, release=False):
             line(detail, f"{key}.details")
         source_refs(scenario["source_ids"], sources, key)
         validate_review(scenario, key, release)
-    if not {"air-raid", "prepare"}.issubset(seen):
-        raise ValueError("The guide must include air-raid and prepare")
+    if not set(PAPER_SCENARIOS).union({"prepare"}).issubset(seen):
+        raise ValueError("The guide must include all action card scenarios and prepare")
     comms = guide["communication_loss"]
     for field in ("title", "first_action", "paper_note"):
         line(comms[field], f"communication_loss.{field}")
@@ -105,6 +106,15 @@ def validate_guide(guide, release=False):
                 line(row[field], f"{key}.{field}")
         source_refs(sheet["source_ids"], sources, key)
         validate_review(sheet, key, release)
+    checkpoints = guide["paper_checkpoints"]
+    line(checkpoints["condition"], "paper_checkpoints.condition")
+    if not isinstance(checkpoints["rows"], list) or not checkpoints["rows"]:
+        raise ValueError("paper_checkpoints.rows must be a nonempty list")
+    for row in checkpoints["rows"]:
+        line(row["when"], "paper_checkpoints.when")
+        line(row["text"], "paper_checkpoints.text")
+    source_refs(checkpoints["source_ids"], sources, "paper_checkpoints")
+    validate_review(checkpoints, "paper_checkpoints", release)
     if release and not re.fullmatch(r"\d+\.\d+\.\d+", version):
         raise ValueError("Release blocked: content_version must be a release version")
 
@@ -129,7 +139,7 @@ def validate_catalog(catalog, sources):
 
 
 def guide_stamp(guide):
-    scenarios = [*guide["scenarios"], guide["communication_loss"], *guide["playbook"]]
+    scenarios = [*guide["scenarios"], guide["communication_loss"], *guide["playbook"], guide["paper_checkpoints"]]
     if all(item["review_status"] == "reviewed" for item in scenarios):
         last_review = max(item["reviewed_on"] for item in scenarios)
         status = f"최근 문구 검토 {last_review}"
@@ -148,9 +158,8 @@ def source_links(sources, refs):
 
 
 def render_playbook(guide):
-    total = len(guide["playbook"]) + 2
-    pages = []
-    for number, sheet in enumerate(guide["playbook"], start=2):
+    sections = []
+    for sheet in guide["playbook"]:
         key = sheet["id"]
         if sheet.get("layout") == "matrix":
             rows = "".join(
@@ -171,24 +180,24 @@ def render_playbook(guide):
             )
             content = f'<ol class="timeline">{rows}</ol>'
         refs = source_links(guide["sources"], sheet["source_ids"])
-        pages.append(
-            f'<article class="sheet timeline-sheet" id="{key}" aria-labelledby="{key}-title">'
-            f'<header class="sheet-head"><p class="kicker">KR SURVIVAL KIT / {number:02d} · {escape(sheet["label"])}</p>'
+        sections.append(
+            f'<article class="timeline-sheet" id="{key}" aria-labelledby="{key}-title">'
+            f'<header class="sheet-head"><p class="kicker">{escape(sheet["label"])}</p>'
             f'<h2 id="{key}-title">{escape(sheet["title"])}</h2><p>{escape(sheet["intro"])}</p></header>'
             f'{content}'
-            f'<footer class="sheet-foot"><p class="references">참고 자료 · {refs}</p>'
-            f'<p class="stamp print-only">{escape(guide_stamp(guide))} · {number} / {total}</p></footer></article>'
+            f'<footer class="sheet-foot"><p class="references">참고 자료 · {refs}</p></footer></article>'
         )
-    return "\n".join(pages)
+    return "\n".join(sections)
 
 
 def render_html(guide):
     scenarios = guide["scenarios"]
     comms = guide["communication_loss"]
     sources = guide["sources"]
+    checkpoints = guide["paper_checkpoints"]
     index_links = []
     cards = []
-    paper = []
+    paper = {}
     for item in scenarios:
         key = item["id"]
         title = escape(item["title"])
@@ -208,11 +217,12 @@ def render_html(guide):
             f'<p class="first">{action}</p>{detail_list}'
             f'<p class="references">출처 {links} · {escape(review)}</p></article>'
         )
-        paper.append(
-            f'<article class="print-row"><h3>{title}</h3>'
-            f'<p class="first">{action}</p>'
-            f'<p>{escape(item["paper_note"])}</p></article>'
-        )
+        if key in PAPER_SCENARIOS:
+            paper[key] = (
+                f'<article class="print-row"><h3>{title}</h3>'
+                f'<p class="first">{action}</p>'
+                f'<p>{escape(item["paper_note"])}</p></article>'
+            )
 
     screen_sources = []
     for key, source in sources.items():
@@ -234,11 +244,15 @@ def render_html(guide):
         stamp=escape(guide_stamp(guide)),
         index="\n".join(index_links),
         cards="\n".join(cards),
-        print_rows="\n".join(paper),
+        print_rows="\n".join(paper[key] for key in PAPER_SCENARIOS),
         screen_sources="\n".join(screen_sources),
-        print_sources=source_links(sources, ("mois-2026", "civil-preparedness", "civil-alerts")),
+        print_sources=source_links(sources, checkpoints["source_ids"]),
+        print_condition=escape(checkpoints["condition"]),
+        print_checkpoints="".join(
+            f'<div><dt>{escape(row["when"])}</dt><dd>{escape(row["text"])}</dd></div>'
+            for row in checkpoints["rows"]
+        ),
         playbook=render_playbook(guide),
-        page_count=len(guide["playbook"]) + 2,
     )
 
 
@@ -290,7 +304,7 @@ def render_pdf(html_path, browser_path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--pdf", action="store_true", help="also render the A4 field guide PDF")
+    parser.add_argument("--pdf", action="store_true", help="also render the one-page A4 action card")
     parser.add_argument("--browser", help="path to an installed Chromium-family browser for PDF rendering")
     parser.add_argument("--release", action="store_true", help="require reviewed content and a release version")
     args = parser.parse_args()

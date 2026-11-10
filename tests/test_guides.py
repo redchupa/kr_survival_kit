@@ -45,6 +45,9 @@ class GuideTests(unittest.TestCase):
             validate_guide(self.guide, release=True)
         for sheet in self.guide["playbook"]:
             sheet.update(review_status="reviewed", reviewed_on="2026-11-09")
+        with self.assertRaisesRegex(ValueError, "paper_checkpoints is awaiting human review"):
+            validate_guide(self.guide, release=True)
+        self.guide["paper_checkpoints"].update(review_status="reviewed", reviewed_on="2026-11-09")
         with self.assertRaisesRegex(ValueError, "release version"):
             validate_guide(self.guide, release=True)
         self.guide["content_version"] = "0.1.0"
@@ -64,7 +67,8 @@ class GuideTests(unittest.TestCase):
         self.assertIn(self.guide["official_first"], markdown)
         for item in self.guide["scenarios"]:
             self.assertIn(f'id="{item["id"]}"', html)
-            self.assertEqual(html.count(item["first_action"]), 2)
+            expected = 1 if item["id"] == "prepare" else 2
+            self.assertEqual(html.count(item["first_action"]), expected)
             self.assertIn(item["first_action"], markdown)
         for sheet in self.guide["playbook"]:
             self.assertIn(f'id="{sheet["id"]}"', html)
