@@ -2,9 +2,9 @@
 
 평소 쓰는 물품으로 준비하고, 정전이 나면 미리 저장하거나 인쇄한 안내를 꺼내 쓰는 한국 가정 비상 대비 프로젝트입니다.
 
-**인쇄해서 쓰기** · `output/pdf/kr-survival-kit-a4.pdf`는 A4 단면 한 장입니다. 전화·인터넷 두절, 경보별 첫 행동, 대피 후 점검, 대피소와 집결 장소 기록칸을 같은 면에 배치했습니다. 상세 타임라인·상황별 전환표·물과 전력 계산은 `output/offline.html` 파일을 저장해 인터넷 없이 읽을 수 있습니다.
+**인쇄해서 쓰기** · `output/pdf/kr-survival-kit-a4.pdf`는 A4 단면 한 장입니다. 전화·인터넷 두절, 경보별 첫 행동, 4인 가구 3일 준비량 요약, 대피 후 점검과 가족 기록칸을 같은 면에 배치했습니다. 상세 타임라인·상황별 전환표·품목별 준비량과 근거는 `output/offline.html` 파일을 저장해 인터넷 없이 읽을 수 있습니다.
 
-**Home Assistant로 시작하기** · `output/dashboard.yaml`은 상황 안내, 인쇄 링크, 재고 카드를 담은 Sections 대시보드입니다. 로컬 재고와 집계 센서, 선택형 MQTT Discovery를 사용할 수 있습니다.
+**Home Assistant로 시작하기** · `output/dashboard.yaml`은 대피 우선과 평시 준비를 구분하고, 첫 화면에 4인 가구 3일 준비량을 보여 주는 Sections 대시보드입니다. PDF·HTML 버튼은 파일을 여는 동작이며 열린 브라우저의 인쇄·다운로드·저장 기능으로 기기에 보관합니다. 로컬 재고와 집계 센서, 선택형 MQTT Discovery를 사용할 수 있습니다.
 
 현재 자료는 **공개 전 검토용**입니다. 공습·평시 준비, 경계·화생방·핵경보, 정전·단수 안내를 담았습니다. 현재 발령된 재난문자·방송과 현장 지시를 먼저 따르세요. 전화·인터넷이 끊긴 경우를 첫 화면과 인쇄물 상단에 따로 안내합니다. 가족 연락처와 실제 대피소 정보는 인쇄한 공란에 손으로 적어 개인 보관하세요.
 
@@ -15,6 +15,7 @@ Python 3.11 이상에서 저장소 루트 기준으로 실행합니다. HTML과 
 ```text
 python scripts/build_guides.py
 python -m unittest discover -s tests -p test_guides.py -v
+python tests/test_household.py
 ```
 
 PDF와 브라우저 검증에는 개발 의존성, Chromium, 시스템 한글 글꼴이 필요합니다. Windows에서는 맑은 고딕을 사용할 수 있습니다. Linux에서는 Noto Sans CJK KR을 설치한 뒤 실행하세요.
@@ -37,9 +38,9 @@ python tests/verify_artifacts.py
 
 ## P2 로컬 재고와 Home Assistant
 
-`custom_components/kr_survival_kit/`를 테스트 HA의 `config/custom_components/`에 복사하고 HA를 재시작한 뒤 **설정 → 기기 및 서비스 → 통합 추가 → KR Survival Kit**를 선택합니다. 한 인스턴스에 한 가구만 등록합니다. 점검 주기(기본 30일)를 정하면 로컬 `Store`에 버전 1 스냅샷을 저장합니다. 브로커나 외부 계정은 필요하지 않습니다. 운영 HA에 설치한 결과는 아직 없습니다.
+`custom_components/kr_survival_kit/`를 HA 설정 폴더의 `custom_components/`에 복사하고 HA를 재시작한 뒤 **설정 → 기기 및 서비스 → 통합 추가 → KR Survival Kit**를 선택합니다. 한 인스턴스에 한 가구만 등록합니다. 점검 주기(기본 30일)를 정하면 로컬 `Store`에 버전 1 스냅샷을 저장합니다. 브로커나 외부 계정은 필요하지 않습니다. 운영 설치 결과는 아래 [NRGNC 운영 검증](#nrgnc-운영-검증-2026-11-10)에 기록했습니다.
 
-관리자는 개발자 도구의 action 또는 향후 P4 카드에서 `kr_survival_kit.get_inventory`를 호출해 `revision`, 품목별 `state`와 합계를 읽을 수 있습니다. `kr_survival_kit.set_item`은 **현재 revision**과 카탈로그 `item_id`, `applicable`, `target`, `lots`, `confirm`을 요구합니다. `lots`의 각 원소는 `lot_id`, 비음수 정수 `quantity`, ISO 날짜 또는 `null`인 `expires_on`을 가집니다. `kr_survival_kit.delete_item`은 `item_id`와 현재 revision을 요구합니다. 성공한 쓰기는 새 revision을 반환하며, 다른 편집이 먼저 저장되면 다시 조회한 뒤 절대 수량으로 재입력해야 합니다. 이 action들은 HA 관리자만 호출할 수 있습니다. `entry_id`는 단일 가구에서 생략할 수 있습니다.
+관리자는 개발자 도구의 action 또는 대시보드 재고 카드에서 `kr_survival_kit.get_inventory`를 호출해 `revision`, 품목별 `state`와 합계를 읽을 수 있습니다. `kr_survival_kit.set_item`은 **현재 revision**과 카탈로그 `item_id`, `applicable`, `target`, `lots`, `confirm`을 요구합니다. `lots`의 각 원소는 `lot_id`, 비음수 정수 `quantity`, ISO 날짜 또는 `null`인 `expires_on`을 가집니다. `kr_survival_kit.delete_item`은 `item_id`와 현재 revision을 요구합니다. 성공한 쓰기는 새 revision을 반환하며, 다른 편집이 먼저 저장되면 다시 조회한 뒤 절대 수량으로 재입력해야 합니다. 이 action들은 HA 관리자만 호출할 수 있습니다. `entry_id`는 단일 가구에서 생략할 수 있습니다.
 
 예시: 첫 `get_inventory`가 `revision: 0`을 반환했다면 아래처럼 **실제로 확인한 뒤에만** `confirm: true`로 저장합니다. `target`과 `quantity`의 단위는 카탈로그 품목 단위(`ml` 또는 `개`)입니다.
 
@@ -103,7 +104,7 @@ HA의 설정 폴더에 통합 폴더를 `custom_components/kr_survival_kit/`로 
 | `output/pdf/kr-survival-kit-a4.pdf` | `www/kr-survival-kit-a4.pdf` |
 | `output/offline.html` | `www/kr-survival-kit-offline.html` |
 
-**설정 → 대시보드**에서 `KR Survival Kit` 대시보드를 만들고 URL을 `kr-survival-kit`으로 지정합니다. 리소스 `/local/kr-survival-kit-card.js`를 JavaScript 모듈로 등록하고, 대시보드의 원시 설정 편집기에 `output/dashboard.yaml` 내용을 붙여 넣습니다. 첫 보기 상단의 **상황별 행동요령 열기**는 두 번째 보기로 연결됩니다. 다른 대시보드 URL을 쓴다면 `output/dashboard.yaml`의 `/kr-survival-kit/guide`도 맞춰 수정하세요. 새 HA에서 집계 센서의 entity ID는 생성된 예시와 같았지만 기존 HA에서는 달라질 수 있습니다. Tile 3개의 `entity`를 실제 부족·확인 필요·기한 임박 센서 ID와 대조해 수정하세요. PDF와 HTML 링크를 열어 파일이 내려오는지 확인하고, HTML은 비상 전에 기기에 저장하세요.
+**설정 → 대시보드**에서 `KR Survival Kit` 대시보드를 만들고 URL을 `kr-survival-kit`으로 지정합니다. 리소스 `/local/kr-survival-kit-card.js`를 JavaScript 모듈로 등록하고, 대시보드의 원시 설정 편집기에 `output/dashboard.yaml` 내용을 붙여 넣습니다. 첫 보기의 **경보별 행동 보기**는 두 번째 보기로 연결됩니다. 다른 대시보드 URL을 쓴다면 `output/dashboard.yaml`의 `/kr-survival-kit/guide`도 맞춰 수정하세요. 새 HA에서 집계 센서의 entity ID는 생성된 예시와 같았지만 기존 HA에서는 달라질 수 있습니다. Tile 3개의 `entity`를 실제 부족·확인 필요·기한 임박 센서 ID와 대조해 수정하세요. **A4 인쇄 카드 열기**와 **오프라인 안내 열기**는 `/local/kr-survival-kit-a4.pdf`, `/local/kr-survival-kit-offline.html`을 엽니다. PDF는 열린 화면에서 인쇄하거나 다운로드하고, HTML은 브라우저의 다른 이름으로 저장을 사용해 비상 전에 기기에 보관하세요.
 
 재고 카드는 관리자 action의 `get_inventory`, `set_item`, `delete_item`을 호출합니다. 목표량은 품목 단위인 `ml` 또는 `개`의 정수이며, 구매 단위마다 수량과 표시 기한을 입력합니다. 실사 체크박스를 직접 선택했을 때만 오늘 날짜를 마지막 실사일로 기록합니다. 동시 수정 오류가 나면 새 revision을 불러오면서 입력을 유지하고 재확인을 요청합니다. 저장 실패도 입력을 유지합니다. 카드와 기본 집계 센서는 MQTT 옵션이 꺼져 있어도 로컬 재고를 표시합니다.
 
@@ -115,7 +116,7 @@ HA의 설정 폴더에 통합 폴더를 `custom_components/kr_survival_kit/`로 
 
 ### P4에서 P5로 넘긴 항목
 
-깨끗한 HA 설치·업데이트·삭제와 Marketplace 배포 메타데이터를 검증하고, 실제 휴대전화와 프린터로 5분 탁상훈련을 진행하세요. 공개 전에는 가족 원본이나 개인 재고가 Git 히스토리·릴리스 파일·화면 캡처에 없는지 검사하고, 공습·정전 등 행동 문구의 출처와 `draft` 상태를 사람이 다시 검토해야 합니다. GitHub 게시와 운영 HA 적용은 이 검증 이후에 진행하세요.
+P4에서 넘긴 깨끗한 HA 설치·업데이트·삭제는 P5의 격리 HA에서 확인했습니다. 운영 HA 적용 결과는 아래에 기록했습니다. 실제 휴대전화와 프린터로 5분 탁상훈련을 진행하고, 공개 전에는 가족 원본이나 개인 재고가 Git 히스토리·릴리스 파일·화면 캡처에 없는지 검사해야 합니다. 공습·정전 등 행동 문구의 출처와 `draft` 상태도 다른 사람이 다시 검토해야 합니다. GitHub 게시는 이 검증 이후에 진행합니다.
 
 ## P5 공개 프리뷰 후보 (2026-11-10)
 
@@ -126,3 +127,12 @@ HACS용 `hacs.json`, MIT `LICENSE`, [변경 이력](CHANGELOG.md), [보안·안�
 `python scripts/build_candidate.py`는 현재 초안 PDF·HTML·대시보드·카드와 SHA256 목록을 `output/release-candidate/`에 모읍니다. 이 폴더에는 공개 보류 표기가 있으며 검토 후 다시 생성해야 합니다. GitHub CI는 안내 단위 테스트, 생성기, `python tests/check_package.py` 및 개인정보 형식 검사를 실행합니다. 일치 항목을 발견하면 검사 단계가 실패합니다. 재고 테스트와 HA 통합 테스트의 실행 방법은 P2와 P5 검증 기록에 있습니다.
 
 **공개 차단** · 행동 문구를 공식 원문과 1차 대조했습니다. 독립 검토와 `draft` 해제, 실물 휴대전화·흑백 A4 탁상훈련, 최종 릴리스 자산 및 화면 캡처의 개인정보 재검사가 남았습니다. 현재 원격 Git 저장소가 없어 HACS 사용자 지정 저장소 설치와 Home Assistant Brands 등록도 확인하지 못했습니다. [문구 대조표](docs/content-review.md) · [P5 검증 기록](docs/p5-validation.md)
+
+## NRGNC 운영 검증 (2026-11-10)
+
+Home Assistant OS의 **Core 2026.11.1**에서 `custom_components/kr_survival_kit/`와 공개 정적 파일 3개를 설치하고, 관리자 전용 `kr-survival-kit` 대시보드의 `home`·`guide` 보기를 갱신했습니다. 통합 manifest 버전은 `0.1.0`이고 안내 콘텐츠와 PDF·HTML 버전은 **`0.1.0-draft.7`**입니다. 기존 집계 센서 3개의 entity ID, 다른 대시보드와 카드 리소스는 유지했습니다. MQTT 발행 설정과 브로커는 변경하지 않았습니다.
+
+- 배포 전 통합·정적 파일·전용 대시보드·리소스를 백업했습니다. HA 설정 검사는 `valid`였고 재시작 후 통합은 `loaded`입니다. 관리자 `get_inventory` 응답에 4인·3일 권장량 `household`가 들어 있으며, 기존 개인 재고 스냅샷·목표·revision은 배포 전후 동일했습니다. 실제 재고는 시험용으로 수정하지 않았습니다. 통합의 동기 파일 읽기 경고는 재시작 후 시스템 로그에서 재발하지 않았습니다.
+- 서버의 별도 staging에서 안내 `unittest` **10개**, 가구 권장량 검사 **1개**, 격리 venv의 순수 재고 회귀 테스트 **6개**가 통과했습니다. 이 테스트들은 운영 HA의 저장소나 실제 재고를 사용하지 않았습니다.
+- `/local/kr-survival-kit-card.js`, `/local/kr-survival-kit-a4.pdf`, `/local/kr-survival-kit-offline.html`을 실제 HTTP GET으로 확인했습니다. 세 응답은 HTTP 200이고 SHA256은 배포 후보와 일치합니다. PDF는 A4 한 쪽이며 PDF·HTML 모두 `0.1.0-draft.7`과 4인 예시의 음용수 24 L, 전체 안전수 약 46 L, 식품 합계 36인분을 담고 있습니다. HTML에는 7일·14일 확장량도 있습니다.
+- 대시보드 설정을 다시 읽어 첫 화면에서 초안 버전과 반복 외부 출처를 표시하지 않는 것, 내장 버튼 2개의 PDF·HTML URL, 4인 요약과 단위, 관리자 카드와 집계 센서 3개, 안내 보기의 출처 카드 1개 및 중복 없는 외부 URL을 확인했습니다. **인증된 실제 브라우저에서 버튼 클릭·375px 렌더링은 검증하지 못했습니다.** 실물 휴대전화와 프린터의 탁상훈련도 남아 있습니다.

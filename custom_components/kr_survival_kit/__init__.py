@@ -41,12 +41,16 @@ GET_SCHEMA = vol.Schema({vol.Optional("entry_id"): str})
 
 async def async_setup_entry(hass, entry):
     """Load the private snapshot before creating sensors."""
-    catalog_path = Path(__file__).parent / "content" / "catalog.ko.json"
-    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))["items"]
+    content_path = Path(__file__).parent / "content"
+    catalog_data, household = await hass.async_add_executor_job(
+        _load_content, content_path
+    )
+    catalog = catalog_data["items"]
     store = Store(
         hass, 1, f"{DOMAIN}_{entry.entry_id}", private=True, atomic_writes=True
     )
     inventory = Inventory(store, catalog)
+    inventory.household = household
     await inventory.load()
     entry.runtime_data = inventory
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -149,5 +153,14 @@ def _get_inventory(hass):
             dt_util.now().date(), inspection_days,
         )
         snapshot["catalog"] = deepcopy(list(inventory.catalog.values()))
+        snapshot["household"] = deepcopy(inventory.household)
         return snapshot
     return handle
+
+
+def _load_content(content_path):
+    """Read bundled public content outside Home Assistant's event loop."""
+    return tuple(
+        json.loads((content_path / name).read_text(encoding="utf-8"))
+        for name in ("catalog.ko.json", "household.ko.json")
+    )

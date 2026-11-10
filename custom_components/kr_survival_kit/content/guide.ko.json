@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "content_version": "0.1.0-draft.6",
+  "content_version": "0.1.0-draft.7",
   "official_first": "현재 발령된 재난문자·방송과 현장 지시를 먼저 따르세요.",
   "communication_loss": {
     "title": "전화·인터넷이 끊기면",

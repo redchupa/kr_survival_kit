@@ -152,8 +152,10 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const priority = { shortage: 0, needs_check: 1, sufficient: 2, not_applicable: 3 };
     const items = snapshot?.catalog.map((item) => ({ ...item, status: snapshot.summary.items[item.id] }))
       .sort((left, right) => priority[left.status.state] - priority[right.status.state]) || [];
+    const recommendations = new Map((snapshot?.household?.items || []).map((entry) => [entry.item_id, entry]));
     const rows = items.map((item) => {
       const status = item.status;
+      const recommendation = recommendations.get(item.id);
       const lots = snapshot.items[item.id]?.lots || [];
       const lotText = lots.length ? lots.map((lot) =>
         `<li>${escape(lot.lot_id)} · ${escape(lot.quantity)} ${escape(item.unit)}` +
@@ -163,12 +165,16 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         `<span class="state ${escape(status.state)}">${states[status.state]}</span></div>` +
         `<button type="button" data-edit="${escape(item.id)}">수정</button></div>` +
         `<p>확인 수량 ${status.usable} ${escape(item.unit)} / 목표 ${status.target === null ? "미설정" : escape(status.target) + " " + escape(item.unit)}</p>` +
+        (recommendation ? `<p class="recommendation">4인·3일 계산 예시: <strong>${escape(recommendation.quantity)}</strong></p>` : "") +
+        (item.id === "water-container" && recommendation ? `<p>안전수 보관 용량 예시입니다. 위의 급수 용기 개수 목표와는 단위가 다릅니다.</p>` : "") +
         `<p>마지막 실사 ${escape(status.verified_on || "기록 없음")}${status.confirmed ? "" : " · 현재 수량 미확인"}</p>` +
         `<ul>${lotText}</ul></article>`;
     }).join("");
     const draftItem = items.find((item) => item.id === this._draft?.id);
+    const draftRecommendation = recommendations.get(this._draft?.id);
     const edit = this._draft && draftItem ? `<form id="editor"><h3>${escape(draftItem.name)} 수정</h3>` +
       `<p>현재 기록 ${escape(draftItem.status.usable)} ${escape(draftItem.unit)} · ${states[draftItem.status.state]} · 마지막 실사 ${escape(draftItem.status.verified_on || "기록 없음")}</p>` +
+      (draftRecommendation ? `<p class="recommendation">4인·3일 계산 예시: <strong>${escape(draftRecommendation.quantity)}</strong><br>${escape(draftRecommendation.basis)}</p>` : "") +
       `<label><input id="applicable" type="checkbox" ${this._draft.applicable ? "checked" : ""}> 우리 가구에 해당</label>` +
       `<label for="target">가구 목표량 (${escape(draftItem.unit)})</label><input id="target" type="number" min="0" step="1" value="${escape(this._draft.target)}" placeholder="미설정">` +
       `<h4>구매 단위별 재고</h4>` + this._draft.lots.map((lot, index) =>
@@ -186,6 +192,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       h2{font-size:1.25rem;margin:0 0 .3rem}h3{font-size:1rem;margin:0 0 .35rem}h4{font-size:.95rem;margin:1rem 0 .4rem}
       p{margin:.35rem 0;color:var(--secondary-text-color,#405564);line-height:1.5}ul{margin:.35rem 0;padding-left:1.25rem;line-height:1.55}
       .intro{border-left:4px solid #197f83;padding-left:.8rem;margin:.75rem 0 1rem}
+      .recommendation{padding:.55rem .7rem;background:rgba(25,127,131,.08);border-radius:7px}
       .item{padding:1rem 0;border-top:1px solid var(--divider-color,#d7e1e7)}.item-head{display:flex;justify-content:space-between;gap:.8rem;align-items:start}
       .state{display:inline-block;font-weight:700;font-size:.82rem}.shortage{color:#ad342d}.needs_check{color:#a9670e}.sufficient{color:#13777b}
       button{font:inherit;min-height:40px;padding:.45rem .75rem;border:1px solid #197f83;background:transparent;color:var(--primary-text-color,#173048);border-radius:8px;cursor:pointer}
@@ -196,6 +203,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       @media(prefers-color-scheme:dark){.shortage{color:#ff9d94}.needs_check{color:#f0b76d}.sufficient{color:#78d8d2}}
       @media(max-width:400px){ha-card{padding:.9rem}.item-head{flex-wrap:wrap}}
     </style><ha-card><h2>우리 집 준비 물품</h2><p class="intro">부족한 것부터 확인하세요. 실제로 확인한 수량만 실사로 기록합니다.</p>` +
+      (snapshot?.household ? `<p class="recommendation">${escape(snapshot.household.compact_summary)}</p><p>계산 예시는 저장된 목표나 재고에 자동 적용되지 않습니다.</p>` : "") +
       `<button type="button" id="refresh">새로고침</button>` +
       (this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : "") +
       (snapshot ? (edit || rows) : `<p>${this._loading ? "재고를 불러오는 중입니다." : "재고를 표시할 수 없습니다."}</p>`) + `</ha-card>`;

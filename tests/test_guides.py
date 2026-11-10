@@ -1,9 +1,11 @@
 import copy
 import json
+import re
 import unittest
 
 from scripts.build_guides import (
-    CONTENT, ROOT, render_html, render_markdown, validate_catalog, validate_guide,
+    CONTENT, ROOT, render_html, render_markdown, render_markdown_section,
+    validate_catalog, validate_guide, validate_household,
 )
 
 
@@ -33,6 +35,9 @@ class GuideTests(unittest.TestCase):
             validate_guide(self.guide)
 
     def test_draft_requires_human_review_for_release(self):
+        self.guide["content_version"] = "0.1.0-draft.test"
+        for item in [*self.guide["scenarios"], self.guide["communication_loss"], *self.guide["playbook"], self.guide["paper_checkpoints"]]:
+            item.update(review_status="draft", reviewed_on=None)
         with self.assertRaisesRegex(ValueError, "awaiting human review"):
             validate_guide(self.guide, release=True)
         for item in self.guide["scenarios"]:
@@ -90,6 +95,36 @@ class GuideTests(unittest.TestCase):
         comms["source_ids"] = []
         with self.assertRaisesRegex(ValueError, "communication_loss must reference"):
             validate_guide(self.guide)
+
+    def test_household_target_and_source_layout(self):
+        household = json.loads((CONTENT / "household.ko.json").read_text(encoding="utf-8"))
+        validate_household(household)
+        draft_household = dict(household, review_status="draft", reviewed_on=None)
+        with self.assertRaisesRegex(ValueError, "awaiting human review"):
+            validate_household(draft_household, release=True)
+        html = render_html(self.guide)
+        for item in [*household["items"], *household.get("extended", [])]:
+            self.assertIn(item["label"], html)
+            self.assertIn(item["quantity"], html)
+            self.assertIn(item["basis"], html)
+        self.assertIn('id="household-targets"', html)
+        self.assertIn(household["compact_summary"], html)
+        self.assertEqual(html.count('class="screen-only section sources"'), 1)
+        self.assertNotIn("문구 검토 대기", html)
+
+    def test_markdown_sources_appear_only_at_end(self):
+        markdown = render_markdown(self.guide)
+        sources = render_markdown_section(self.guide, "sources")
+        self.assertEqual(markdown.count("### 공식 참고 자료"), 1)
+        self.assertNotIn("안내 버전", render_markdown_section(self.guide, "alerts"))
+        self.assertNotIn("https://", render_markdown_section(self.guide, "alerts"))
+        self.assertNotIn(self.guide["content_version"], render_markdown_section(self.guide, "sources"))
+        self.assertNotIn("](<https://", markdown)
+        self.assertNotIn("\\&", markdown)
+        urls = re.findall(r"\]\((https://[^)]+)\)", sources)
+        canonical = [url.replace("https://www.", "https://", 1) for url in urls]
+        self.assertTrue(urls)
+        self.assertEqual(len(canonical), len(set(canonical)))
 
 
 if __name__ == "__main__":
