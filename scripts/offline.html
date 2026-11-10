@@ -23,7 +23,8 @@
       </aside>
       <div class="actions">
         <a href="#scenarios">상황별 안내 보기</a>
-        <button type="button" onclick="window.print()">A4 두 장 인쇄</button>
+        <a href="#first-day">시간대별 대응 보기</a>
+        <button type="button" onclick="window.print()">A4 $page_count쪽 인쇄</button>
       </div>
       <p class="stamp">$stamp</p>
     </header>
@@ -35,26 +36,35 @@
       <div class="cards">$cards</div>
     </section>
 
-    <section class="sheet print-only" aria-labelledby="print-title">
-      <p class="kicker">KR SURVIVAL KIT / 01</p>
-      <h2 id="print-title">가정 비상 행동 안내</h2>
+    <section class="sheet quick-sheet print-only" aria-labelledby="print-title">
+      <header class="sheet-head">
+        <p class="kicker">KR SURVIVAL KIT / 01 · 즉시 행동</p>
+        <h2 id="print-title">가정 비상 행동 안내</h2>
+        <p>받은 경보나 지금 겪는 상황을 찾아 첫 행동부터 확인하세요.</p>
+      </header>
       <p class="priority">$official_first</p>
       <div class="comms">
         <h3>$comms_title</h3>
         <p><strong>$comms_action</strong> $comms_note</p>
       </div>
       <div class="print-rows">$print_rows</div>
-      <div class="print-sources">
-        <h3>공식 참고 자료</h3>
-        <p>$print_sources</p>
-      </div>
-      <p class="stamp">$stamp · 1 / 2</p>
+      <footer class="sheet-foot">
+        <p class="print-index">02 첫 24시간　 03 단전·단수　 04 이동　 05 전환표　 06 준비 계산　 07 가족 기록지</p>
+        <p class="references">공식 참고 자료 · $print_sources</p>
+        <p class="stamp">$stamp · 1 / $page_count</p>
+      </footer>
     </section>
 
+    <div class="playbook" aria-label="시간대별 행동 안내">
+      $playbook
+    </div>
+
     <section class="sheet household section" id="household" aria-labelledby="household-title">
-      <p class="kicker">KR SURVIVAL KIT / 02</p>
-      <h2 id="household-title">우리 가족 비상 기록지</h2>
-      <p>평소에 확인해 손으로 적고, 가족 모두가 아는 곳에 보관하세요.</p>
+      <header class="sheet-head">
+        <p class="kicker">KR SURVIVAL KIT / 0$page_count · 가구 작성용</p>
+        <h2 id="household-title">우리 가족 비상 기록지</h2>
+        <p>평소에 확인해 손으로 적고, 가족 모두가 아는 곳에 보관하세요.</p>
+      </header>
       <div class="form-grid">
         <section class="form-block">
           <h3>대피소 1</h3>
@@ -79,8 +89,10 @@
           <p class="write-line">도움이 필요한 사람 · 챙길 물품</p>
         </section>
       </div>
-      <p class="practice"><strong>5분 훈련</strong>　공습경보 뒤 전기와 통화가 끊겼다고 가정하세요. 첫 행동, 소식을 확인할 방법, 이동이 가능해진 뒤 만날 곳을 종이에서 찾아보세요.</p>
-      <p class="stamp">$stamp<span class="print-only"> · 2 / 2</span></p>
+      <footer class="sheet-foot">
+        <p class="practice"><strong>5분 훈련</strong>　공습경보 뒤 전기와 통화가 끊겼다고 가정하세요. 첫 행동, 소식을 확인할 방법, 이동이 가능해진 뒤 만날 곳을 종이에서 찾아보세요.</p>
+        <p class="stamp">$stamp<span class="print-only"> · $page_count / $page_count</span></p>
+      </footer>
     </section>
 
     <section class="screen-only section sources" aria-labelledby="sources-title">

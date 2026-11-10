@@ -2,7 +2,7 @@
 
 평소 쓰는 물품으로 준비하고, 정전이 나면 미리 저장하거나 인쇄한 안내를 꺼내 쓰는 한국 가정 비상 대비 프로젝트입니다.
 
-**인쇄해서 쓰기** · 로컬 빌드에서 `output/pdf/kr-survival-kit-a4.pdf`를 열면 흑백 A4 행동 안내와 가족 기록지를 받을 수 있습니다. `output/offline.html`은 파일 하나를 복사해 인터넷 없이 읽을 수 있습니다.
+**인쇄해서 쓰기** · `output/pdf/kr-survival-kit-a4.pdf`는 A4 7쪽입니다. 1쪽은 즉시 행동, 2~5쪽은 첫 24시간·장기 정전과 단수·이동·상황별 전환표, 6쪽은 물·전력·점검 완료율 계산, 7쪽은 가족 기록지입니다. 빠른 확인용으로는 1쪽과 7쪽을 골라 인쇄할 수 있습니다. `output/offline.html`은 파일 하나를 복사해 인터넷 없이 읽을 수 있습니다.
 
 **Home Assistant로 시작하기** · `output/dashboard.yaml`은 상황 안내, 인쇄 링크, 재고 카드를 담은 Sections 대시보드입니다. 로컬 재고와 집계 센서, 선택형 MQTT Discovery를 사용할 수 있습니다.
 
@@ -125,4 +125,4 @@ HACS용 `hacs.json`, MIT `LICENSE`, [변경 이력](CHANGELOG.md), [보안·안�
 
 `python scripts/build_candidate.py`는 현재 초안 PDF·HTML·대시보드·카드와 SHA256 목록을 `output/release-candidate/`에 모읍니다. 이 폴더에는 공개 보류 표기가 있으며 검토 후 다시 생성해야 합니다. GitHub CI는 안내 단위 테스트, 생성기, `python tests/check_package.py` 및 개인정보 형식 검사를 실행합니다. 일치 항목을 발견하면 검사 단계가 실패합니다. 재고 테스트와 HA 통합 테스트의 실행 방법은 P2와 P5 검증 기록에 있습니다.
 
-**공개 차단** · 2026년 행정안전부 새 리플릿·홍보책자 원문과 행동 문구의 독립 대조, `draft` 해제, 실물 휴대전화·흑백 A4 탁상훈련, 최종 릴리스 자산 및 화면 캡처의 개인정보 재검사가 남았습니다. 현재 원격 Git 저장소가 없어 HACS 사용자 지정 저장소 설치와 Home Assistant Brands 등록도 확인하지 못했습니다. 확인한 범위와 남은 절차는 [P5 검증 기록](docs/p5-validation.md)에 구분해 적었습니다.
+**공개 차단** · 행동 문구를 공식 원문과 1차 대조했습니다. 독립 검토와 `draft` 해제, 실물 휴대전화·흑백 A4 탁상훈련, 최종 릴리스 자산 및 화면 캡처의 개인정보 재검사가 남았습니다. 현재 원격 Git 저장소가 없어 HACS 사용자 지정 저장소 설치와 Home Assistant Brands 등록도 확인하지 못했습니다. [문구 대조표](docs/content-review.md) · [P5 검증 기록](docs/p5-validation.md)

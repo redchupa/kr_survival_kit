@@ -41,6 +41,10 @@ class GuideTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "communication_loss is awaiting human review"):
             validate_guide(self.guide, release=True)
         self.guide["communication_loss"].update(review_status="reviewed", reviewed_on="2026-11-09")
+        with self.assertRaisesRegex(ValueError, "first-day is awaiting human review"):
+            validate_guide(self.guide, release=True)
+        for sheet in self.guide["playbook"]:
+            sheet.update(review_status="reviewed", reviewed_on="2026-11-09")
         with self.assertRaisesRegex(ValueError, "release version"):
             validate_guide(self.guide, release=True)
         self.guide["content_version"] = "0.1.0"
@@ -62,6 +66,11 @@ class GuideTests(unittest.TestCase):
             self.assertIn(f'id="{item["id"]}"', html)
             self.assertEqual(html.count(item["first_action"]), 2)
             self.assertIn(item["first_action"], markdown)
+        for sheet in self.guide["playbook"]:
+            self.assertIn(f'id="{sheet["id"]}"', html)
+            for row in sheet["rows"]:
+                self.assertIn(row["text"], html)
+                self.assertIn(row["text"], markdown)
 
     def test_html_escapes_content(self):
         self.guide["scenarios"][0]["first_action"] = "<script>alert(1)</script>"

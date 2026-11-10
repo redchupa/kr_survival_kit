@@ -86,6 +86,25 @@ def validate_guide(guide, release=False):
         line(comms[field], f"communication_loss.{field}")
     source_refs(comms["source_ids"], sources, "communication_loss")
     validate_review(comms, "communication_loss", release)
+    playbook = guide["playbook"]
+    if not isinstance(playbook, list) or not playbook:
+        raise ValueError("The guide must include the timeline playbook")
+    for sheet in playbook:
+        key = sheet["id"]
+        if not ID.fullmatch(key) or key in seen:
+            raise ValueError(f"Invalid or duplicate playbook ID {key}")
+        seen.add(key)
+        for field in ("label", "title", "intro"):
+            line(sheet[field], f"{key}.{field}")
+        if sheet.get("layout", "timeline") not in ("timeline", "matrix"):
+            raise ValueError(f"Unsupported playbook layout for {key}")
+        if not isinstance(sheet["rows"], list) or not sheet["rows"]:
+            raise ValueError(f"{key}.rows must be a nonempty list")
+        for row in sheet["rows"]:
+            for field in ("when", "title", "text"):
+                line(row[field], f"{key}.{field}")
+        source_refs(sheet["source_ids"], sources, key)
+        validate_review(sheet, key, release)
     if release and not re.fullmatch(r"\d+\.\d+\.\d+", version):
         raise ValueError("Release blocked: content_version must be a release version")
 
@@ -110,7 +129,7 @@ def validate_catalog(catalog, sources):
 
 
 def guide_stamp(guide):
-    scenarios = [*guide["scenarios"], guide["communication_loss"]]
+    scenarios = [*guide["scenarios"], guide["communication_loss"], *guide["playbook"]]
     if all(item["review_status"] == "reviewed" for item in scenarios):
         last_review = max(item["reviewed_on"] for item in scenarios)
         status = f"최근 문구 검토 {last_review}"
@@ -118,6 +137,49 @@ def guide_stamp(guide):
         status = "공개 전 검토용"
     last_check = max(source["checked_on"] for source in guide["sources"].values())
     return f"안내 버전 {guide['content_version']} · {status} · 최근 출처 확인 {last_check}"
+
+
+def source_links(sources, refs):
+    return " · ".join(
+        f'<a href="{escape(sources[ref]["url"], quote=True)}">'
+        f'{escape(sources[ref]["publisher"])} {escape(sources[ref]["title"])}</a>'
+        for ref in refs
+    )
+
+
+def render_playbook(guide):
+    total = len(guide["playbook"]) + 2
+    pages = []
+    for number, sheet in enumerate(guide["playbook"], start=2):
+        key = sheet["id"]
+        if sheet.get("layout") == "matrix":
+            rows = "".join(
+                f'<tr><th scope="row">{escape(row["when"])}</th>'
+                f'<td>{escape(row["title"])}</td><td>{escape(row["text"])}</td></tr>'
+                for row in sheet["rows"]
+            )
+            content = (
+                '<table class="switch-table"><thead><tr><th scope="col">상황</th>'
+                '<th scope="col">즉시 행동</th><th scope="col">다음 확인과 전환 조건</th></tr></thead>'
+                f'<tbody>{rows}</tbody></table>'
+            )
+        else:
+            rows = "".join(
+                f'<li class="timeline-row"><p class="when">{escape(row["when"])}</p>'
+                f'<div><h3>{escape(row["title"])}</h3><p>{escape(row["text"])}</p></div></li>'
+                for row in sheet["rows"]
+            )
+            content = f'<ol class="timeline">{rows}</ol>'
+        refs = source_links(guide["sources"], sheet["source_ids"])
+        pages.append(
+            f'<article class="sheet timeline-sheet" id="{key}" aria-labelledby="{key}-title">'
+            f'<header class="sheet-head"><p class="kicker">KR SURVIVAL KIT / {number:02d} · {escape(sheet["label"])}</p>'
+            f'<h2 id="{key}-title">{escape(sheet["title"])}</h2><p>{escape(sheet["intro"])}</p></header>'
+            f'{content}'
+            f'<footer class="sheet-foot"><p class="references">참고 자료 · {refs}</p>'
+            f'<p class="stamp print-only">{escape(guide_stamp(guide))} · {number} / {total}</p></footer></article>'
+        )
+    return "\n".join(pages)
 
 
 def render_html(guide):
@@ -153,13 +215,11 @@ def render_html(guide):
         )
 
     screen_sources = []
-    print_sources = []
     for key, source in sources.items():
         name = escape(f"{source['publisher']} {source['title']}")
         url = escape(source["url"], quote=True)
         description = escape(f"{source['section']} · 확인 {source['checked_on']}")
         screen_sources.append(f'<li id="source-{key}"><a href="{url}">{name}</a><span>{description}</span></li>')
-        print_sources.append(f'<a href="{url}">{name}</a>')
 
     template = Template((SCRIPTS / "offline.html").read_text(encoding="utf-8"))
     return template.substitute(
@@ -176,7 +236,9 @@ def render_html(guide):
         cards="\n".join(cards),
         print_rows="\n".join(paper),
         screen_sources="\n".join(screen_sources),
-        print_sources=" · ".join(print_sources),
+        print_sources=source_links(sources, ("mois-2026", "civil-preparedness", "civil-alerts")),
+        playbook=render_playbook(guide),
+        page_count=len(guide["playbook"]) + 2,
     )
 
 
@@ -197,6 +259,15 @@ def render_markdown(guide):
             label = escape(f"{source['publisher']} {source['title']}")
             refs.append(f"[{label}](<{source['url']}>)")
         lines.extend(["", " · ".join(refs), ""])
+    for sheet in guide["playbook"]:
+        lines.extend([f"## {escape(sheet['title'])}", "", escape(sheet["intro"]), ""])
+        for row in sheet["rows"]:
+            lines.append(f"- **{escape(row['when'])} · {escape(row['title'])}** {escape(row['text'])}")
+        refs = []
+        for key in sheet["source_ids"]:
+            source = guide["sources"][key]
+            refs.append(f"[{escape(source['publisher'])} {escape(source['title'])}](<{source['url']}>)")
+        lines.extend(["", " · ".join(refs), ""])
     return "\n".join(lines)
 
 
@@ -212,14 +283,14 @@ def render_pdf(html_path, browser_path):
         try:
             page = browser.new_page(offline=True)
             page.goto(html_path.as_uri())
-            page.pdf(path=pdf, prefer_css_page_size=True, tagged=True)
+            page.pdf(path=pdf, prefer_css_page_size=True, print_background=True, tagged=True)
         finally:
             browser.close()
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--pdf", action="store_true", help="also render a two-page A4 PDF")
+    parser.add_argument("--pdf", action="store_true", help="also render the A4 field guide PDF")
     parser.add_argument("--browser", help="path to an installed Chromium-family browser for PDF rendering")
     parser.add_argument("--release", action="store_true", help="require reviewed content and a release version")
     args = parser.parse_args()

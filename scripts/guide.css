@@ -47,6 +47,22 @@ h3 { font-size: 1.15rem; line-height: 1.3; }
 .household > p { margin-bottom: .65rem; }
 .write-line { min-height: 3.2rem; padding-top: .45rem; border-bottom: 1px solid var(--line); font-size: .9rem; }
 .practice { padding-top: .75rem; }
+.playbook { margin-top: 2rem; }
+.timeline-sheet { margin: 1rem 0; padding: 1rem; border: 1px solid var(--line); border-radius: .45rem; }
+.sheet-head > p:last-child { margin-bottom: .65rem; }
+.timeline { list-style: none; margin: .9rem 0; padding: 0; }
+.timeline-row {
+  display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: .8rem;
+  padding: .8rem 0; border-top: 1px solid var(--line);
+}
+.timeline-row .when { color: var(--accent); font-weight: 800; }
+.timeline-row h3 { margin-bottom: .35rem; }
+.switch-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin: .9rem 0; }
+.switch-table th, .switch-table td { text-align: left; vertical-align: top; padding: .65rem .45rem; border-bottom: 1px solid var(--line); }
+.switch-table th:first-child { width: 20%; }
+.switch-table th:nth-child(2) { width: 29%; }
+.switch-table tbody th { color: var(--accent); }
+.sheet-foot { margin-top: 1rem; }
 .sources ol { padding-left: 1.4em; }
 .sources li { margin-bottom: .45em; }
 .sources li span { display: block; }
@@ -70,34 +86,69 @@ h3 { font-size: 1.15rem; line-height: 1.3; }
 
 @media (max-width: 42rem) {
   .cards, .form-grid { grid-template-columns: 1fr; }
+  .timeline-row { grid-template-columns: 1fr; gap: .25rem; }
 }
 
-@page { size: A4; margin: 15mm 15mm 14mm; }
+@page { size: A4; margin: 13mm 14mm 12mm; }
 
 @media print {
-  :root { color-scheme: light; font-family: "Noto Sans CJK KR", "Malgun Gothic", sans-serif; }
-  body, .card, .form-block { color: #000; background: #fff; }
-  body { font-size: 11.5pt; line-height: 1.42; }
+  :root {
+    color-scheme: light;
+    --ink: #131e28;
+    --print-accent: #234d4a;
+    --print-line: #6b777b;
+    --print-tint: #eef3f2;
+    font-family: "Noto Sans CJK KR", "Malgun Gothic", sans-serif;
+  }
+  body { color: var(--ink); background: #fff; font-size: 11.5pt; line-height: 1.57; }
   .wrap { margin: 0; padding: 0; max-width: none; }
   .screen-only { display: none !important; }
   .print-only { display: revert; }
-  .sheet { margin: 0; }
-  .sheet h2 { font-size: 23pt; border-bottom: 1.4pt solid #000; padding-bottom: 2.5mm; }
-  .sheet h3 { font-size: 12pt; }
-  .sheet .kicker { color: #000; font-size: 9pt; }
-  .priority { border-color: #000; margin: 3mm 0; }
-  .comms { border: 1pt solid #000; background: #fff; padding: 2mm 3mm; margin-bottom: 3mm; }
-  .comms h3 { margin-bottom: 1mm; }
-  .print-row { break-inside: avoid; border-top: .5pt solid #555; padding: 2mm 0; }
-  .print-row h3 { margin-bottom: .55mm; }
+  .playbook { margin: 0; }
+  .sheet {
+    display: flex; flex-direction: column;
+    min-height: 267mm; margin: 0; padding: 0; border: 0; border-radius: 0;
+  }
+  .timeline-sheet, .household { break-before: page; }
+  .sheet-head { border-top: 3pt solid var(--print-accent); padding: 4mm 0 3mm; }
+  .sheet-head h2 { font-size: 30pt; line-height: 1.2; letter-spacing: -.045em; margin: 0 0 2.5mm; }
+  .sheet-head > p:last-child { margin: 0; }
+  .sheet h3 { font-size: 13pt; }
+  .sheet .kicker { color: var(--print-accent); font-size: 9.5pt; margin: 0 0 2.5mm; }
+  .priority { border-color: var(--print-accent); background: var(--print-tint); margin: 1mm 0 3mm; padding: 2mm 3mm; }
+  .comms { border: .8pt solid var(--print-line); background: #fff; padding: 2.5mm 3mm; margin-bottom: 4mm; }
+  .comms h3 { color: var(--print-accent); margin-bottom: .75mm; }
+  .print-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3mm 5mm; }
+  .print-row { break-inside: avoid; border-top: 1.1pt solid var(--print-line); padding: 2mm 0 1mm; }
+  .print-row:last-child { grid-column: 1 / -1; }
+  .print-row h3 { margin-bottom: .8mm; color: var(--print-accent); }
   .print-row .first { font-weight: 750; }
-  .print-sources { border-top: .5pt solid #555; padding-top: 2mm; }
-  .print-sources a { color: #000; text-decoration: none; }
-  .print-sources p, .stamp { color: #000; font-size: 9pt; }
-  .stamp { margin-top: 2.5mm; }
-  .household { break-before: page; }
-  .form-grid { grid-template-columns: 1fr; gap: 3mm; }
-  .form-block { break-inside: avoid; border: .7pt solid #555; padding: 2.5mm 3mm; }
-  .form-block > p:not(.write-line) { font-size: 10pt; margin-top: 1mm; }
-  .write-line { min-height: 15mm; border-color: #555; }
+  .sheet-foot { margin-top: auto; border-top: .8pt solid var(--print-line); padding-top: 2mm; }
+  .sheet-foot a { color: var(--ink); text-decoration: none; }
+  .sheet-foot .references, .sheet-foot .stamp { color: var(--ink); font-size: 9pt; }
+  .sheet-foot .stamp { margin-top: 1.5mm; }
+  .print-index { font-weight: 750; font-size: 10pt; margin-bottom: 1mm; }
+  .timeline { margin: 1mm 0 4mm; }
+  .timeline-row {
+    grid-template-columns: 30mm minmax(0, 1fr); gap: 5mm;
+    padding: 5.5mm 0; border-top: .8pt solid var(--print-line);
+    break-inside: avoid;
+  }
+  .timeline-row .when { color: var(--print-accent); font-size: 13pt; line-height: 1.35; }
+  .timeline-row h3 { margin-bottom: 1mm; }
+  .switch-table { margin: 3mm 0 5mm; }
+  .switch-table th, .switch-table td { padding: 4mm 2.5mm; border-color: var(--print-line); }
+  .switch-table thead { background: var(--print-tint); }
+  .switch-table tbody th { color: var(--print-accent); }
+  .switch-table tr { break-inside: avoid; }
+  .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4mm; margin: 2mm 0 4mm; }
+  .form-block {
+    break-inside: avoid; border: .8pt solid var(--print-line); border-radius: 0;
+    padding: 3mm; color: var(--ink); background: #fff;
+  }
+  .form-block:nth-child(n+3) { grid-column: 1 / -1; }
+  .form-block h3 { color: var(--print-accent); }
+  .form-block > p:not(.write-line) { font-size: 11pt; margin-top: 1mm; }
+  .write-line { min-height: 15mm; border-color: var(--print-line); font-size: 10pt; }
+  .practice { padding-top: 0; font-size: 10.5pt; }
 }

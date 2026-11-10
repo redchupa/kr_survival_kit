@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from build_guides import CONTENT, OUTPUT, render_markdown
+from build_guides import CONTENT, OUTPUT, render_markdown, validate_guide
 
 
 def block(value, spaces):
@@ -12,12 +12,13 @@ def block(value, spaces):
 
 def main():
     guide = json.loads((CONTENT / "guide.ko.json").read_text(encoding="utf-8"))
+    validate_guide(guide)
     guidance = render_markdown(guide)
+    comms = guide["communication_loss"]
     intro = (
         "# 가정 비상 안내\n\n"
         f"**{guide['official_first']}**\n\n"
-        "전화·인터넷이 끊기면 현장 방송과 건전지 라디오로 안내를 확인하세요. "
-        "안내가 들리지 않아도 경보 해제로 판단하지 마세요.\n\n"
+        f"**{comms['title']}**\n\n{comms['first_action']} {comms['paper_note']}\n\n"
         "[상황별 행동요령 열기](/kr-survival-kit/guide)\n\n"
         "[인쇄용 A4 PDF 저장](/local/kr-survival-kit-a4.pdf) · "
         "[오프라인 HTML 저장](/local/kr-survival-kit-offline.html)\n\n"

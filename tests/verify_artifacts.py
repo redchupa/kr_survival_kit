@@ -33,6 +33,8 @@ def verify_html(guide, browser_path):
                 card = page.locator(f'#{item["id"]}')
                 assert card.is_visible()
                 assert card.locator(".first").inner_text() == item["first_action"]
+            for sheet in guide["playbook"]:
+                assert page.locator(f'#{sheet["id"]}').is_visible()
             for scheme in ("dark", "light"):
                 page.emulate_media(color_scheme=scheme)
                 assert page.evaluate("document.documentElement.scrollWidth === innerWidth"), scheme
@@ -53,10 +55,17 @@ def compact(text):
 
 def verify_pdf(guide):
     pdf = PdfReader(OUTPUT / "pdf" / "kr-survival-kit-a4.pdf")
-    assert len(pdf.pages) == 2
-    for page in pdf.pages:
+    assert len(pdf.pages) == len(guide["playbook"]) + 2
+    texts = []
+    for number, page in enumerate(pdf.pages, start=1):
         assert abs(float(page.mediabox.width) - 595.28) < 2
         assert abs(float(page.mediabox.height) - 841.89) < 2
+        page_text = page.extract_text()
+        assert not re.search(r"\[\s*\d+(?:\s*,\s*\d+)*\s*\]", page_text)
+        assert not re.search(r"(?<!\d)(?:123|119)(?!\d)", page_text)
+        assert guide["content_version"] in page_text
+        assert f"{number}/{len(pdf.pages)}" in compact(page_text)
+        texts.append(compact(page_text))
         for ref in page["/Resources"]["/Font"].values():
             font = ref.get_object()
             if "/DescendantFonts" in font:
@@ -64,10 +73,7 @@ def verify_pdf(guide):
             descriptor = font["/FontDescriptor"].get_object()
             assert any(key in descriptor for key in ("/FontFile", "/FontFile2", "/FontFile3")), font
 
-    action_text, household_text = (page.extract_text() for page in pdf.pages)
-    assert not re.search(r"\[\s*\d+(?:\s*,\s*\d+)*\s*\]", action_text)
-    assert not re.search(r"(?<!\d)(?:123|119)(?!\d)", action_text)
-    action_page, household_page = compact(action_text), compact(household_text)
+    action_page, *playbook_pages, household_page = texts
     assert compact(guide["official_first"]) in action_page
     comms = guide["communication_loss"]
     assert action_page.index(compact(comms["first_action"])) < action_page.index("공습경보")
@@ -76,6 +82,11 @@ def verify_pdf(guide):
     for item in guide["scenarios"]:
         assert compact(item["first_action"]) in action_page, item["id"]
         assert compact(item["paper_note"]) in action_page, item["id"]
+    for sheet, page in zip(guide["playbook"], playbook_pages, strict=True):
+        assert compact(sheet["title"]) in page
+        for row in sheet["rows"]:
+            assert compact(row["when"]) in page, sheet["id"]
+            assert compact(row["text"]) in page, sheet["id"]
     fields = (
         "대피소 1", "대피소 2", "전화 없이 만나는 약속", "기본 집결 장소",
         "기본 장소에 갈 수 없을 때 만날 곳", "대피소·연락처 확인일",
@@ -92,4 +103,5 @@ if __name__ == "__main__":
     content = json.loads(GUIDE.read_text(encoding="utf-8"))
     verify_html(content, args.browser)
     verify_pdf(content)
-    print("검증 통과 · 오프라인 HTML, 375px, 키보드, 글자 200%, A4 2쪽, 내장 글꼴, 한글 추출")
+    pages = len(content["playbook"]) + 2
+    print(f"검증 통과 · 오프라인 HTML, 375px, 키보드, 글자 200%, A4 {pages}쪽, 내장 글꼴, 시간대별 문구")
