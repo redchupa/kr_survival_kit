@@ -35,15 +35,13 @@ def main():
     validate_guide(guide)
     summary = household_summary()
     urgent = (
-        "## 지금 대피해야 한다면\n\n"
         f"**{guide['official_first']}**\n\n"
         "경보에 맞는 가까운 보호 장소로 이동하세요. 준비물이나 가족과의 합류 때문에 대피를 늦추지 마세요.\n\n"
         "전화·인터넷이 끊기면 현장 방송이나 건전지 라디오로 안내를 확인하세요."
     )
     prepare = (
-        "## 평시에 준비하기\n\n"
         "대피소 두 곳과 가족 연락 약속을 종이에 적고, 물·식품·필수약을 점검하세요."
-        + (f"\n\n**4인 가구 준비량**  {summary}" if summary else "")
+        + (f"\n\n{summary}" if summary else "")
     )
     files = (
         "**파일을 여는 방법**  아래 버튼은 파일을 엽니다. PDF는 열린 화면의 인쇄·다운로드로 저장하고, "
@@ -69,14 +67,14 @@ def main():
         ]),
     ]
     guide_sections = [
-        section("먼저 읽기", [markdown_card(f"## 상황별 행동요령\n\n{guide['official_first']}\n\n새 경보가 오면 해당 경보의 행동을 먼저 확인하세요.")]),
+        section("먼저 읽기", [markdown_card(f"{guide['official_first']}\n\n새 경보가 오면 해당 경보의 행동을 먼저 확인하세요.")]),
         section("경보·통신 두절", [markdown_card(render_markdown_section(guide, "alerts"))]),
         section("정전·단수", [markdown_card(render_markdown_section(guide, "outages"))]),
-        section("평시 준비", [markdown_card(render_markdown_section(guide, "prepare") + (f"\n\n**4인 가구 준비량**  {summary}" if summary else ""))]),
+        section("평시 준비", [markdown_card(render_markdown_section(guide, "prepare", show_title=False) + (f"\n\n{summary}" if summary else ""))]),
     ]
     for sheet in guide["playbook"]:
-        guide_sections.append(section(sheet["title"], [markdown_card(render_markdown_section(guide, sheet["id"]))]))
-    guide_sections.append(section("참고 자료", [markdown_card(render_markdown_section(guide, "sources"))]))
+        guide_sections.append(section(sheet["title"], [markdown_card(render_markdown_section(guide, sheet["id"], show_title=False))]))
+    guide_sections.append(section("참고 자료", [markdown_card(render_markdown_section(guide, "sources", show_title=False))]))
     yaml = (
         f"# content_version: {guide['content_version']}\n"
         "title: KR Survival Kit\nviews:\n"

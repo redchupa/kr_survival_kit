@@ -5,7 +5,7 @@ import unittest
 
 from scripts.build_guides import (
     CONTENT, ROOT, render_html, render_markdown, render_markdown_section,
-    validate_catalog, validate_guide, validate_household,
+    source_label, validate_catalog, validate_guide, validate_household,
 )
 
 
@@ -107,8 +107,15 @@ class GuideTests(unittest.TestCase):
             self.assertIn(item["label"], html)
             self.assertIn(item["quantity"], html)
             self.assertIn(item["basis"], html)
+        for item in household["optional_items"]:
+            self.assertIn(item["label"], html)
+            self.assertIn(item["quantity"], html)
+        self.assertIn(household["optional_safety"], html)
+        self.assertEqual(html.count(household["optional_intro"]), 1)
+        self.assertIn("기본 해당 없음", html)
         self.assertIn('id="household-targets"', html)
         self.assertIn(household["compact_summary"], html)
+        self.assertNotIn(household["summary"], html)
         self.assertEqual(html.count('class="screen-only section sources"'), 1)
         self.assertNotIn("문구 검토 대기", html)
 
@@ -125,6 +132,23 @@ class GuideTests(unittest.TestCase):
         canonical = [url.replace("https://www.", "https://", 1) for url in urls]
         self.assertTrue(urls)
         self.assertEqual(len(canonical), len(set(canonical)))
+
+    def test_dashboard_sections_can_use_section_title_once(self):
+        prepare = render_markdown_section(self.guide, "prepare", show_title=False)
+        first_sheet = self.guide["playbook"][0]
+        sheet = render_markdown_section(self.guide, first_sheet["id"], show_title=False)
+        sources = render_markdown_section(self.guide, "sources", show_title=False)
+        self.assertNotIn("### 평시 준비", prepare)
+        self.assertNotIn(f"### {first_sheet['title']}", sheet)
+        self.assertNotIn("### 공식 참고 자료", sources)
+        self.assertIn(first_sheet["intro"], sheet)
+        self.assertIn("https://", sources)
+
+    def test_source_label_does_not_repeat_publisher(self):
+        self.assertEqual(
+            source_label({"publisher": "행정안전부", "title": "행정안전부, 2026 행동요령"}),
+            "행정안전부, 2026 행동요령",
+        )
 
 
 if __name__ == "__main__":

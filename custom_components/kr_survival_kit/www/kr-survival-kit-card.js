@@ -6,6 +6,9 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._draft = null;
     this._message = "";
     this._loading = false;
+    this._optionalOpen = false;
+    this._optionalQuery = "";
+    this._focusOptionalSearch = false;
   }
 
   setConfig(config) {
@@ -56,6 +59,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
 
   _edit(item) {
     const saved = this._snapshot.items[item.id];
+    if (item.tier === "optional") this._optionalOpen = true;
     this._draft = {
       id: item.id,
       applicable: saved?.applicable ?? !["household", "optional"].includes(item.tier),
@@ -143,7 +147,19 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._render();
   }
 
+  _filterOptionalItems() {
+    const query = this._optionalQuery.trim().toLocaleLowerCase("ko");
+    let found = 0;
+    this.shadowRoot.querySelectorAll("#optional-items .item").forEach((row) => {
+      row.hidden = !row.dataset.name.toLocaleLowerCase("ko").includes(query);
+      if (!row.hidden) found += 1;
+    });
+    const noMatch = this.shadowRoot.querySelector("#optional-no-match");
+    if (noMatch) noMatch.hidden = found !== 0;
+  }
+
   _render() {
+    const restoreOptionalSearchFocus = this._focusOptionalSearch || this.shadowRoot.activeElement?.id === "optional-search";
     const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     })[char]);
@@ -152,29 +168,53 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const priority = { shortage: 0, needs_check: 1, sufficient: 2, not_applicable: 3 };
     const items = snapshot?.catalog.map((item) => ({ ...item, status: snapshot.summary.items[item.id] }))
       .sort((left, right) => priority[left.status.state] - priority[right.status.state]) || [];
-    const recommendations = new Map((snapshot?.household?.items || []).map((entry) => [entry.item_id, entry]));
-    const rows = items.map((item) => {
+    const recommendations = new Map([
+      ...(snapshot?.household?.items || []),
+      ...(snapshot?.household?.optional_items || []),
+    ].map((entry) => [entry.item_id, entry]));
+    const renderRows = (listedItems) => listedItems.map((item) => {
       const status = item.status;
       const recommendation = recommendations.get(item.id);
-      const lots = snapshot.items[item.id]?.lots || [];
+      const saved = snapshot.items[item.id];
+      const newOptional = item.tier === "optional" && !saved;
+      const lots = saved?.lots || [];
       const lotText = lots.length ? lots.map((lot) =>
         `<li>${escape(lot.lot_id)} · ${escape(lot.quantity)} ${escape(item.unit)}` +
         (item.date_kind === "expiry" ? ` · 표시 기한 ${escape(lot.expires_on || "미확인")}` : "") + "</li>"
       ).join("") : "<li>기록된 구매 단위 없음</li>";
-      return `<article class="item"><div class="item-head"><div><h3>${escape(item.name)}</h3>` +
+      return `<article class="item" data-name="${escape(item.name)}"><div class="item-head"><div><h3>${escape(item.name)}</h3>` +
         `<span class="state ${escape(status.state)}">${states[status.state]}</span></div>` +
-        `<button type="button" data-edit="${escape(item.id)}">수정</button></div>` +
-        `<p>확인 수량 ${status.usable} ${escape(item.unit)} / 목표 ${status.target === null ? "미설정" : escape(status.target) + " " + escape(item.unit)}</p>` +
-        (recommendation ? `<p class="recommendation">4인·3일 계산 예시: <strong>${escape(recommendation.quantity)}</strong></p>` : "") +
+        `<button type="button" data-edit="${escape(item.id)}">${newOptional ? "설정" : "수정"}</button></div>` +
+        (item.examples ? `<p class="item-note">${escape(item.examples)}</p>` : "") +
+        (item.note ? `<p class="item-note">${escape(item.note)}</p>` : "") +
+        (newOptional ? "" : `<p>기록 수량 ${status.usable} ${escape(item.unit)} / 목표 ${status.target === null ? "미설정" : escape(status.target) + " " + escape(item.unit)}</p>`) +
+        (recommendation ? `<p class="recommendation">준비량 예시: <strong>${escape(recommendation.quantity)}</strong></p>` : "") +
         (item.id === "water-container" && recommendation ? `<p>안전수 보관 용량 예시입니다. 위의 급수 용기 개수 목표와는 단위가 다릅니다.</p>` : "") +
-        `<p>마지막 실사 ${escape(status.verified_on || "기록 없음")}${status.confirmed ? "" : " · 현재 수량 미확인"}</p>` +
-        `<ul>${lotText}</ul></article>`;
+        (newOptional ? "" : `<p>마지막 실사 ${escape(status.verified_on || "기록 없음")}${status.confirmed ? "" : " · 현재 수량 미확인"}</p>`) +
+        (newOptional ? "" : `<ul>${lotText}</ul>`) + `</article>`;
     }).join("");
+    const regularItems = items.filter((item) => item.tier !== "optional");
+    const optionalItems = items.filter((item) => item.tier === "optional");
+    const activeOptionalCount = optionalItems.filter((item) => item.status.state !== "not_applicable").length;
+    const rows = renderRows(regularItems);
+    const optionalRows = optionalItems.length
+      ? `<details id="optional-items" ${this._optionalOpen ? "open" : ""}><summary>선택 물품 ${optionalItems.length}개 · 사용 중 ${activeOptionalCount}개</summary>` +
+        `<p>기본은 해당 없음입니다. 필요한 품목만 설정하세요.</p>` +
+        `<label for="optional-search">선택 물품 찾기</label><input id="optional-search" type="search" placeholder="이름으로 찾기" value="${escape(this._optionalQuery)}">` +
+        `<details class="optional-guidance"><summary>선택·사용 기준</summary>` +
+        `<p>${escape(snapshot?.household?.optional_intro || "품목별 사용 조건과 수량을 확인하세요.")}</p>` +
+        (snapshot?.household?.optional_safety ? `<p class="optional-safety">${escape(snapshot.household.optional_safety)}</p>` : "") +
+        `</details>` +
+        `<p id="optional-no-match" hidden>일치하는 선택 물품이 없습니다.</p>${renderRows(optionalItems)}</details>`
+      : "";
     const draftItem = items.find((item) => item.id === this._draft?.id);
     const draftRecommendation = recommendations.get(this._draft?.id);
+    const noteCoveredByBasis = draftItem?.note && draftRecommendation?.basis?.includes(draftItem.note);
     const edit = this._draft && draftItem ? `<form id="editor"><h3>${escape(draftItem.name)} 수정</h3>` +
+      (draftItem.examples ? `<p class="item-note">${escape(draftItem.examples)}</p>` : "") +
+      (draftItem.note && !noteCoveredByBasis ? `<p class="item-note">${escape(draftItem.note)}</p>` : "") +
       `<p>현재 기록 ${escape(draftItem.status.usable)} ${escape(draftItem.unit)} · ${states[draftItem.status.state]} · 마지막 실사 ${escape(draftItem.status.verified_on || "기록 없음")}</p>` +
-      (draftRecommendation ? `<p class="recommendation">4인·3일 계산 예시: <strong>${escape(draftRecommendation.quantity)}</strong><br>${escape(draftRecommendation.basis)}</p>` : "") +
+      (draftRecommendation ? `<p class="recommendation">준비량 예시: <strong>${escape(draftRecommendation.quantity)}</strong><br>${escape(draftRecommendation.basis)}</p>` : "") +
       `<label><input id="applicable" type="checkbox" ${this._draft.applicable ? "checked" : ""}> 우리 가구에 해당</label>` +
       `<label for="target">가구 목표량 (${escape(draftItem.unit)})</label><input id="target" type="number" min="0" step="1" value="${escape(this._draft.target)}" placeholder="미설정">` +
       `<h4>구매 단위별 재고</h4>` + this._draft.lots.map((lot, index) =>
@@ -193,25 +233,50 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       p{margin:.35rem 0;color:var(--secondary-text-color,#405564);line-height:1.5}ul{margin:.35rem 0;padding-left:1.25rem;line-height:1.55}
       .intro{border-left:4px solid #197f83;padding-left:.8rem;margin:.75rem 0 1rem}
       .recommendation{padding:.55rem .7rem;background:rgba(25,127,131,.08);border-radius:7px}
+      .item-note{font-size:.9rem}
+      .optional-safety{border-left:3px solid #a9670e;padding-left:.7rem}
       .item{padding:1rem 0;border-top:1px solid var(--divider-color,#d7e1e7)}.item-head{display:flex;justify-content:space-between;gap:.8rem;align-items:start}
       .state{display:inline-block;font-weight:700;font-size:.82rem}.shortage{color:#ad342d}.needs_check{color:#a9670e}.sufficient{color:#13777b}
-      button{font:inherit;min-height:40px;padding:.45rem .75rem;border:1px solid #197f83;background:transparent;color:var(--primary-text-color,#173048);border-radius:8px;cursor:pointer}
+      button{font:inherit;min-height:44px;padding:.45rem .75rem;border:1px solid #197f83;background:transparent;color:var(--primary-text-color,#173048);border-radius:8px;cursor:pointer}
       button:hover{background:rgba(25,127,131,.1)}button:focus-visible,input:focus-visible{outline:3px solid #d28b24;outline-offset:2px}
       .primary{background:#156d73;color:#fff}.message{padding:.7rem;border-radius:8px;background:rgba(210,139,36,.16);line-height:1.5}
       form{border-top:3px solid #197f83;padding-top:1rem}label{display:block;margin:.7rem 0 .3rem;font-weight:600}input:not([type=checkbox]){box-sizing:border-box;width:100%;min-height:42px;padding:.5rem;font:inherit;color:var(--primary-text-color,#173048);background:var(--card-background-color,#fff);border:1px solid #718893;border-radius:7px}
       .lot-edit{border:1px solid var(--divider-color,#d7e1e7);border-radius:8px;padding:.75rem;margin:.6rem 0}.confirm{margin:1.2rem 0}.actions{display:flex;gap:.5rem;flex-wrap:wrap}
+      details{border-top:1px solid var(--divider-color,#d7e1e7);margin-top:.5rem}summary{min-height:44px;padding:.75rem .25rem;cursor:pointer;font-weight:700}summary:focus-visible{outline:3px solid #d28b24;outline-offset:2px}
       @media(prefers-color-scheme:dark){.shortage{color:#ff9d94}.needs_check{color:#f0b76d}.sufficient{color:#78d8d2}}
       @media(max-width:400px){ha-card{padding:.9rem}.item-head{flex-wrap:wrap}}
-    </style><ha-card><h2>우리 집 준비 물품</h2><p class="intro">부족한 것부터 확인하세요. 실제로 확인한 수량만 실사로 기록합니다.</p>` +
-      (snapshot?.household ? `<p class="recommendation">${escape(snapshot.household.compact_summary)}</p><p>계산 예시는 저장된 목표나 재고에 자동 적용되지 않습니다.</p>` : "") +
+    </style><ha-card><h2>재고 점검</h2><p class="intro">실제 수량을 확인했을 때만 실사로 기록하세요. 기본 준비량만 4인·3일 계산 예시이며 목표·재고는 자동 변경되지 않습니다.</p>` +
       `<button type="button" id="refresh">새로고침</button>` +
       (this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : "") +
-      (snapshot ? (edit || rows) : `<p>${this._loading ? "재고를 불러오는 중입니다." : "재고를 표시할 수 없습니다."}</p>`) + `</ha-card>`;
+      (snapshot ? (edit || rows + optionalRows) : `<p>${this._loading ? "재고를 불러오는 중입니다." : "재고를 표시할 수 없습니다."}</p>`) + `</ha-card>`;
+    this.shadowRoot.querySelector("#optional-items")?.addEventListener("toggle", (event) => {
+      this._optionalOpen = event.currentTarget.open;
+    });
+    this.shadowRoot.querySelector("#optional-search")?.addEventListener("input", (event) => {
+      this._optionalQuery = event.currentTarget.value;
+      this._filterOptionalItems();
+    });
+    this._filterOptionalItems();
+    if (restoreOptionalSearchFocus) window.requestAnimationFrame(() => {
+      const details = this.shadowRoot.querySelector("#optional-items");
+      const search = this.shadowRoot.querySelector("#optional-search");
+      if (details?.open && search) {
+        search.focus({ preventScroll: true });
+        search.scrollIntoView({ block: "nearest" });
+        this._focusOptionalSearch = false;
+      }
+    });
     this.shadowRoot.querySelector("#refresh")?.addEventListener("click", () => this._load());
     this.shadowRoot.querySelectorAll("[data-edit]").forEach((button) => button.addEventListener("click", () =>
       this._edit(snapshot.catalog.find((item) => item.id === button.dataset.edit))));
     this.shadowRoot.querySelector("#editor")?.addEventListener("submit", (event) => { event.preventDefault(); this._save(); });
-    this.shadowRoot.querySelector("#cancel")?.addEventListener("click", () => { this._draft = null; this._message = ""; this._render(); });
+    this.shadowRoot.querySelector("#cancel")?.addEventListener("click", () => {
+      const wasOptional = draftItem?.tier === "optional";
+      this._draft = null;
+      this._message = "";
+      this._focusOptionalSearch = wasOptional;
+      this._render();
+    });
     this.shadowRoot.querySelector("#delete")?.addEventListener("click", () => this._delete());
     this.shadowRoot.querySelector("#add-lot")?.addEventListener("click", () => {
       this._captureDraft(); this._draft.lots.push({ lot_id: "", quantity: 0, expires_on: null }); this._render();

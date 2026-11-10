@@ -74,6 +74,11 @@ h3 { font-size: 1.15rem; line-height: 1.3; }
 .household-detail th:first-child { width: 24%; }
 .household-detail th:nth-child(2) { width: 22%; }
 .household-detail thead { background: var(--panel); }
+.optional-targets { margin-top: 1rem; border: 1px solid var(--line); border-radius: .45rem; }
+.optional-targets summary { min-height: 44px; padding: .75rem 1rem; cursor: pointer; font-weight: 750; }
+.optional-targets > p { padding: 0 1rem; margin: .5rem 0; }
+.optional-targets .table-scroll { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+.optional-safety { border-left: .2rem solid var(--amber); }
 .skip { position: absolute; left: 1rem; transform: translateY(-150%); background: var(--bg); padding: .5em; }
 .skip:focus { transform: translateY(0); z-index: 1; }
 .print-only { display: none; }

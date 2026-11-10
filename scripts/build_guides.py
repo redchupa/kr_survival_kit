@@ -61,6 +61,8 @@ def validate_guide(guide, release=False):
         for field in ("publisher", "title", "section"):
             line(source[field], f"{source_id}.{field}")
         iso_date(source["checked_on"], f"{source_id}.checked_on")
+        if source_id == "project-example" and source["url"] == "":
+            continue
         url = line(source["url"], f"{source_id}.url")
         parsed = urlsplit(url)
         if parsed.scheme != "https" or not parsed.hostname or parsed.username or re.search(r"[\s<>]", url):
@@ -131,8 +133,11 @@ def validate_catalog(catalog, sources):
         line(item["name"], f"{key}.name")
         if item["tier"] not in {"rotation", "owned", "household", "optional"}:
             raise ValueError(f"Invalid purchase priority for {key}")
-        if item["unit"] not in {"ml", "개"} or item["date_kind"] not in {"expiry", "inspection"}:
+        if item["unit"] not in {"ml", "개", "세트", "켤레"} or item["date_kind"] not in {"expiry", "inspection"}:
             raise ValueError(f"Invalid unit or date kind for {key}")
+        for field in ("note", "examples"):
+            if field in item:
+                line(item[field], f"{key}.{field}")
         source_refs(item["source_ids"], sources, key)
     if not seen:
         raise ValueError("Catalog must include at least one item")
@@ -155,9 +160,15 @@ def guide_stamp(guide):
 def source_links(sources, refs):
     return " · ".join(
         f'<a href="{escape(sources[ref]["url"], quote=True)}">'
-        f'{escape(sources[ref]["publisher"])} {escape(sources[ref]["title"])}</a>'
+        f'{escape(source_label(sources[ref]))}</a>'
         for ref in refs
     )
+
+
+def source_label(source):
+    publisher = source["publisher"]
+    title = source["title"]
+    return title if title.startswith(publisher) else f"{publisher} · {title}"
 
 
 def render_playbook(guide):
@@ -229,14 +240,16 @@ def render_html(guide):
     if household_path.exists():
         household_data = json.loads(household_path.read_text(encoding="utf-8"))
         validate_household(household_data)
-        household_used = {ref for item in [*household_data["items"], *household_data.get("extended", [])] for ref in item["source_ids"]}
+        household_used = {ref for item in [*household_data["items"], *household_data.get("extended", []), *household_data["optional_items"]] for ref in item["source_ids"]}
         all_sources += [(f"household-{key}", {"publisher": "4인 가구 준비량", "title": source["title"], "url": source["url"], "section": source.get("detail", ""), "checked_on": ""}) for key, source in household_data["sources"].items() if source["url"] and key in household_used]
     for key, source in all_sources:
+        if not source["url"]:
+            continue
         canonical = source["url"].replace("https://www.", "https://", 1)
         if canonical in seen_urls:
             continue
         seen_urls.add(canonical)
-        name = escape(f"{source['publisher']} {source['title']}")
+        name = escape(source_label(source))
         url = escape(source["url"], quote=True)
         description = escape(source["section"] + (f" · 확인 {source['checked_on']}" if source["checked_on"] else ""))
         screen_sources.append(f'<li id="source-{key}"><a href="{url}">{name}</a><span>{description}</span></li>')
@@ -275,7 +288,7 @@ def markdown_text(value):
     return escape(value).replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
 
 
-def render_markdown_section(guide, section):
+def render_markdown_section(guide, section, show_title=True):
     scenarios = guide["scenarios"]
     if section == "alerts":
         items = [guide["communication_loss"], *[item for item in scenarios if item["kind"] == "민방공 경보"]]
@@ -286,7 +299,7 @@ def render_markdown_section(guide, section):
     elif section in {sheet["id"] for sheet in guide["playbook"]}:
         items = []
     elif section == "sources":
-        lines = ["### 공식 참고 자료", "", "외부 링크는 인터넷 연결이 필요합니다.", ""]
+        lines = (["### 공식 참고 자료", ""] if show_title else []) + ["외부 링크는 인터넷 연결이 필요합니다.", ""]
         seen_urls = set()
         used_ids = set()
         for item in [guide["communication_loss"], *guide["scenarios"], *guide["playbook"], guide["paper_checkpoints"]]:
@@ -297,14 +310,16 @@ def render_markdown_section(guide, section):
             household = json.loads(household_path.read_text(encoding="utf-8"))
             validate_household(household)
             for key, source in household["sources"].items():
-                if source["url"] and any(key in item["source_ids"] for item in [*household["items"], *household.get("extended", [])]):
+                if source["url"] and any(key in item["source_ids"] for item in [*household["items"], *household.get("extended", []), *household["optional_items"]]):
                     source_list.append({"publisher": "4인 가구 준비량", **source})
         for source in source_list:
+            if not source["url"]:
+                continue
             canonical = source["url"].replace("https://www.", "https://", 1)
             if canonical in seen_urls:
                 continue
             seen_urls.add(canonical)
-            label = markdown_text(f"{source['publisher']} · {source['title']}")
+            label = markdown_text(source_label(source))
             lines.append(f"- [{label}]({source['url']})")
         return "\n".join(lines)
     elif section == "all":
@@ -315,7 +330,9 @@ def render_markdown_section(guide, section):
     if items:
         lines = []
         for item in items:
-            lines.extend([f"### {markdown_text(item['title'])}", "", f"**{markdown_text(item['first_action'])}**", ""])
+            if show_title or item.get("id") != "prepare":
+                lines.extend([f"### {markdown_text(item['title'])}", ""])
+            lines.extend([f"**{markdown_text(item['first_action'])}**", ""])
             if "details" in item:
                 lines.extend(f"- {markdown_text(detail)}" for detail in item["details"])
             else:
@@ -323,7 +340,7 @@ def render_markdown_section(guide, section):
             lines.append("")
         return "\n".join(lines).rstrip()
     sheet = next(sheet for sheet in guide["playbook"] if sheet["id"] == section)
-    lines = [f"### {markdown_text(sheet['title'])}", "", markdown_text(sheet["intro"]), ""]
+    lines = ([f"### {markdown_text(sheet['title'])}", ""] if show_title else []) + [markdown_text(sheet["intro"]), ""]
     for row in sheet["rows"]:
         lines.append(f"- **{markdown_text(row['when'])} · {markdown_text(row['title'])}** — {markdown_text(row['text'])}")
     return "\n".join(lines)
@@ -367,13 +384,23 @@ def validate_household(data, release=False):
         for field in ("label", "quantity", "basis"):
             line(item[field], f"household.extended.{field}")
         source_refs(item["source_ids"], sources, f"household.extended.{item['label']}")
+    line(data["optional_intro"], "household.optional_intro")
+    line(data["optional_safety"], "household.optional_safety")
+    optional_ids = set()
+    for item in data["optional_items"]:
+        for field in ("item_id", "label", "quantity", "basis"):
+            line(item[field], f"household.optional_items.{field}")
+        if item["item_id"] in optional_ids:
+            raise ValueError(f"Duplicate optional household item {item['item_id']}")
+        optional_ids.add(item["item_id"])
+        source_refs(item["source_ids"], sources, f"household.optional_items.{item['item_id']}")
 
 
 def render_household_html():
     summary = household_summary()
     if not summary:
         return ""
-    return f'<section class="household-target" aria-label="4인 가구 권장량"><strong>4인 가구 준비량</strong><p>{escape(summary)}</p></section>'
+    return f'<section class="household-target" aria-label="4인 가구 준비량"><p>{escape(summary)}</p></section>'
 
 
 def render_household_detail():
@@ -382,27 +409,35 @@ def render_household_detail():
         return ""
     data = json.loads(path.read_text(encoding="utf-8"))
     validate_household(data)
-    rows = []
-    for item in [*data["items"], *data.get("extended", [])]:
-        rows.append(
+    def table_rows(items):
+        return "".join(
             f'<tr><th scope="row">{escape(item["label"])}</th>'
             f'<td data-label="준비량">{escape(item["quantity"])}</td>'
             f'<td data-label="계산과 조정">{escape(item["basis"])}</td></tr>'
+            for item in items
         )
+    basic = table_rows([*data["items"], *data.get("extended", [])])
+    optional = table_rows(data["optional_items"])
     return (
         '<section class="section household-detail" id="household-targets" aria-labelledby="household-targets-title">'
-        '<p class="kicker">평시 준비 · 수량 예시</p>'
+        '<p class="kicker">02 / 물·식품·장비</p>'
         f'<h2 id="household-targets-title">{escape(data["title"])}</h2>'
-        f'<p>{escape(data["summary"])}</p>'
         '<div class="table-scroll"><table><thead><tr><th scope="col">품목</th>'
         '<th scope="col">준비량</th><th scope="col">계산과 조정</th></tr></thead>'
-        f'<tbody>{"".join(rows)}</tbody></table></div></section>'
+        f'<tbody>{basic}</tbody></table></div>'
+        f'<details class="optional-targets"><summary>선택 물품 {len(data["optional_items"])}개 · 필요한 가구만 확인</summary>'
+        '<p>기본 해당 없음 · 가구에 필요한 품목만 선택하세요.</p>'
+        f'<p>{escape(data["optional_intro"])}</p>'
+        f'<p class="optional-safety">{escape(data["optional_safety"])}</p>'
+        '<div class="table-scroll"><table><thead><tr><th scope="col">선택 물품</th>'
+        '<th scope="col">준비량 예시</th><th scope="col">계산과 조정</th></tr></thead>'
+        f'<tbody>{optional}</tbody></table></div></details></section>'
     )
 
 
 def render_household_paper():
     summary = household_summary()
-    return f'<p class="paper-target"><strong>4인 가구 준비량</strong> · {escape(summary)}</p>' if summary else ""
+    return f'<p class="paper-target">{escape(summary)}</p>' if summary else ""
 
 
 def render_pdf(html_path, browser_path):

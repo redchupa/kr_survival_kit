@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "content_version": "0.1.0-draft.7",
+  "content_version": "0.1.0-draft.8",
   "official_first": "현재 발령된 재난문자·방송과 현장 지시를 먼저 따르세요.",
   "communication_loss": {
     "title": "전화·인터넷이 끊기면",
@@ -11,6 +11,13 @@
     "reviewed_on": null
   },
   "sources": {
+    "project-example": {
+      "publisher": "가구 선택 예시",
+      "title": "사용자 체크리스트 기반 선택 물품",
+      "url": "",
+      "section": "공식 권고 수량이 아닙니다. 가구 필요에 따라 활성화하고 포장 표시 기한을 확인하세요.",
+      "checked_on": "2026-11-10"
+    },
     "mois-2026": {
       "publisher": "행정안전부",
       "title": "2026 비상시 국민행동요령",

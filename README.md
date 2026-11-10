@@ -32,13 +32,13 @@ python tests/verify_artifacts.py
 ## 콘텐츠와 공개 검토
 
 - `custom_components/kr_survival_kit/content/guide.ko.json`은 통신 두절과 상황별 안내의 단일 원본입니다. 각 상황에 안정 ID, 첫 행동, 상세 행동, 종이용 요약, 출처 ID, 검토 상태와 검토일이 있습니다. 출처에는 기관, 제목, URL, 확인한 문단, 확인일이 있습니다. [상황별 근거와 예외 검토표](docs/content-review.md)에서 인쇄 문구의 근거를 확인할 수 있습니다.
-- `catalog.ko.json`은 브랜드와 구매 링크가 없는 13개 품목의 시작 목록입니다. 우선순위는 평소 소비(`rotation`), 보유 장비 점검(`owned`), 해당 가구 준비(`household`), 선택 추가(`optional`) 순입니다. 수량 단위는 `ml` 또는 `개`, 날짜 유형은 표시 기한(`expiry`) 또는 점검(`inspection`)입니다. 품목별 목표량은 가구가 정합니다.
+- `catalog.ko.json`은 브랜드와 구매 링크가 없는 55개 품목의 목록입니다. 기존 13개에서 선택 물품 42개를 더해 선택 물품은 총 44개입니다. 우선순위는 평소 소비(`rotation`), 보유 장비 점검(`owned`), 해당 가구 준비(`household`), 선택 추가(`optional`) 순입니다. 수량 단위는 `ml`·`개`·`세트`·`켤레`, 날짜 유형은 표시 기한(`expiry`) 또는 점검(`inspection`)입니다. 품목별 목표량은 가구가 정합니다. [원본 항목 대응표](docs/v4-item-mapping.ko.md)에 선택 물품 반영 범위를 기록했습니다.
 - 실제 사람·주소·연락처·동선을 자료나 제보에 포함하지 마세요. `tests/fixtures/stock.json`의 값은 검증용 가상 수량입니다.
 - 출처나 행동 문구를 바꾸면 문구를 `draft`로 돌리고 `reviewed_on`을 비웁니다. 공개 전 검토자가 출처와 문장을 대조한 뒤 `reviewed`와 검토일을 기록하고 안내 버전을 올립니다. `python scripts/build_guides.py --release --pdf`는 미검토 문구 또는 초안 버전에서 실패합니다.
 
 ## P2 로컬 재고와 Home Assistant
 
-`custom_components/kr_survival_kit/`를 HA 설정 폴더의 `custom_components/`에 복사하고 HA를 재시작한 뒤 **설정 → 기기 및 서비스 → 통합 추가 → KR Survival Kit**를 선택합니다. 한 인스턴스에 한 가구만 등록합니다. 점검 주기(기본 30일)를 정하면 로컬 `Store`에 버전 1 스냅샷을 저장합니다. 브로커나 외부 계정은 필요하지 않습니다. 운영 설치 결과는 아래 [NRGNC 운영 검증](#nrgnc-운영-검증-2026-11-10)에 기록했습니다.
+`custom_components/kr_survival_kit/`를 HA 설정 폴더의 `custom_components/`에 복사하고 HA를 재시작한 뒤 **설정 → 기기 및 서비스 → 통합 추가 → KR Survival Kit**를 선택합니다. 한 인스턴스에 한 가구만 등록합니다. 점검 주기(기본 30일)를 정하면 로컬 `Store`에 버전 1 스냅샷을 저장합니다. 브로커나 외부 계정은 필요하지 않습니다. 운영 설치 결과는 아래 [NRGNC 운영 검증](#nrgnc-운영-검증-2026-11-11)에 기록했습니다.
 
 관리자는 개발자 도구의 action 또는 대시보드 재고 카드에서 `kr_survival_kit.get_inventory`를 호출해 `revision`, 품목별 `state`와 합계를 읽을 수 있습니다. `kr_survival_kit.set_item`은 **현재 revision**과 카탈로그 `item_id`, `applicable`, `target`, `lots`, `confirm`을 요구합니다. `lots`의 각 원소는 `lot_id`, 비음수 정수 `quantity`, ISO 날짜 또는 `null`인 `expires_on`을 가집니다. `kr_survival_kit.delete_item`은 `item_id`와 현재 revision을 요구합니다. 성공한 쓰기는 새 revision을 반환하며, 다른 편집이 먼저 저장되면 다시 조회한 뒤 절대 수량으로 재입력해야 합니다. 이 action들은 HA 관리자만 호출할 수 있습니다. `entry_id`는 단일 가구에서 생략할 수 있습니다.
 
@@ -136,3 +136,12 @@ Home Assistant OS의 **Core 2026.11.1**에서 `custom_components/kr_survival_kit
 - 서버의 별도 staging에서 안내 `unittest` **10개**, 가구 권장량 검사 **1개**, 격리 venv의 순수 재고 회귀 테스트 **6개**가 통과했습니다. 이 테스트들은 운영 HA의 저장소나 실제 재고를 사용하지 않았습니다.
 - `/local/kr-survival-kit-card.js`, `/local/kr-survival-kit-a4.pdf`, `/local/kr-survival-kit-offline.html`을 실제 HTTP GET으로 확인했습니다. 세 응답은 HTTP 200이고 SHA256은 배포 후보와 일치합니다. PDF는 A4 한 쪽이며 PDF·HTML 모두 `0.1.0-draft.7`과 4인 예시의 음용수 24 L, 전체 안전수 약 46 L, 식품 합계 36인분을 담고 있습니다. HTML에는 7일·14일 확장량도 있습니다.
 - 대시보드 설정을 다시 읽어 첫 화면에서 초안 버전과 반복 외부 출처를 표시하지 않는 것, 내장 버튼 2개의 PDF·HTML URL, 4인 요약과 단위, 관리자 카드와 집계 센서 3개, 안내 보기의 출처 카드 1개 및 중복 없는 외부 URL을 확인했습니다. **인증된 실제 브라우저에서 버튼 클릭·375px 렌더링은 검증하지 못했습니다.** 실물 휴대전화와 프린터의 탁상훈련도 남아 있습니다.
+
+## NRGNC 운영 검증 (2026-11-11)
+
+Home Assistant OS의 **Core 2026.11.1**에서 안내 콘텐츠 **`0.1.0-draft.8`**을 설치했습니다. 통합 manifest 버전은 계속 `0.1.0`입니다. 기존 통합·정적 파일·전용 대시보드·리소스와 재고 저장 파일을 운영 서버의 비공개 위치에 백업한 뒤, 통합의 공개 카탈로그·안내와 정적 파일 3개만 교체했습니다. 설정 검사는 `valid`였으며 전체 HA 재시작 없이 해당 통합을 다시 로드했습니다. 전용 `kr-survival-kit` 대시보드와 기존 카드 리소스 URL만 갱신했고, 다른 대시보드·브로커 설정은 변경하지 않았습니다.
+
+- 운영 `get_inventory`에서 카탈로그 **55개**(기존 13개에서 신규 선택 물품 42개 추가), `household` 응답, 기존 재고 `revision`·품목·목표 불변을 확인했습니다. 저장 파일의 SHA256도 배포 전후 같고 실제 재고를 수정하지 않았습니다. 집계 센서 3개의 entity ID와 상태를 확인했으며 통합 관련 시스템 로그에 새 경고가 없었습니다.
+- 운영 서버의 분리된 staging에서 안내 `unittest` **12개**, 가구 권장량 검사 **2개**, 격리 venv의 순수 재고 회귀 테스트 **6개**, 총 **20개**가 통과했습니다. 운영 저장소나 개인 재고를 테스트에 사용하지 않았습니다.
+- 실제 HTTP GET에서 `/local/kr-survival-kit-card.js`, `/local/kr-survival-kit-a4.pdf`, `/local/kr-survival-kit-offline.html`이 모두 HTTP 200이고 최종 후보 SHA256과 일치했습니다. PDF는 후보와 동일한 A4 단면 한 쪽이고 PDF·HTML의 안내 버전은 `0.1.0-draft.8`입니다. HTML은 4인 권장량과 7일·14일 확장량을 담습니다.
+- 전용 대시보드 설정을 API로 다시 읽어 후보의 `home`·`guide` 보기와 일치함을 확인했습니다. 카드 리소스 URL은 최종 JS 해시를 가리킵니다. 인증된 실제 브라우저의 어두운 테마·375px 화면에서 안내 제목 중복이 없는 것, 첫 화면 준비량 요약 1회, 선택 물품 44개 접힘·검색과 결과 없음·설정 Enter·미저장 편집 취소를 확인했습니다. 최종 JS에서 태양광 검색 후 편집 취소 시 검색어가 유지되고 검색칸 초점과 선택 영역 열림 상태가 복원되는 것도 확인했습니다. 고체연료의 밀폐공간 주의 문구는 편집 화면에 남아 있었습니다. PDF 버튼은 새 탭에 A4 **1/1쪽**을 열었고, HTML 버튼은 새 탭의 375px 화면에서 신규 선택 물품 42개 표와 요청한 9개 품목, 가로 넘침 없음(`scrollWidth`와 `clientWidth`가 모두 360)을 확인했습니다. 화면 시험은 저장 없이 취소했으며 실제 재고를 변경하지 않았습니다. 밝은 테마·200% 확대와 실물 휴대전화·프린터 탁상훈련은 이번 버전에서 확인하지 않았습니다.
