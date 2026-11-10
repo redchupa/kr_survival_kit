@@ -1,8 +1,10 @@
 """Run an isolated Home Assistant dashboard for visual review."""
 
 import asyncio
+import argparse
 import logging
 import shutil
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -18,7 +20,15 @@ DOMAIN = "kr_survival_kit"
 
 
 async def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--broker-down", action="store_true")
+    args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING)
+    broker = None
+    if args.broker_down:
+        broker = subprocess.Popen(["mosquitto", "-p", "18887"],
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        await asyncio.sleep(0.5)
     with tempfile.TemporaryDirectory(prefix="kr-survival-ui-") as config_dir:
         config_path = Path(config_dir)
         shutil.copytree(ROOT / "custom_components" / DOMAIN,
@@ -62,6 +72,15 @@ lovelace:
         custom_components.__path__.append(str(config_path / "custom_components"))
         assert await bootstrap.async_from_config_dict(yaml.safe_load(config), hass)
         await hass.async_start()
+        if args.broker_down:
+            assert await async_setup_component(hass, "mqtt", {})
+            mqtt_flow = await hass.config_entries.flow.async_init("mqtt", context={"source": "user"})
+            mqtt_flow = await hass.config_entries.flow.async_configure(
+                mqtt_flow["flow_id"],
+                {"broker": "127.0.0.1", "port": 18887,
+                 "other_settings": {"set_client_cert": False, "set_ca_cert": "off"}},
+            )
+            assert mqtt_flow["type"] == "create_entry", mqtt_flow
         assert await async_setup_component(hass, "frontend", {})
         assert await async_setup_component(hass, "lovelace", {})
         assert await async_setup_component(hass, DOMAIN, {})
@@ -72,12 +91,25 @@ lovelace:
         )
         assert flow["type"] == "create_entry", flow
         await hass.async_block_till_done()
+        if args.broker_down:
+            entry = flow["result"]
+            options = await hass.config_entries.options.async_init(entry.entry_id)
+            options = await hass.config_entries.options.async_configure(
+                options["flow_id"], {"mqtt_enabled": True}
+            )
+            assert options["type"] == "create_entry", options
+            await hass.async_block_till_done()
+            broker.terminate()
+            broker.wait(timeout=10)
         print(f"UI_READY http://127.0.0.1:8129/kr-survival-kit/home {admin.id} {hass.config.components}", flush=True)
         try:
             while True:
                 await asyncio.sleep(1)
         finally:
             await hass.async_stop()
+            if broker is not None and broker.poll() is None:
+                broker.terminate()
+                broker.wait(timeout=10)
 
 
 if __name__ == "__main__":
