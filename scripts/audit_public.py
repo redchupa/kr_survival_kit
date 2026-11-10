@@ -56,7 +56,8 @@ def main():
         print(f"REVIEW {kind}: {label}")
     if not findings:
         print("No pattern matches")
+    return 1 if findings else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -14,7 +14,7 @@ Python 3.11 이상에서 저장소 루트 기준으로 실행합니다. HTML과 
 
 ```text
 python scripts/build_guides.py
-python -m unittest discover -s tests -v
+python -m unittest discover -s tests -p test_guides.py -v
 ```
 
 PDF와 브라우저 검증에는 개발 의존성, Chromium, 시스템 한글 글꼴이 필요합니다. Windows에서는 맑은 고딕을 사용할 수 있습니다. Linux에서는 Noto Sans CJK KR을 설치한 뒤 실행하세요.
@@ -123,6 +123,6 @@ HA의 설정 폴더에 통합 폴더를 `custom_components/kr_survival_kit/`로 
 
 HACS용 `hacs.json`, MIT `LICENSE`, [변경 이력](CHANGELOG.md), [보안·안내 정정 제보 경로](SECURITY.md), [릴리스 초안](docs/release-draft.md)을 준비했습니다. `public/`이 Git 저장소 루트이며, HACS가 설치하는 코드는 `custom_components/kr_survival_kit/`에 있습니다. PDF·오프라인 HTML·대시보드 생성물은 릴리스 자산으로 따로 제공할 예정입니다. `python scripts/audit_public.py`는 Git 전체 이력과 공개 후보의 개인정보 형식을 검사합니다.
 
-`python scripts/build_candidate.py`는 현재 초안 PDF·HTML·대시보드·카드와 SHA256 목록을 `output/release-candidate/`에 모읍니다. 이 폴더에는 공개 보류 표기가 있으며 검토 후 다시 생성해야 합니다. `python tests/check_package.py`로 HACS 레이아웃을 확인할 수 있고, GitHub CI도 같은 구조·안내·개인정보 형식 검사를 실행하도록 준비했습니다.
+`python scripts/build_candidate.py`는 현재 초안 PDF·HTML·대시보드·카드와 SHA256 목록을 `output/release-candidate/`에 모읍니다. 이 폴더에는 공개 보류 표기가 있으며 검토 후 다시 생성해야 합니다. GitHub CI는 안내 단위 테스트, 생성기, `python tests/check_package.py` 및 개인정보 형식 검사를 실행합니다. 일치 항목을 발견하면 검사 단계가 실패합니다. 재고 테스트와 HA 통합 테스트의 실행 방법은 P2와 P5 검증 기록에 있습니다.
 
 **공개 차단** · 2026년 행정안전부 새 리플릿·홍보책자 원문과 행동 문구의 독립 대조, `draft` 해제, 실물 휴대전화·흑백 A4 탁상훈련, 최종 릴리스 자산 및 화면 캡처의 개인정보 재검사가 남았습니다. 현재 원격 Git 저장소가 없어 HACS 사용자 지정 저장소 설치와 Home Assistant Brands 등록도 확인하지 못했습니다. 확인한 범위와 남은 절차는 [P5 검증 기록](docs/p5-validation.md)에 구분해 적었습니다.
