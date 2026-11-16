@@ -47,30 +47,17 @@ def main():
         "**파일을 여는 방법**  아래 버튼은 파일을 엽니다. PDF는 열린 화면의 인쇄·다운로드로 저장하고, "
         "HTML은 브라우저의 ‘다른 이름으로 저장’으로 보관하세요. 휴대전화에서는 공유 메뉴에 저장 옵션이 있을 수 있습니다."
     )
-    home = [
-        section("대피 우선", [
-            markdown_card(urgent),
-            button("경보별 행동 보기", "mdi:shield-alert", "navigate", "/kr-survival-kit/guide"),
-        ]),
+    guide_sections = [
+        section("대피 우선", [markdown_card(urgent)]),
         section("인쇄·오프라인", [
             button("A4 인쇄 카드 열기", "mdi:file-pdf-box", "url", "/local/kr-survival-kit-a4.pdf"),
             button("오프라인 안내 열기", "mdi:file-document-outline", "url", "/local/kr-survival-kit-offline.html"),
             markdown_card(files),
         ]),
-        section("평시 준비", [
-            markdown_card(prepare),
-            button("준비량·상황 안내 보기", "mdi:clipboard-check-outline", "navigate", "/kr-survival-kit/guide"),
-            "          - type: tile\n            entity: sensor.bujoghan_pummog\n            name: 부족한 품목\n",
-            "          - type: tile\n            entity: sensor.hwaginhal_pummog\n            name: 확인할 품목\n",
-            "          - type: tile\n            entity: sensor.gihan_imbag_pummog\n            name: 기한 임박 품목\n",
-            "          - type: custom:kr-survival-kit-inventory-card\n",
-        ]),
-    ]
-    guide_sections = [
-        section("먼저 읽기", [markdown_card(f"{guide['official_first']}\n\n새 경보가 오면 해당 경보의 행동을 먼저 확인하세요.")]),
+        section("평시 준비", [markdown_card(prepare)]),
         section("경보·통신 두절", [markdown_card(render_markdown_section(guide, "alerts"))]),
         section("정전·단수", [markdown_card(render_markdown_section(guide, "outages"))]),
-        section("평시 준비", [markdown_card(render_markdown_section(guide, "prepare", show_title=False) + (f"\n\n{summary}" if summary else ""))]),
+        section("평시 준비 점검", [markdown_card(render_markdown_section(guide, "prepare", show_title=False))]),
     ]
     for sheet in guide["playbook"]:
         guide_sections.append(section(sheet["title"], [markdown_card(render_markdown_section(guide, sheet["id"], show_title=False))]))
@@ -78,8 +65,9 @@ def main():
     yaml = (
         f"# content_version: {guide['content_version']}\n"
         "title: KR Survival Kit\nviews:\n"
-        "  - title: 비상 대비\n    path: home\n    type: sections\n    max_columns: 2\n    sections:\n"
-        + "".join(home)
+        "  - title: 비축 관리\n    path: home\n    type: panel\n    cards:\n"
+        "      - type: custom:kr-survival-kit-inventory-card\n"
+        "        guide_path: /kr-survival-kit/guide\n"
         + "  - title: 상황 안내\n    path: guide\n    type: sections\n    max_columns: 2\n    sections:\n"
         + "".join(guide_sections)
     )
