@@ -99,7 +99,7 @@ def validate_guide(guide, release=False):
         seen.add(key)
         for field in ("label", "title", "intro"):
             line(sheet[field], f"{key}.{field}")
-        if sheet.get("layout", "timeline") not in ("timeline", "matrix"):
+        if sheet.get("layout", "timeline") not in ("timeline", "matrix", "reference"):
             raise ValueError(f"Unsupported playbook layout for {key}")
         if not isinstance(sheet["rows"], list) or not sheet["rows"]:
             raise ValueError(f"{key}.rows must be a nonempty list")
@@ -186,6 +186,13 @@ def render_playbook(guide):
                 '<th scope="col">즉시 행동</th><th scope="col">다음 확인과 전환 조건</th></tr></thead>'
                 f'<tbody>{rows}</tbody></table>'
             )
+        elif sheet.get("layout") == "reference":
+            rows = "".join(
+                f'<li class="reference-card"><p class="when">{escape(row["when"])}</p>'
+                f'<h3>{escape(row["title"])}</h3><p>{escape(row["text"])}</p></li>'
+                for row in sheet["rows"]
+            )
+            content = f'<ul class="reference-grid">{rows}</ul>'
         else:
             rows = "".join(
                 f'<li class="timeline-row"><p class="when">{escape(row["when"])}</p>'

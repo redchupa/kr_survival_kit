@@ -12,7 +12,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PLATFORMS
-from .inventory import Inventory, InventoryError, RevisionConflict, summarize
+from .inventory import MAX_AMOUNT, Inventory, InventoryError, RevisionConflict, summarize
 from .mqtt_publish import MqttPublisher, async_remove_discovery
 
 
@@ -22,19 +22,25 @@ def _lot(value):
     return value
 
 
+def _nonnegative_int(value):
+    if type(value) is not int or not 0 <= value <= MAX_AMOUNT:
+        raise vol.Invalid("Expected an integer from 0 to 1000000000")
+    return value
+
+
 SET_SCHEMA = vol.Schema({
     vol.Optional("entry_id"): str,
     vol.Required("item_id"): str,
-    vol.Required("revision"): vol.All(vol.Coerce(int), vol.Range(min=0)),
+    vol.Required("revision"): _nonnegative_int,
     vol.Required("applicable"): bool,
-    vol.Required("target"): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=0))),
+    vol.Required("target"): vol.Any(None, _nonnegative_int),
     vol.Required("lots"): [_lot],
     vol.Required("confirm"): bool,
 })
 DELETE_SCHEMA = vol.Schema({
     vol.Optional("entry_id"): str,
     vol.Required("item_id"): str,
-    vol.Required("revision"): vol.All(vol.Coerce(int), vol.Range(min=0)),
+    vol.Required("revision"): _nonnegative_int,
 })
 GET_SCHEMA = vol.Schema({vol.Optional("entry_id"): str})
 

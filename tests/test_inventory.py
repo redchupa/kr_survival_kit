@@ -60,6 +60,7 @@ async def test_expiry_unknown_dates_midnight_and_stale_inspection():
     assert result["items"][WATER]["state"] == "needs_check"
     assert result["items"][WATER]["usable"] == 2000
     assert result["items"][WATER]["unconfirmed"] == 4000
+    assert result["items"][WATER]["stale"] is False
     assert result["expiring_count"] == 1
     next_day = summarize(CATALOG, stock.snapshot["items"], "2026-11-10")
     assert next_day["items"][WATER]["usable"] == 0
@@ -103,6 +104,10 @@ async def test_delete_and_input_validation():
         await stock.set_item(WATER, 0, True, 10, [{"lot_id": "a", "quantity": -1, "expires_on": TODAY}], True, TODAY)
     with pytest.raises(InventoryError):
         await stock.set_item(WATER, 0, True, True, [], True, TODAY)
+    with pytest.raises(InventoryError, match="target"):
+        await stock.set_item(WATER, 0, True, 1_000_000_001, [], True, TODAY)
+    with pytest.raises(InventoryError, match="quantity"):
+        await stock.set_item(WATER, 0, True, 1, [{"lot_id": "overflow", "quantity": 1_000_000_001, "expires_on": TODAY}], True, TODAY)
     await stock.set_item(WATER, 0, True, 0, [], True, TODAY)
     assert summarize(CATALOG, stock.snapshot["items"], TODAY)["items"][WATER]["state"] == "not_applicable"
     await stock.delete_item(WATER, 1)
@@ -137,3 +142,94 @@ async def test_unknown_storage_schema_is_not_rewritten():
     with pytest.raises(InventoryError, match="Unsupported inventory schema"):
         await stock.load()
     assert store.saved["schema_version"] == 2
+
+
+@pytest.mark.asyncio
+async def test_butane_and_ration_rotation_by_purchase_lot():
+    """Per-product dates, not a guessed universal shelf life, drive rotation."""
+    store = FakeStore()
+    stock = Inventory(store, CATALOG)
+    assert {item["id"]: item["date_kind"] for item in CATALOG}[
+        "self-heating-ration"
+    ] == "expiry"
+    await stock.set_item("butane-canister", 0, True, 4, [
+        {"lot_id": "old-can", "quantity": 1, "expires_on": "2026-11-08"},
+        {"lot_id": "replace-soon", "quantity": 2, "expires_on": "2026-11-20"},
+        {"lot_id": "date-not-known", "quantity": 1, "expires_on": None},
+    ], True, TODAY)
+    await stock.set_item("self-heating-ration", 1, True, 2, [
+        {"lot_id": "meal-a", "quantity": 1, "expires_on": "2027-02-01"},
+        {"lot_id": "meal-b", "quantity": 1, "expires_on": "2026-12-01"},
+    ], True, TODAY)
+    summary = summarize(CATALOG, stock.snapshot["items"], TODAY)
+    gas = summary["items"]["butane-canister"]
+    meal = summary["items"]["self-heating-ration"]
+    assert gas["expired_quantity"] == 1
+    assert gas["unknown_date_quantity"] == 1
+    assert gas["usable"] == gas["expiring_quantity"] == 2
+    assert gas["next_expiry_on"] == "2026-11-20"
+    assert gas["state"] == "shortage"
+    assert meal["next_expiry_on"] == "2026-12-01"
+    assert meal["expiring_quantity"] == 1
+    assert meal["state"] == "sufficient"
+    assert summary["expiring_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_delete_failure_and_invalid_input_leave_snapshot_intact():
+    store = FakeStore()
+    stock = Inventory(store, CATALOG)
+    await stock.set_item(WATER, 0, True, 1, [], True, TODAY)
+    original = deepcopy(stock.snapshot)
+    store.fail = True
+    with pytest.raises(OSError):
+        await stock.delete_item(WATER, 1)
+    assert stock.snapshot == original == store.saved
+    store.fail = False
+    for bad_revision in (True, -1, "1"):
+        with pytest.raises(InventoryError, match="revision"):
+            await stock.delete_item(WATER, bad_revision)
+    for invalid_lot in (
+        {"lot_id": "line\nbreak", "quantity": 1, "expires_on": TODAY},
+        {"lot_id": "compact-date", "quantity": 1, "expires_on": "20261109"},
+    ):
+        with pytest.raises(InventoryError):
+            await stock.set_item(WATER, 1, True, 1, [invalid_lot], True, TODAY)
+    assert stock.snapshot == original
+    with pytest.raises(InventoryError, match="200"):
+        await stock.set_item(WATER, 1, True, 1, [
+            {"lot_id": str(index), "quantity": 1, "expires_on": TODAY}
+            for index in range(201)
+        ], True, TODAY)
+
+
+@pytest.mark.asyncio
+async def test_corrupt_store_does_not_replace_live_snapshot():
+    store = FakeStore()
+    stock = Inventory(store, CATALOG)
+    await stock.set_item(WATER, 0, True, 1, [], True, TODAY)
+    original = deepcopy(stock.snapshot)
+    store.saved = {"schema_version": 1, "revision": 2, "items": {WATER: {"confirmed": "yes"}}}
+    with pytest.raises(InventoryError, match="Invalid inventory record"):
+        await stock.load()
+    assert stock.snapshot == original
+
+
+@pytest.mark.asyncio
+async def test_litre_display_metadata_preserves_millilitre_storage():
+    water = next(item for item in CATALOG if item["id"] == WATER)
+    assert (water["unit"], water["display_unit"], water["display_scale"]) == ("ml", "L", 1000)
+    store = FakeStore()
+    stock = Inventory(store, CATALOG)
+    # UI values 24 L, 2 L, and 1.25 L must arrive as exact integer ml.
+    await stock.set_item(WATER, 0, True, 24000, [
+        {"lot_id": "2 L bottle", "quantity": 2000, "expires_on": "2027-01-01"},
+        {"lot_id": "1.25 L bottle", "quantity": 1250, "expires_on": "2027-02-01"},
+        {"lot_id": "legacy 1 ml", "quantity": 1, "expires_on": "2027-03-01"},
+    ], True, TODAY)
+    restored = Inventory(store, CATALOG)
+    await restored.load()
+    record = restored.snapshot["items"][WATER]
+    assert record["target"] == 24000
+    assert [lot["quantity"] for lot in record["lots"]] == [2000, 1250, 1]
+    assert summarize(CATALOG, restored.snapshot["items"], TODAY)["items"][WATER]["usable"] == 3251

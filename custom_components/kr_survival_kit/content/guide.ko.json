@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "content_version": "0.1.0-draft.8",
+  "content_version": "0.1.0-draft.11",
   "official_first": "현재 발령된 재난문자·방송과 현장 지시를 먼저 따르세요.",
   "communication_loss": {
     "title": "전화·인터넷이 끊기면",
@@ -43,8 +43,8 @@
       "publisher": "국민안전24",
       "title": "비상대비 물자 준비요령",
       "url": "https://safekorea.go.kr/safekorea-kor/acts/nacts/action-guide.do?category=preparationEmcSuply&menuSn=4",
-      "section": "비상용 생활필수품과 기한이 있는 물자의 정기 사용·순환 교체",
-      "checked_on": "2026-11-09"
+      "section": "가정용 식량·식수 30일분과 버너용 부탄가스 15개 이상, 기한이 있는 물자의 정기 사용·순환 교체",
+      "checked_on": "2026-11-17"
     },
     "civil-alerts": {
       "publisher": "국민안전24",
@@ -101,6 +101,97 @@
       "url": "https://www.cdc.gov/water-emergency/about/index.html",
       "section": "재난으로 수돗물을 구할 수 없거나 안전이 의심될 때의 음용수",
       "checked_on": "2026-11-09"
+    },
+    "safety-map": {
+      "publisher": "국민안전24",
+      "title": "안전지도",
+      "url": "https://www.safekorea.go.kr/safekorea-kor/flsm/flsm/facilitiesSafteyMap.do",
+      "section": "민방위 대피소·비상급수시설·약국 위치 조회. 운영과 접근 가능 여부는 현장에서 다시 확인",
+      "checked_on": "2026-11-16"
+    },
+    "usfa-battery": {
+      "publisher": "미국 소방청",
+      "title": "Battery Fire Safety",
+      "url": "https://www.usfa.fema.gov/prevention/home-fires/prevent-fires/batteries/",
+      "section": "리튬이온 전지의 충전·보관과 손상·과열 시 사용 중지",
+      "checked_on": "2026-11-16"
+    },
+    "solar-manual": {
+      "publisher": "EcoFlow",
+      "title": "110W 휴대용 태양광 패널 사용 설명서",
+      "url": "https://manuals.ecoflow.com/us/product/110w-lightweight-portable-solar-panel?lang=en_US",
+      "section": "제품별 전압·전류·커넥터 호환성 확인의 예시. 다른 제품에 동일 규격을 적용하지 않음",
+      "checked_on": "2026-11-16"
+    },
+    "kgs-butane": {
+      "publisher": "한국가스안전공사",
+      "title": "장기 방치 부탄캔 수거 안내",
+      "url": "https://kgs.or.kr/gwangju/hea/board.do?searchBoardSn=102476",
+      "section": "제조일로부터 권장사용기한 3년 경과 또는 부식·손상된 부탄캔 수거 안내",
+      "checked_on": "2026-11-16"
+    },
+    "kgs-butane-use": {
+      "publisher": "한국가스안전공사",
+      "title": "휴대용 가스버너와 부탄캔 사용 수칙",
+      "url": "https://www.kgs.or.kr/kgs/agc/board.do?searchBoardSn=102696",
+      "section": "화기와 이격, 과대 불판·이중 적재 금지, 사용 후 버너와 캔 분리",
+      "checked_on": "2026-11-16"
+    },
+    "nps-navigation": {
+      "publisher": "미국 국립공원관리청",
+      "title": "Outdoor Emergency Plan",
+      "url": "https://www.nps.gov/articles/gtgemergencyplan.htm",
+      "section": "길을 잃었을 때 지도·나침반·랜드마크로 위치 확인, 안전한 경로만 되짚기, 불확실하면 무작정 이동하지 않기",
+      "checked_on": "2026-11-16"
+    },
+    "usgs-compass": {
+      "publisher": "미국 지질조사국",
+      "title": "Finding Your Way With Map and Compass",
+      "url": "https://www.usgs.gov/educational-resources/finding-your-way-map-and-compass",
+      "section": "종이 지도의 축척·지형·방위와 나침반 사용의 평시 학습",
+      "checked_on": "2026-11-16"
+    },
+    "faa-flying": {
+      "publisher": "미국 연방항공청",
+      "title": "Flying Safe",
+      "url": "https://www.faa.gov/travelers/fly_safe",
+      "section": "안전 브리핑·안전벨트·앞뒤 비상구 확인과 승무원 안내",
+      "checked_on": "2026-11-16"
+    },
+    "korail-emergency": {
+      "publisher": "한국철도공사",
+      "title": "사고발생시 국민행동요령",
+      "url": "https://info.korail.com/info/contents.do?key=970",
+      "section": "열차 내 비상 인터폰·유도등과 승무원 안내 확인",
+      "checked_on": "2026-11-16"
+    },
+    "uscg-boating": {
+      "publisher": "미국 해안경비대",
+      "title": "A Boater's Guide to the Federal Requirements for Recreational Boats",
+      "url": "https://www.uscgboating.org/assets/1/AssetManager/Boaters-Guide-to-Federal-Requirements-for-Receational-Boats-20231108.pdf",
+      "section": "승선 전 적합한 구명조끼와 위치·착용 방법을 확인. 국내 선박의 현장·승무원 지시를 우선",
+      "checked_on": "2026-11-16"
+    },
+    "cdc-sanitation": {
+      "publisher": "미국 CDC",
+      "title": "Environmental Health Emergency Response Guide",
+      "url": "https://stacks.cdc.gov/view/cdc/39018/cdc_39018_DS1.pdf",
+      "section": "상하수도 시설을 쓸 수 없을 때 비닐 안감을 넣은 변기·용기의 대안과 위생 관리",
+      "checked_on": "2026-11-16"
+    },
+    "cdc-cold": {
+      "publisher": "미국 CDC",
+      "title": "Preventing Hypothermia",
+      "url": "https://www.cdc.gov/winter-weather/prevention/index.html",
+      "section": "비·땀·찬물에 젖었을 때 저체온증 위험과 마른 옷·담요, 의료 도움",
+      "checked_on": "2026-11-17"
+    },
+    "noaa-seawater": {
+      "publisher": "미국 NOAA",
+      "title": "Can humans drink seawater?",
+      "url": "https://oceanservice.noaa.gov/facts/drinksw.html",
+      "section": "바닷물을 마시면 염분 배출 때문에 탈수가 악화될 수 있음",
+      "checked_on": "2026-11-17"
     }
   },
   "paper_checkpoints": {
@@ -194,6 +285,39 @@
         {"when": "05 · 훈련", "title": "공습과 통신 두절을 함께 가정", "text": "종이만 보고 첫 행동, 소식을 확인할 방법, 집결 약속을 찾아보세요. 그다음 정전·단수, 대피 지시, 장기 보급 중단을 따로 시험하고 막힌 지점을 기록하세요."}
       ],
       "source_ids": ["mois-2026", "civil-preparedness", "supplies"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "equipment-use",
+      "label": "장비 사용",
+      "title": "평소에 장비를 시험하고 기록하기",
+      "intro": "비상시 처음 사용하지 않도록 제품별 설명서를 읽고 실제 장비로 연습하세요. 제품의 허용 범위와 현재 상태를 확인할 수 없으면 사용 가능으로 계산하지 마세요.",
+      "layout": "reference",
+      "rows": [
+        {"when": "휴대 전원", "title": "파워뱅크·보조배터리", "text": "제품 설명서의 충전기와 출력 한도를 확인하고 손전등·라디오·휴대전화 중 우선 충전할 기기를 정하세요. 단단하고 통풍되는 곳에서 충전하고, 팽창·누액·이상한 냄새·과열이 있으면 사용을 중지하세요. 실제로 확인한 잔량만 기록하세요."},
+        {"when": "태양광", "title": "패널과 전원 장치 연결", "text": "연결 전에 패널의 전압·전류·커넥터가 전원 장치의 허용 입력과 맞는지 각 제품 설명서에서 확인하세요. 안전하게 고정할 장소와 케이블 손상 여부를 평소에 점검하세요. 패널 정격 출력만으로 충전 시간을 보장하지 마세요."},
+        {"when": "음용수", "title": "휴대용 정수 필터", "text": "준비한 안전한 음용수를 먼저 사용하세요. 필터를 쓴다면 제품 설명서에서 제거 가능한 오염물과 사용·세척 방법을 확인하세요. 많은 휴대용 필터는 바이러스를 제거하지 못해 여과 후 추가 소독이 필요할 수 있습니다. 화학물질·방사성 물질 오염이 의심되는 물은 일반 필터나 끓이기로 안전해지지 않으므로 다른 공급원을 찾으세요. 바닷물은 마시지 마세요."},
+        {"when": "취사", "title": "휴대용 버너·부탄캔", "text": "부탄캔의 제조일과 표시된 권장사용기한, 부식·찌그러짐을 평소에 확인하세요. 캔은 열원에서 멀리 두고 밀폐 공간에서 가스기기를 사용하지 마세요. 버너보다 큰 불판이나 이중 적재를 피하고 사용 후 캔을 분리해 서늘한 곳에 보관하세요."}
+      ],
+      "source_ids": ["usfa-battery", "solar-manual", "cdc-water", "noaa-seawater", "kgs-butane", "kgs-butane-use"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "field-skills",
+      "label": "현장 기술",
+      "title": "평소에 익혀 둘 이동·위생 기술",
+      "intro": "현장 위험과 공식 지시가 먼저입니다. 이 항목은 평시 준비와 일반 안전 행동을 위한 참고이며, 특정 경로나 교통편의 안전을 보장하지 않습니다.",
+      "layout": "reference",
+      "rows": [
+        {"when": "길 찾기", "title": "종이 지도와 나침반", "text": "평소에 대피소와 가족 약속 장소까지 가는 지도를 인쇄해 두고 축척·방향·눈에 띄는 지형을 나침반과 함께 읽는 연습을 하세요. 길을 잃으면 멈춰 현재 위치와 주변 위험을 확인하세요. 확실하지 않은 방향으로 무작정 이동하지 마세요."},
+        {"when": "교통수단", "title": "좌석보다 비상 절차", "text": "항공기에서는 안전 브리핑과 안전카드를 읽고 안전벨트를 매며 앞뒤의 가까운 비상구와 승무원 지시를 확인하세요. 열차에서는 승무원 안내, 비상 인터폰과 유도등 위치를 확인하세요. 특정 좌석의 생존 확률을 기준으로 이동을 결정하지 마세요."},
+        {"when": "선박", "title": "구명조끼와 승무원 안내", "text": "승선 전에 몸에 맞는 구명조끼의 위치와 착용 방법을 확인하세요. 사고가 나면 선내 방송과 승무원 지시를 따르세요. 안전하다고 확인되지 않은 수중 호흡법이나 임시 부유물에 의존하지 마세요."},
+        {"when": "위생", "title": "화장실 설비가 멈춘 경우", "text": "단수만으로 변기를 사용할 수 없다고 단정하지 마세요. 하수관 손상·역류·사용 금지 안내가 있으면 변기 물을 내리지 말고 관리 주체의 지시를 확인하세요. 허용되는 경우 비닐 안감을 넣은 변기나 뚜껑 있는 용기를 임시로 쓰고 손 씻기와 오염물 분리 보관을 지키세요."},
+        {"when": "추위", "title": "젖은 몸과 저체온 위험", "text": "비·땀·찬물에 젖고 추워지면 바람을 피할 수 있는 안전한 곳으로 이동해 젖은 옷을 벗고 마른 옷과 담요로 몸을 덮으세요. 떨림·혼란·말이 어눌해짐·심한 졸림은 저체온증 신호일 수 있습니다. 가능한 의료 도움을 구하고 술이나 직접적인 불·난로 열로 몸을 데우지 마세요."}
+      ],
+      "source_ids": ["nps-navigation", "usgs-compass", "faa-flying", "korail-emergency", "uscg-boating", "cdc-sanitation", "cdc-cold"],
       "review_status": "draft",
       "reviewed_on": null
     }
@@ -296,11 +420,13 @@
       "details": [
         "가족과 통화가 끊겼을 때 만날 곳을 정하세요. 대피가 필요한 상황에선 집결보다 대피가 우선입니다. 현장 지시에 따라 이동할 수 있을 때 만나세요.",
         "대피소의 위치와 출입구를 직접 확인하고 건전지 라디오가 켜지고 수신되는지 점검하세요.",
+        "평시에 국민안전24 안전지도와 지역 지도에서 대피소·약국·지하철역·마트·편의점의 1순위와 대안을 확인하고, 출입구·가는 길·확인일을 종이에 적으세요. 위치 정보는 운영이나 접근을 보장하지 않습니다. 경보 중에는 물건을 사러 가느라 대피를 늦추지 마세요.",
         "집에 있는 생수, 평소 먹는 상온 간편식, 위생용품부터 확인하세요. 기한이 가까운 식품은 표시된 보관 조건을 지켜 평소에 쓰고, 목표량보다 부족한 만큼 보충하세요.",
+        "이 앱의 4인·3일 수량은 준비를 시작하기 위한 계산 예시입니다. 국민안전24는 가정용 식량·식수 30일분과 버너용 부탄가스 15개 이상을 안내합니다. 가구의 조리 방식과 안전한 보관 공간을 고려해 목표를 직접 정하고, 부탄캔의 상태·표시 기한을 점검해 순환하세요. 공식 수량을 앱의 3일 재고 목표로 자동 적용하지 않습니다.",
         "손전등·건전지와 생존배낭을 점검하세요. 가족의 이동·돌봄에 필요한 물품은 따로 기록하세요."
       ],
       "paper_note": "가족이 전화 없이 만날 장소를 정하고 건전지 라디오의 수신을 점검하세요.",
-      "source_ids": ["mois-2026", "facilities", "supplies", "civil-preparedness"],
+      "source_ids": ["mois-2026", "facilities", "safety-map", "supplies", "civil-preparedness"],
       "review_status": "draft",
       "reviewed_on": null
     }

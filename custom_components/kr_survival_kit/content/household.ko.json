@@ -189,6 +189,11 @@
       "title": "비상시 국민행동요령",
       "url": "https://www.mois.go.kr/frt/bbs/type002/commonSelectBoardArticle.do?bbsId=BBSMSTR_000000000530&nttId=119828",
       "detail": "2쪽 평시 준비, 3~4쪽 민방공 경보별 행동, 5쪽 대피소 행동"
+    },
+    "kgs-butane": {
+      "title": "한국가스안전공사, 2026년 부탄캔 무상 수거 및 폐기 안내",
+      "url": "https://kgs.or.kr/gwangju/hea/board.do?searchBoardSn=102476",
+      "detail": "제조일로부터 3년 경과한 부탄캔과 찌그러짐·고온 노출 등 상태가 불량한 캔을 수거 대상으로 안내한다. 식품 소비기한과 구별한다."
     }
   },
   "optional_items": [
@@ -206,9 +211,19 @@
       "item_id": "butane-canister",
       "label": "호환 부탄가스",
       "quantity": "초기 3일은 사용량별; 가정 장기 비상물자 15개 이상은 행안부 안내",
-      "basis": "호환 버너의 하루 사용량으로 초기분을 계산한다. 15개 이상은 행안부의 장기 가정 비상물자 안내이며 3일 필수량이 아니다.",
+      "basis": "호환 버너의 하루 사용량으로 초기분을 계산한다. 15개 이상은 행안부의 장기 가정 비상물자 안내이며 3일 필수량이 아니다. 제조일은 소비기한이 아니다. 한국가스안전공사 광주광역본부의 2026년 노후 캔 수거 기준과 제품 지침, 캔 상태를 참고해 교체 시점을 점검한다.",
       "source_ids": [
-        "mois-guide"
+        "mois-guide",
+        "kgs-butane"
+      ]
+    },
+    {
+      "item_id": "self-heating-ration",
+      "label": "민수용 발열식 비상식량",
+      "quantity": "가구별 선택; 평소 먹을 수 있는 식품을 우선",
+      "basis": "원본 통합문서의 발열식량은 선택 품목으로만 복구한다. 제품별 소비기한·보관 조건·포장당 인분을 확인하고 기한 전에 평소 사용·보충한다. 원본의 20개는 검증된 4인 권장량이 아니다.",
+      "source_ids": [
+        "supplies"
       ]
     },
     {

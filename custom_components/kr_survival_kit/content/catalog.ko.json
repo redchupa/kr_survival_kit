@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "items": [
-    {"id":"drinking-water","name":"생수","tier":"rotation","unit":"ml","date_kind":"expiry","source_ids":["supplies"]},
+    {"id":"drinking-water","name":"생수","tier":"rotation","unit":"ml","display_unit":"L","display_scale":1000,"date_kind":"expiry","source_ids":["supplies"]},
     {"id":"shelf-stable-meal","name":"평소 먹는 상온 간편식","tier":"rotation","unit":"개","date_kind":"expiry","source_ids":["supplies"]},
     {"id":"canned-food","name":"평소 먹는 통조림","tier":"rotation","unit":"개","date_kind":"expiry","source_ids":["supplies"],"examples":"평소 먹는 스팸·참치·번데기 등. 제품별 표시기한과 1개당 인분을 확인하세요."},
     {"id":"hygiene","name":"휴지·물티슈","tier":"rotation","unit":"개","date_kind":"inspection","source_ids":["mois-guide"]},
@@ -15,7 +15,8 @@
     {"id":"radio","name":"건전지로 쓰는 수신 라디오","tier":"optional","unit":"개","date_kind":"inspection","source_ids":["mois-guide","supplies"]},
     {"id":"water-container","name":"추가 급수용 용기","tier":"optional","unit":"개","date_kind":"inspection","source_ids":["water","facilities"]},
     {"id":"portable-stove","name":"휴대용 버너","tier":"optional","unit":"개","date_kind":"inspection","source_ids":["mois-guide"],"note":"연소기기는 밀폐 공간에서 사용하지 말고 제품 안전수칙을 확인하세요."},
-    {"id":"butane-canister","name":"호환 부탄가스","tier":"optional","unit":"개","date_kind":"expiry","source_ids":["mois-guide"],"note":"버너 규격과 제품 표시기한·보관 지침을 확인하세요."},
+    {"id":"butane-canister","name":"호환 부탄가스","tier":"optional","unit":"개","date_kind":"expiry","date_label":"교체 점검일","source_ids":["mois-guide","kgs-butane","kgs-butane-use"],"note":"캔의 제조일을 소비기한으로 입력하지 마세요. 한국가스안전공사 광주광역본부의 2026년 수거 안내는 제조일로부터 3년 경과한 캔을 수거 대상으로 듭니다. 제품 지침을 확인해 교체 점검일을 기록하세요. 찌그러짐·고온 노출이 있으면 날짜와 관계없이 사용하지 말고 안전하게 수거·폐기하세요."},
+    {"id":"self-heating-ration","name":"민수용 발열식 비상식량","tier":"optional","unit":"개","date_kind":"expiry","date_label":"소비기한","source_ids":["supplies"],"note":"평소 먹는 식품을 우선하세요. 개별 제품의 소비기한과 보관 조건을 확인해 구매 단위별로 기록하세요. 제조일만 표시된 경우 기한을 추정해 입력하지 말고 미확인으로 두세요. 발열팩 사용은 제품 지침을 따르세요."},
     {"id":"candles","name":"양초","tier":"optional","unit":"개","date_kind":"inspection","source_ids":["mois-guide"],"note":"조명은 손전등을 우선하고 화재·어린이 접촉 위험을 피하세요."},
     {"id":"hand-warmers","name":"손난로","tier":"optional","unit":"개","date_kind":"expiry","source_ids":["project-example"],"note":"피부 직접 접촉·저온화상에 주의하고 제품 표시기한을 확인하세요."},
     {"id":"large-plastic-bags","name":"대형 비닐봉투·김장봉투","tier":"optional","unit":"개","date_kind":"inspection","source_ids":["mois-guide"],"note":"위생·방수용. 영유아 손이 닿지 않게 보관하세요."},

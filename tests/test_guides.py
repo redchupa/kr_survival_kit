@@ -168,6 +168,44 @@ class GuideTests(unittest.TestCase):
             "행정안전부, 2026 행동요령",
         )
 
+    def test_reference_guides_and_private_nearby_template(self):
+        html = render_html(self.guide)
+        markdown = render_markdown(self.guide)
+        for sheet_id in ("equipment-use", "field-skills"):
+            sheet = next(item for item in self.guide["playbook"] if item["id"] == sheet_id)
+            self.assertEqual(sheet["layout"], "reference")
+            self.assertIn(f'id="{sheet_id}"', html)
+            for row in sheet["rows"]:
+                self.assertIn(row["title"], html)
+                self.assertIn(row["text"], markdown)
+
+        offline_template = (ROOT / "scripts/offline.html").read_text(encoding="utf-8")
+        self.assertIn('id="nearby"', offline_template)
+        for name in ("약국", "지하철역", "마트", "편의점"):
+            self.assertIn(name, offline_template)
+        self.assertNotIn("시흥 은계", offline_template)
+
+    def test_discovery_topics_use_primary_sources(self):
+        field = next(item for item in self.guide["playbook"] if item["id"] == "field-skills")
+        equipment = next(item for item in self.guide["playbook"] if item["id"] == "equipment-use")
+        self.assertIn("cdc-cold", field["source_ids"])
+        self.assertIn("noaa-seawater", equipment["source_ids"])
+        self.assertTrue(any("젖은 옷" in row["text"] for row in field["rows"]))
+        self.assertTrue(any("바닷물은 마시지 마세요" in row["text"] for row in equipment["rows"]))
+        for source_id in ("cdc-cold", "noaa-seawater"):
+            self.assertNotIn("youtube.com", self.guide["sources"][source_id]["url"])
+
+    def test_three_day_example_keeps_official_long_term_advice_visible(self):
+        prepare = next(item for item in self.guide["scenarios"] if item["id"] == "prepare")
+        self.assertIn("supplies", prepare["source_ids"])
+        self.assertIn("30일분", self.guide["sources"]["supplies"]["section"])
+        self.assertIn("15개 이상", self.guide["sources"]["supplies"]["section"])
+        detail = next(item for item in prepare["details"] if "4인·3일" in item)
+        self.assertIn("30일분", detail)
+        self.assertIn("15개 이상", detail)
+        self.assertIn("자동 적용하지 않습니다", detail)
+        self.assertIn(detail, render_html(self.guide))
+
 
 if __name__ == "__main__":
     unittest.main()

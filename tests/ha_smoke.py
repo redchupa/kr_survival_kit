@@ -6,6 +6,7 @@ import logging
 import shutil
 import tempfile
 from datetime import timedelta
+from importlib.metadata import version
 from pathlib import Path
 
 from homeassistant.core import Context, HomeAssistant
@@ -26,7 +27,14 @@ async def start_ha(config_dir):
     if custom_path not in custom_components.__path__:
         custom_components.__path__.append(custom_path)
     assert DOMAIN in await loader.async_get_custom_components(hass)
-    assert await bootstrap.async_from_config_dict({}, hass)
+    # The isolated host does not ship optional OS media tools used by unrelated
+    # default integrations. Exercise HA Core and this component only.
+    defaults = bootstrap.DEFAULT_INTEGRATIONS
+    bootstrap.DEFAULT_INTEGRATIONS = set()
+    try:
+        assert await bootstrap.async_from_config_dict({}, hass)
+    finally:
+        bootstrap.DEFAULT_INTEGRATIONS = defaults
     await hass.async_start()
     assert await async_setup_component(hass, DOMAIN, {})
     return hass
@@ -60,20 +68,32 @@ async def main():
             blocking=True, return_response=True, context=context,
         )
         assert before["revision"] == 0, before
-        assert any(item["id"] == "drinking-water" for item in before["catalog"])
+        water_catalog = next(item for item in before["catalog"] if item["id"] == "drinking-water")
+        assert (water_catalog["unit"], water_catalog["display_unit"], water_catalog["display_scale"]) == ("ml", "L", 1000)
         updated = await hass.services.async_call(
             DOMAIN, "set_item",
             {
                 "item_id": "drinking-water",
                 "revision": 0,
                 "applicable": True,
-                "target": 1000,
+                "target": 3251,
                 "lots": [],
                 "confirm": True,
             },
             blocking=True, return_response=True, context=context,
         )
         assert updated["revision"] == 1
+        try:
+            await hass.services.async_call(
+                DOMAIN, "set_item",
+                {"item_id": "flashlight", "revision": True, "applicable": True,
+                 "target": True, "lots": [], "confirm": True},
+                blocking=True, context=context,
+            )
+        except Exception as error:
+            assert "integer" in str(error) and "revision" in str(error), error
+        else:
+            raise AssertionError("Boolean revision/target was accepted")
         inventory = entry.runtime_data
         original_save = inventory.store.async_save
 
@@ -117,6 +137,20 @@ async def main():
             pass
         else:
             raise AssertionError("Non-admin read was accepted")
+        for service, payload in (
+            ("set_item", {"item_id": "flashlight", "revision": 1, "applicable": True,
+                          "target": 1, "lots": [], "confirm": True}),
+            ("delete_item", {"item_id": "drinking-water", "revision": 1}),
+        ):
+            try:
+                await hass.services.async_call(
+                    DOMAIN, service, payload, blocking=True,
+                    context=Context(user_id=viewer.id),
+                )
+            except Unauthorized:
+                pass
+            else:
+                raise AssertionError(f"Non-admin {service} was accepted")
         after = await hass.services.async_call(
             DOMAIN, "get_inventory", {"entry_id": entry.entry_id},
             blocking=True, return_response=True, context=context,
@@ -129,8 +163,12 @@ async def main():
         updated = await hass.services.async_call(
             DOMAIN, "set_item",
             {"item_id": "drinking-water", "revision": 1, "applicable": True,
-             "target": 1000,
-             "lots": [{"lot_id": "water-case", "quantity": 1000, "expires_on": expiring_date}],
+             "target": 3251,
+             "lots": [
+                 {"lot_id": "2 L bottle", "quantity": 2000, "expires_on": expiring_date},
+                 {"lot_id": "1.25 L bottle", "quantity": 1250, "expires_on": expiring_date},
+                 {"lot_id": "legacy 1 ml", "quantity": 1, "expires_on": expiring_date},
+             ],
              "confirm": True},
             blocking=True, return_response=True, context=context,
         )
@@ -144,13 +182,71 @@ async def main():
         assert restored_entry is not None
         await restarted.async_block_till_done()
         assert restored_entry.runtime_data.snapshot["revision"] == 2
-        assert restored_entry.runtime_data.snapshot["items"]["drinking-water"]["target"] == 1000
+        water_record = restored_entry.runtime_data.snapshot["items"]["drinking-water"]
+        assert water_record["target"] == 3251
+        assert [lot["quantity"] for lot in water_record["lots"]] == [2000, 1250, 1]
         assert restarted.states.get(inventory_states["부족한 품목"].entity_id).state == "0"
         assert restarted.states.get(inventory_states["기한 임박 품목"].entity_id).state == "1"
+        ration_date = (dt_util.now().date() + timedelta(days=12)).isoformat()
+        added = await restarted.services.async_call(
+            DOMAIN, "set_item",
+            {"item_id": "self-heating-ration", "revision": 2, "applicable": True,
+             "target": 2, "lots": [{"lot_id": "ration-a", "quantity": 1,
+                                   "expires_on": ration_date}], "confirm": True},
+            blocking=True, return_response=True, context=context,
+        )
+        assert added["revision"] == 3
+        edited = await restarted.services.async_call(
+            DOMAIN, "set_item",
+            {"item_id": "self-heating-ration", "revision": 3, "applicable": True,
+             "target": 2, "lots": [
+                 {"lot_id": "ration-a", "quantity": 1, "expires_on": ration_date},
+                 {"lot_id": "ration-b", "quantity": 1, "expires_on": None},
+             ], "confirm": True},
+            blocking=True, return_response=True, context=context,
+        )
+        assert edited["revision"] == 4
+        result = await restarted.services.async_call(
+            DOMAIN, "get_inventory", {},
+            blocking=True, return_response=True, context=context,
+        )
+        ration = result["summary"]["items"]["self-heating-ration"]
+        assert ration["next_expiry_on"] == ration_date
+        assert ration["unknown_date_quantity"] == 1
+        assert ration["state"] == "needs_check"
+        deleted = await restarted.services.async_call(
+            DOMAIN, "delete_item",
+            {"item_id": "self-heating-ration", "revision": 4},
+            blocking=True, return_response=True, context=context,
+        )
+        assert deleted["revision"] == 5
+        result = await restarted.services.async_call(
+            DOMAIN, "get_inventory", {},
+            blocking=True, return_response=True, context=context,
+        )
+        assert "self-heating-ration" not in result["items"]
+        assert result["summary"]["items"]["self-heating-ration"]["state"] == "not_applicable"
+
+        async def competing(item_id):
+            return await restarted.services.async_call(
+                DOMAIN, "set_item",
+                {"item_id": item_id, "revision": 5, "applicable": True,
+                 "target": 1, "lots": [], "confirm": True},
+                blocking=True, return_response=True, context=context,
+            )
+
+        competing_results = await asyncio.gather(
+            competing("butane-canister"), competing("flashlight"),
+            return_exceptions=True,
+        )
+        assert sum(isinstance(item, HomeAssistantError) for item in competing_results) == 1
+        assert restarted.config_entries.async_get_entry(entry.entry_id).runtime_data.snapshot["revision"] == 6
         await restarted.async_stop()
-        print(json.dumps({"ha_core": "2026.11.0", "entry": "created_and_restarted", "sensors": 3,
-                          "saved_revision": 2, "stale_revision": "rejected", "save_failure": "rejected",
-                          "viewer": "rejected"}))
+        print(json.dumps({"ha_core": version("homeassistant"), "entry": "created_and_restarted", "sensors": 3,
+                          "saved_revision": 6, "stale_revision": "rejected", "save_failure": "rejected",
+                          "viewer": "read_write_rejected", "boolean_input": "rejected",
+                          "ration": "added_edited_deleted", "water_litre_roundtrip": "3251ml_after_restart",
+                          "concurrent_edit": "one_rejected"}))
 
 
 if __name__ == "__main__":

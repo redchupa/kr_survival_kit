@@ -13,9 +13,15 @@ class RevisionConflict(InventoryError):
     """Another edit was saved first."""
 
 
+MAX_AMOUNT = 1_000_000_000
+
+
 def _date(value):
     try:
-        return date.fromisoformat(value)
+        parsed = date.fromisoformat(value)
+        if not isinstance(value, str) or parsed.isoformat() != value:
+            raise ValueError("Date must use YYYY-MM-DD")
+        return parsed
     except (TypeError, ValueError) as error:
         raise InventoryError("Invalid ISO date") from error
 
@@ -23,20 +29,24 @@ def _date(value):
 def validate_item(catalog_item, applicable, target, lots):
     if type(applicable) is not bool:
         raise InventoryError("applicable must be a boolean")
-    if target is not None and (type(target) is not int or target < 0):
-        raise InventoryError("target must be a nonnegative integer or null")
+    if target is not None and (type(target) is not int or not 0 <= target <= MAX_AMOUNT):
+        raise InventoryError("target must be an integer from 0 to 1000000000 or null")
     if not isinstance(lots, list):
         raise InventoryError("lots must be a list")
+    if len(lots) > 200:
+        raise InventoryError("No more than 200 purchase lots per item")
     seen = set()
     for lot in lots:
         if not isinstance(lot, dict) or set(lot) != {"lot_id", "quantity", "expires_on"}:
             raise InventoryError("Each lot needs lot_id, quantity, and expires_on")
         lot_id = lot["lot_id"]
-        if not isinstance(lot_id, str) or not lot_id or len(lot_id) > 80 or lot_id in seen:
+        if (not isinstance(lot_id, str) or not lot_id or len(lot_id) > 80
+                or any(ord(char) < 32 or ord(char) == 127 for char in lot_id)
+                or lot_id in seen):
             raise InventoryError("lot_id must be unique and nonempty")
         seen.add(lot_id)
-        if type(lot["quantity"]) is not int or lot["quantity"] < 0:
-            raise InventoryError("quantity must be a nonnegative integer")
+        if type(lot["quantity"]) is not int or not 0 <= lot["quantity"] <= MAX_AMOUNT:
+            raise InventoryError("quantity must be an integer from 0 to 1000000000")
         expiry = lot["expires_on"]
         if catalog_item["date_kind"] == "expiry":
             if expiry is not None:
@@ -68,6 +78,8 @@ def summarize(catalog, records, today, inspection_days=30, expiry_days=30):
         usable = 0
         unconfirmed = 0
         expiring = 0
+        expired = 0
+        next_expiry = None
         for lot in lots:
             quantity = lot["quantity"]
             expiry = lot["expires_on"]
@@ -77,7 +89,10 @@ def summarize(catalog, records, today, inspection_days=30, expiry_days=30):
                     continue
                 expiry_date = _date(expiry)
                 if expiry_date < today:
+                    expired += quantity
                     continue
+                if quantity and (next_expiry is None or expiry_date < next_expiry):
+                    next_expiry = expiry_date
                 if expiry_date <= today + timedelta(days=expiry_days):
                     expiring += quantity
             usable += quantity
@@ -103,9 +118,13 @@ def summarize(catalog, records, today, inspection_days=30, expiry_days=30):
             "usable": usable,
             "unconfirmed": unconfirmed,
             "expiring_quantity": expiring,
+            "expired_quantity": expired,
+            "unknown_date_quantity": unconfirmed,
+            "next_expiry_on": next_expiry.isoformat() if next_expiry else None,
             "target": target,
             "verified_on": verified_on,
             "confirmed": confirmed,
+            "stale": stale,
         }
     return {"items": results, **counts}
 
@@ -124,12 +143,18 @@ class Inventory:
         data = await self.store.async_load()
         if data is None:
             return
+        if not isinstance(data, dict) or not isinstance(data.get("items"), dict):
+            raise InventoryError("Invalid inventory snapshot")
         if data.get("schema_version") != 1:
             raise InventoryError("Unsupported inventory schema")
         if type(data.get("revision")) is not int or data["revision"] < 0:
             raise InventoryError("Invalid inventory revision")
         for item_id, record in data["items"].items():
             if item_id in self.catalog:
+                if (not isinstance(record, dict)
+                        or not {"applicable", "target", "lots", "verified_on"} <= record.keys()
+                        or type(record.get("confirmed", False)) is not bool):
+                    raise InventoryError("Invalid inventory record")
                 validate_item(self.catalog[item_id], record["applicable"], record["target"], record["lots"])
                 if record["verified_on"] is not None:
                     _date(record["verified_on"])
@@ -140,6 +165,8 @@ class Inventory:
             raise InventoryError("Unknown item")
         if type(confirm) is not bool:
             raise InventoryError("confirm must be a boolean")
+        if type(revision) is not int or revision < 0:
+            raise InventoryError("revision must be a nonnegative integer")
         validate_item(self.catalog[item_id], applicable, target, lots)
         today = _date(today).isoformat()
         async with self.lock:
@@ -164,6 +191,8 @@ class Inventory:
     async def delete_item(self, item_id, revision):
         if item_id not in self.catalog:
             raise InventoryError("Unknown item")
+        if type(revision) is not int or revision < 0:
+            raise InventoryError("revision must be a nonnegative integer")
         async with self.lock:
             if revision != self.snapshot["revision"]:
                 raise RevisionConflict("Inventory changed. Refresh and retry.")
