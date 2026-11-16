@@ -1,6 +1,7 @@
 import copy
 import json
 import re
+import sys
 import unittest
 
 from scripts.build_guides import (
@@ -143,6 +144,23 @@ class GuideTests(unittest.TestCase):
         self.assertNotIn("### 공식 참고 자료", sources)
         self.assertIn(first_sheet["intro"], sheet)
         self.assertIn("https://", sources)
+
+    def test_dashboard_guide_card_uses_reviewed_actions(self):
+        import subprocess
+        import yaml
+
+        subprocess.run([sys.executable, "scripts/build_dashboard.py"], cwd=ROOT, check=True, capture_output=True)
+        config = yaml.safe_load((ROOT / "output" / "dashboard.yaml").read_text(encoding="utf-8"))
+        guide_view = config["views"][1]
+        self.assertEqual(guide_view["type"], "panel")
+        card = guide_view["cards"][0]
+        self.assertEqual(card["type"], "custom:kr-survival-kit-guide-card")
+        payload = json.loads(card["guide_data"])
+        self.assertEqual(payload["official_first"], self.guide["official_first"])
+        self.assertEqual(
+            [(item["id"], item["first_action"]) for item in payload["scenarios"]],
+            [(item["id"], item["first_action"]) for item in self.guide["scenarios"]],
+        )
 
     def test_source_label_does_not_repeat_publisher(self):
         self.assertEqual(
