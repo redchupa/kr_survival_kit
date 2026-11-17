@@ -155,7 +155,13 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     }
     let saved = null;
     try { saved = JSON.parse(window.localStorage?.getItem("kr_survival_kit_quiz_v1") || "null"); } catch (_error) { /* local storage can be unavailable */ }
-    this._quizAnswers = saved?.version === this._quizData?.content_version && saved?.answers && typeof saved.answers === "object" ? saved.answers : {};
+    this._quizAnswers = {};
+    if (saved?.version === this._quizData?.content_version) {
+      for (const question of this._quizData?.questions || []) {
+        const answer = saved?.answers?.[question.id];
+        if (question.choices.some((choice) => choice.id === answer)) this._quizAnswers[question.id] = answer;
+      }
+    }
     this._quizIndex = Math.max(0, this._quizData?.questions?.findIndex((question) => !this._quizAnswers[question.id]) ?? 0);
     this._render();
   }
@@ -194,7 +200,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       (choice ? `<div class="quiz-feedback" role="status"><p><strong>${selected === question.answer_id ? "맞았습니다." : "다시 확인해 보세요."}</strong> ${escape(choice.feedback)}</p>` +
         `<p><strong>정답: ${escape(answer?.text || "자료 확인 필요")}</strong> ${escape(answer?.feedback || "")}</p>` +
         `<p class="quiz-sources">${sourceLinks ? `공식 출처: ${sourceLinks}` : `<a href="${escape(this._config?.guide_path || "/kr-survival-kit/guide")}">상황 안내의 출처 확인</a>`}</p></div>` : "") +
-      `<div class="quiz-nav"><button type="button" data-quiz-nav="prev" ${index === 0 ? "disabled" : ""}>이전</button><button type="button" data-quiz-nav="next" ${index === data.questions.length - 1 ? "disabled" : ""}>다음 문제</button></div></div></section>`;
+      `<div class="quiz-nav"><button type="button" data-quiz-nav="prev" ${index === 0 ? "disabled" : ""}>이전</button><button type="button" data-quiz-nav="next" ${index === data.questions.length - 1 ? "disabled" : ""}>다음 문제</button></div><button type="button" data-quiz-reset>학습 기록 지우고 다시 풀기</button></div></section>`;
   }
 
   set hass(hass) {
@@ -601,6 +607,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     });
     this.shadowRoot.querySelector("#refresh")?.addEventListener("click", () => this._load());
     this.shadowRoot.querySelectorAll("[data-quiz-choice]").forEach((button) => button.addEventListener("click", () => {
+      this._captureDraft();
       const question = this._quizData?.questions?.[this._quizIndex];
       if (!question?.choices?.some((choice) => choice.id === button.dataset.quizChoice)) return;
       this._quizAnswers[question.id] = button.dataset.quizChoice;
@@ -609,10 +616,19 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       [...this.shadowRoot.querySelectorAll("[data-quiz-choice]")].find((entry) => entry.dataset.quizChoice === button.dataset.quizChoice)?.focus({ preventScroll: true });
     }));
     this.shadowRoot.querySelectorAll("[data-quiz-nav]").forEach((button) => button.addEventListener("click", () => {
+      this._captureDraft();
       this._quizIndex = Math.max(0, Math.min(this._quizData.questions.length - 1, this._quizIndex + (button.dataset.quizNav === "next" ? 1 : -1)));
       this._render();
       this.shadowRoot.querySelector("[data-quiz-choice]")?.focus({ preventScroll: true });
     }));
+    this.shadowRoot.querySelector("[data-quiz-reset]")?.addEventListener("click", () => {
+      this._captureDraft();
+      this._quizAnswers = {};
+      this._quizIndex = 0;
+      this._saveQuizAnswers();
+      this._render();
+      this.shadowRoot.querySelector("[data-quiz-choice]")?.focus({ preventScroll: true });
+    });
     this.shadowRoot.querySelectorAll("[data-category]").forEach((button) => button.addEventListener("click", (event) => {
       const category = button.dataset.category;
       this._categoryFilter = this._categoryFilter === category ? "all" : category;

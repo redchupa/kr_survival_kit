@@ -148,6 +148,12 @@ def main():
         stored_quiz = page.evaluate("JSON.parse(localStorage.getItem('kr_survival_kit_quiz_v1'))")
         assert stored_quiz["answers"] == {first["id"]: first["answer_id"]}
         assert "items" not in stored_quiz and "summary" not in stored_quiz
+        page.evaluate("""() => {
+            const saved = JSON.parse(localStorage.getItem('kr_survival_kit_quiz_v1'));
+            saved.answers['unknown-question'] = 'invented';
+            saved.answers[window.demoCard._quizData.questions[1].id] = 'invalid-choice';
+            localStorage.setItem('kr_survival_kit_quiz_v1', JSON.stringify(saved));
+        }""")
         page.evaluate("({quiz, sources}) => window.demoCard.setConfig({guide_path:'#', quiz_data:quiz, quiz_sources:sources})", {"quiz": json.dumps(QUIZ, ensure_ascii=False), "sources": json.dumps(GUIDE_SOURCES, ensure_ascii=False)})
         assert "학습 진도 1/8" in page.locator("kr-survival-kit-inventory-card .quiz-head").inner_text()
         page.locator("kr-survival-kit-inventory-card .quiz-panel").scroll_into_view_if_needed()
@@ -189,6 +195,13 @@ def main():
         target.fill("24.001")
         quantity.fill("4.25")
         review.fill("60")
+        page.locator("kr-survival-kit-inventory-card [data-quiz-nav='next']").click()
+        assert quantity.input_value() == "4.25", "Quiz navigation lost unsaved inventory"
+        page.locator("kr-survival-kit-inventory-card [data-quiz-reset]").click()
+        assert "학습 진도 0/8" in page.locator("kr-survival-kit-inventory-card .quiz-head").inner_text()
+        assert page.evaluate("JSON.parse(localStorage.getItem('kr_survival_kit_quiz_v1')).answers") == {}
+        assert target.input_value() == "24.001"
+        assert review.input_value() == "60"
         page.evaluate("""() => {
             window.demoCard._hass.connection = {sendMessagePromise: async message => {
                 if (message.service === 'set_item') throw new Error('Inventory changed revision');
