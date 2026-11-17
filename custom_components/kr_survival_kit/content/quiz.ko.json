@@ -1,0 +1,254 @@
+{
+  "schema_version": 1,
+  "content_version": "0.1.0-draft.12",
+  "title": "상황 판단 연습",
+  "intro": "공식 안내를 읽었는지 확인하는 학습 퀴즈입니다. 맞힌 문제 수와 레벨은 학습 진도이며 실제 생존 가능성이나 대피 판단 점수가 아닙니다. 실제 상황에서는 최신 경보와 현장 지시를 먼저 따르세요.",
+  "review_status": "draft",
+  "reviewed_on": null,
+  "levels": [
+    {
+      "id": "first-actions",
+      "title": "레벨 1 · 첫 행동",
+      "description": "경보를 받았을 때 가장 먼저 할 일을 확인합니다."
+    },
+    {
+      "id": "home-safety",
+      "title": "레벨 2 · 집에서의 안전",
+      "description": "정전·단수와 평시 준비의 기본을 확인합니다."
+    },
+    {
+      "id": "changing-situation",
+      "title": "레벨 3 · 상황이 바뀔 때",
+      "description": "서로 다른 경보와 대피 후 판단을 구분합니다."
+    }
+  ],
+  "questions": [
+    {
+      "id": "air-raid-first",
+      "level_id": "first-actions",
+      "scenario_id": "air-raid",
+      "prompt": "공습경보를 받았습니다. 먼저 무엇을 해야 하나요?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "가까운 민방위 대피소나 안전한 지하시설로 즉시 대피한다.",
+          "feedback": "맞습니다. 경보에 맞는 가까운 보호 장소로 먼저 이동합니다."
+        },
+        {
+          "id": "b",
+          "text": "다른 곳에 있는 가족을 데리러 차로 이동한다.",
+          "feedback": "위험합니다. 공습 중 장거리 이동이나 가족 합류 계획은 가까운 대피보다 뒤로 미룹니다."
+        },
+        {
+          "id": "c",
+          "text": "폭음이 들리지 않을 때까지 집에서 기다린 뒤 이동한다.",
+          "feedback": "위험합니다. 폭음 유무만으로 안전이나 경보 해제를 판단할 수 없습니다."
+        }
+      ],
+      "answer_id": "a",
+      "source_ids": [
+        "mois-2026",
+        "civil-preparedness"
+      ]
+    },
+    {
+      "id": "warning-instruction",
+      "level_id": "first-actions",
+      "scenario_id": "civil-warning",
+      "prompt": "경계경보가 발령됐고 아직 대피 지시는 확인되지 않았습니다. 어떻게 하나요?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "모든 가족이 즉시 먼 지역으로 출발한다.",
+          "feedback": "위험합니다. 경계경보만으로 장거리 출발 시점을 정하지 않습니다. 현장 지시와 경로를 확인해야 합니다."
+        },
+        {
+          "id": "b",
+          "text": "경보 종류와 방송을 확인하고, 대피 지시가 나오면 즉시 따른다.",
+          "feedback": "맞습니다. 안내를 계속 확인하며 바로 이동할 수 있게 준비합니다."
+        },
+        {
+          "id": "c",
+          "text": "대피 지시가 없으니 방송도 더는 확인하지 않는다.",
+          "feedback": "위험합니다. 상황이 바뀔 수 있으므로 공식 방송을 계속 확인합니다."
+        }
+      ],
+      "answer_id": "b",
+      "source_ids": [
+        "mois-2026",
+        "civil-alerts"
+      ]
+    },
+    {
+      "id": "nuclear-after-flash",
+      "level_id": "first-actions",
+      "scenario_id": "nuclear-alert",
+      "prompt": "핵경보 상황에서 섬광 직후 대피할 시간이 없습니다. 안내된 첫 행동은 무엇인가요?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "엎드려 폭풍과 파편이 지나갈 때까지 몸을 보호한 뒤, 낙진을 피할 곳으로 이동한다.",
+          "feedback": "맞습니다. 직후의 몸 보호와 이후의 낙진 대피를 구분합니다."
+        },
+        {
+          "id": "b",
+          "text": "상황을 보려고 창가로 달려간다.",
+          "feedback": "위험합니다. 창가에서는 파편 위험이 커집니다. 먼저 몸을 보호합니다."
+        },
+        {
+          "id": "c",
+          "text": "시간이 정해져 있으니 그 시각까지 현재 자리를 떠나지 않는다.",
+          "feedback": "위험합니다. 고정된 시각이 안전을 보장하지 않습니다. 현장 위험과 공식 안내를 확인합니다."
+        }
+      ],
+      "answer_id": "a",
+      "source_ids": [
+        "mois-2026",
+        "civil-alerts"
+      ]
+    },
+    {
+      "id": "power-outage-light",
+      "level_id": "home-safety",
+      "scenario_id": "power-outage",
+      "prompt": "정전이 발생했습니다. 조명과 식품을 위해 먼저 할 일은 무엇인가요?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "냉장고 문을 자주 열어 식품 상태를 확인한다.",
+          "feedback": "위험합니다. 문을 자주 열면 냉기가 더 빨리 빠져나갑니다."
+        },
+        {
+          "id": "b",
+          "text": "실내에서 숯불이나 발전기를 켜 조명과 전기를 확보한다.",
+          "feedback": "위험합니다. 연료를 태우는 기구를 실내에서 쓰면 일산화탄소 중독과 화재 위험이 있습니다."
+        },
+        {
+          "id": "c",
+          "text": "손전등을 쓰고 냉장고·냉동고 문을 닫아 둔다.",
+          "feedback": "맞습니다. 손전등을 쓰고 냉기를 유지하도록 문을 닫아 둡니다."
+        }
+      ],
+      "answer_id": "c",
+      "source_ids": [
+        "power",
+        "cdc-power"
+      ]
+    },
+    {
+      "id": "water-outage-drinking",
+      "level_id": "home-safety",
+      "scenario_id": "water-outage",
+      "prompt": "단수 중 급수시설을 찾았습니다. 그 물을 마시기 전 무엇을 확인해야 하나요?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "운영 여부와 그 물이 음용 가능하다는 공식 안내를 확인한다.",
+          "feedback": "맞습니다. 준비한 안전한 음용수를 먼저 쓰고, 급수시설 물은 음용 가능 여부를 확인합니다."
+        },
+        {
+          "id": "b",
+          "text": "급수시설에 있는 물이므로 수질 안내 없이 바로 마신다.",
+          "feedback": "위험합니다. 급수시설의 물이 언제나 음용수라는 뜻은 아닙니다."
+        },
+        {
+          "id": "c",
+          "text": "냄새가 없으면 어떤 물이든 마신다.",
+          "feedback": "위험합니다. 냄새만으로 물의 미생물·화학 오염을 판단할 수 없습니다."
+        }
+      ],
+      "answer_id": "a",
+      "source_ids": [
+        "water",
+        "facilities",
+        "cdc-water"
+      ]
+    },
+    {
+      "id": "prepare-before-alert",
+      "level_id": "home-safety",
+      "scenario_id": "prepare",
+      "prompt": "평시에 가족의 대피 계획을 점검하려면 무엇이 가장 도움이 되나요?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "경보가 울린 뒤 약국과 마트를 돌며 필요한 물건을 산다.",
+          "feedback": "위험합니다. 경보 중 구매 때문에 대피를 늦추지 않아야 합니다. 필요한 물품은 평시에 준비합니다."
+        },
+        {
+          "id": "b",
+          "text": "대피소 두 곳의 위치·출입구와 통신 두절 시 약속을 종이에 기록한다.",
+          "feedback": "맞습니다. 위치를 직접 확인하고 가족이 함께 아는 종이 기록을 남깁니다."
+        },
+        {
+          "id": "c",
+          "text": "지도 앱에 표시된 대피소는 언제나 개방돼 있다고 가정한다.",
+          "feedback": "위험합니다. 표시된 위치만으로 운영·접근 가능성을 보장할 수 없습니다."
+        }
+      ],
+      "answer_id": "b",
+      "source_ids": [
+        "mois-2026",
+        "safety-map",
+        "civil-preparedness"
+      ]
+    },
+    {
+      "id": "cbrn-location",
+      "level_id": "changing-situation",
+      "scenario_id": "cbrn-alert",
+      "prompt": "화생방경보를 받았습니다. 대피 장소는 어떻게 결정해야 하나요?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "당국이 안내한 공격 종류와 대피 장소·행동을 따른다.",
+          "feedback": "맞습니다. 화학·생물학 상황에 따라 안내가 다르므로 최신 지시를 확인합니다."
+        },
+        {
+          "id": "b",
+          "text": "어떤 물질인지 모르더라도 무조건 가장 깊은 지하로 간다.",
+          "feedback": "위험합니다. 화학 공격에서 높은 실내 대피가 안내될 수 있습니다. 경보 종류와 지시를 구분합니다."
+        },
+        {
+          "id": "c",
+          "text": "다른 경보와 같다고 생각하고 방송을 끈다.",
+          "feedback": "위험합니다. 대피 장소와 해제 안내가 달라질 수 있어 공식 방송을 계속 확인해야 합니다."
+        }
+      ],
+      "answer_id": "a",
+      "source_ids": [
+        "mois-2026",
+        "civil-alerts"
+      ]
+    },
+    {
+      "id": "prepare-long-term",
+      "level_id": "changing-situation",
+      "scenario_id": "prepare",
+      "prompt": "앱의 '4인·3일' 수량과 국민안전24의 장기 비축 안내를 어떻게 이해해야 하나요?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "부탄가스 15개를 모든 가구의 3일 자동 목표로 설정한다.",
+          "feedback": "정확하지 않습니다. 국민안전24의 15개 이상은 장기 가정 비상물자 안내입니다. 조리 방식과 안전한 보관·순환을 고려해야 합니다."
+        },
+        {
+          "id": "b",
+          "text": "앱의 3일 예시가 모든 가구의 최종 비축 기준이다.",
+          "feedback": "정확하지 않습니다. 공식 안내는 가정의 식량·식수 30일분을 제시하며 가구별 필요량도 다릅니다."
+        },
+        {
+          "id": "c",
+          "text": "3일 수량은 초기 계산 예시이며, 공식 장기 안내와 가구의 사용량·보관 조건을 따로 검토한다.",
+          "feedback": "맞습니다. 국민안전24의 장기 안내를 확인하고 가구별 목표와 순환 계획을 직접 정합니다."
+        }
+      ],
+      "answer_id": "c",
+      "source_ids": [
+        "supplies",
+        "kgs-butane",
+        "kgs-butane-use"
+      ]
+    }
+  ]
+}

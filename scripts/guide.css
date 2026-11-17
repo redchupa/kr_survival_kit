@@ -121,13 +121,14 @@ h3 { font-size: 1.15rem; line-height: 1.3; }
 @media print {
   :root {
     color-scheme: light;
-    --ink: #131e28;
-    --print-accent: #234d4a;
-    --print-line: #6b777b;
-    --print-tint: #eef3f2;
+    --ink: #17212a;
+    --print-accent: #174d58;
+    --print-line: #68767c;
+    --print-tint: #eaf2f3;
+    --print-soft: #f5f8f8;
     font-family: "Noto Sans CJK KR", "Malgun Gothic", sans-serif;
   }
-  body { color: var(--ink); background: #fff; font-size: 10pt; line-height: 1.38; }
+  body { color: var(--ink); background: #fff; font-size: 9.7pt; line-height: 1.34; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .wrap { margin: 0; padding: 0; max-width: none; }
   .screen-only { display: none !important; }
   .print-only { display: revert; }
@@ -135,30 +136,46 @@ h3 { font-size: 1.15rem; line-height: 1.3; }
     display: flex; flex-direction: column;
     min-height: 0;
   }
-  .sheet-head { border-top: 3pt solid var(--print-accent); padding: 2.5mm 0 2mm; }
-  .sheet-head h1 { font-size: 27pt; letter-spacing: -.045em; }
-  .sheet-head .kicker { color: var(--print-accent); font-size: 9pt; margin: 0 0 1.1mm; }
-  .priority { border-color: var(--print-accent); background: var(--print-tint); margin: 0 0 1.5mm; padding: 1.6mm 2.5mm; }
-  .comms { border: .8pt solid var(--print-line); background: #fff; padding: 1.7mm 2.5mm; margin-bottom: 2.8mm; }
+  .sheet-head {
+    border-top: 4pt solid var(--print-accent); border-bottom: 1pt solid var(--print-line);
+    background: var(--print-soft); padding: 2.3mm 2.5mm 2.5mm; margin-bottom: 2.2mm;
+  }
+  .sheet-head h1 { font-size: 25pt; letter-spacing: -.045em; line-height: 1.12; }
+  .sheet-head .kicker { color: var(--print-accent); font-size: 8.5pt; margin: 0 0 1mm; }
+  .paper-start { border: 1.2pt solid var(--print-accent); margin-bottom: 2mm; }
+  .paper-start-head { display: flex; align-items: baseline; gap: 3mm; padding: 1.2mm 2mm; background: var(--print-tint); border-bottom: .8pt solid var(--print-accent); }
+  .paper-start-head h2 { font-size: 11.5pt; margin: 0; white-space: nowrap; color: var(--print-accent); }
+  .paper-start-head p { font-size: 8.6pt; font-weight: 700; }
+  .paper-start-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; list-style: none; padding: 1.4mm 0; margin: 0; }
+  .paper-start-list li { padding: 0 2mm; border-right: .8pt solid var(--print-line); }
+  .paper-start-list li:last-child { border-right: 0; }
+  .paper-start-list strong { display: block; color: var(--print-accent); font-size: 9.3pt; }
+  .paper-start-list span { display: block; }
+  .comms { border: .9pt solid var(--print-line); border-left: 3pt solid var(--print-accent); background: var(--print-soft); padding: 1.6mm 2.4mm; margin-bottom: 2mm; }
   .comms-label { color: var(--print-accent); margin-right: 1.5mm; }
-  .paper-target { display: block; border-left: 2pt solid var(--print-accent); padding: 1mm 2mm; margin: 0 0 1.6mm; font-size: 9pt; }
-  .paper-heading { font-size: 12.5pt; color: var(--print-accent); margin: 0 0 1.5mm; }
-  .print-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.4mm 5mm; }
-  .print-row { break-inside: avoid; border-top: .75pt solid var(--print-line); padding: 1.4mm 0; }
-  .print-row h3 { font-size: 13pt; margin-bottom: .5mm; color: var(--print-accent); }
+  .paper-target { display: block; border: .8pt solid var(--print-line); border-left: 3pt solid var(--print-accent); background: var(--print-soft); padding: 1mm 2mm; margin: 0 0 2mm; font-size: 8.8pt; }
+  .paper-heading {
+    font-size: 11.5pt; color: var(--print-accent); margin: 0 0 1.5mm;
+    padding: 1.1mm 2mm; border-left: 4pt solid var(--print-accent);
+    border-bottom: .9pt solid var(--print-line); background: var(--print-tint);
+  }
+  .print-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.7mm 2.6mm; }
+  .print-row { break-inside: avoid; border: .9pt solid var(--print-line); border-left: 2.5pt solid var(--print-accent); padding: 1.4mm 1.8mm; }
+  .print-row h3 { font-size: 11.7pt; margin-bottom: .5mm; color: var(--print-accent); }
   .print-row .first { font-weight: 750; }
-  .paper-section { margin-top: 3mm; }
-  .paper-checkpoints { margin: 0; }
+  .paper-section { margin-top: 2.8mm; }
+  .paper-checkpoints { margin: 0; border: .8pt solid var(--print-line); }
   .paper-checkpoints > div {
     display: grid; grid-template-columns: 26mm minmax(0, 1fr); gap: 2mm;
-    border-top: .6pt solid var(--print-line); padding: 1.45mm 0;
+    border-top: .7pt solid var(--print-line); padding: 1.45mm 1.8mm;
   }
-  .paper-checkpoints dt { font-weight: 750; }
+  .paper-checkpoints > div:first-child { border-top: 0; }
+  .paper-checkpoints dt { font-weight: 750; color: var(--print-accent); }
   .paper-checkpoints dd { margin: 0; }
-  .paper-condition { background: var(--print-tint); padding: 1.3mm 2mm; font-weight: 700; }
-  .paper-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1mm 5mm; }
-  .paper-field { min-height: 9mm; padding-top: 1.15mm; border-bottom: .65pt solid var(--print-line); }
-  .sheet-foot { margin-top: auto; padding-top: 2.2mm; }
+  .paper-condition { background: var(--print-tint); border-left: 3pt solid var(--print-accent); padding: 1.3mm 2mm; font-weight: 700; margin-top: 1.2mm; }
+  .paper-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1mm 2.6mm; }
+  .paper-field { min-height: 9mm; padding: 1.1mm 1.8mm; border: .8pt solid var(--print-line); border-bottom: 1.2pt solid var(--print-accent); }
+  .sheet-foot { margin-top: auto; padding-top: 1.8mm; border-top: .8pt solid var(--print-line); }
   .sheet-foot a { color: var(--ink); text-decoration: none; }
-  .sheet-foot .references, .sheet-foot .stamp { color: var(--ink); font-size: 8.5pt; }
+  .sheet-foot .references, .sheet-foot .stamp { color: var(--ink); font-size: 7.8pt; }
 }

@@ -33,77 +33,92 @@ function krStockParse(item, shown, allowBlank = false) {
   return Number.isSafeInteger(stored) && stored <= 1_000_000_000 ? stored : NaN;
 }
 
-const KR_WAREHOUSE_ITEMS = {
-  water: ["drinking-water", "water-container", "portable-water-filter", "water-sanitation-kit"],
-  food: ["shelf-stable-meal", "canned-food", "butane-canister", "self-heating-ration"],
-  power: ["flashlight", "batteries", "radio", "power-bank"],
-  living: ["hygiene", "first-aid-kit", "backpack", "blanket"],
+// One flat pictogram per catalog item. The text label remains the accessible source of truth.
+const KR_READY_PICTOGRAMS = {
+  "drinking-water": "💧", "shelf-stable-meal": "🥘", "canned-food": "🥫", hygiene: "🧼",
+  flashlight: "🔦", batteries: "🔋", backpack: "🎒", blanket: "🧣",
+  "first-aid-kit": "🏥", "infant-supplies": "🧸", "prescription-preparedness": "💊", radio: "📻",
+  "water-container": "🚰", "portable-stove": "🍳", "butane-canister": "🛢", "self-heating-ration": "🍱",
+  candles: "🕯", "hand-warmers": "♨", "large-plastic-bags": "🛍", lighter: "🔥",
+  "solid-fuel": "🪵", "child-id-card": "🪪", "portable-solar-panel": "☀", "manual-can-opener": "🗝",
+  "insulated-bottle": "🧴", "cooler-ice-pack": "🧊", "portable-water-filter": "⚗", "storage-bin": "📦",
+  "long-storage-snacks": "🍪", "infant-formula": "🍼", "ready-to-feed-formula": "🥛", "infant-feeding-supplies": "🥄",
+  "power-bank": "🔌", "portable-power-station": "⚡", "charging-cables": "〰", "warm-clothes": "🧥",
+  raincoat: "☔", masks: "😷", "rubber-gloves": "🧤", "rubber-boots": "🥾",
+  "sealing-tape": "🧷", "emergency-contact-card": "☎", "family-photo": "🖼", "sanitation-bags": "🗑",
+  "thermal-mat": "🧘", "child-comfort-kit": "🧩", "basic-documents": "📁", "door-window-locks": "🔒",
+  "door-alarm": "🔔", "child-carrier": "👶", "transport-cart": "🛒", "water-sanitation-kit": "🧽",
+  "hot-water-bag": "🌡", "portable-radio-communication": "📡", "emergency-payment-check": "💳", "protective-goggles": "🥽",
 };
 
-const KR_WAREHOUSE_NAMES = {
-  "drinking-water": "생수", "water-container": "급수 용기", "portable-water-filter": "정수 필터",
-  "water-sanitation-kit": "위생 도구", "shelf-stable-meal": "간편식", "canned-food": "통조림",
-  "butane-canister": "부탄가스", "self-heating-ration": "발열식 비상식량",
-  flashlight: "손전등", batteries: "건전지", radio: "라디오", "power-bank": "보조배터리",
-  hygiene: "위생용품", "first-aid-kit": "구급품", backpack: "대피 가방", blanket: "담요",
+const KR_READY_SHORT_NAMES = {
+  "drinking-water": "생수", "shelf-stable-meal": "상온 간편식", "canned-food": "통조림", hygiene: "위생용품",
+  flashlight: "손전등", batteries: "건전지", backpack: "대피 가방", blanket: "담요",
+  "first-aid-kit": "구급 세트", "infant-supplies": "영유아 용품", "prescription-preparedness": "상비약", radio: "라디오",
+  "water-container": "급수 용기", "portable-stove": "휴대 버너", "butane-canister": "부탄가스", "self-heating-ration": "발열식 비상식량",
+  candles: "양초", "hand-warmers": "손난로", "large-plastic-bags": "대형 비닐", lighter: "라이터",
+  "solid-fuel": "고체 연료", "child-id-card": "아이 인식표", "portable-solar-panel": "태양광 패널", "manual-can-opener": "캔 따개",
+  "insulated-bottle": "보온병", "cooler-ice-pack": "냉매", "portable-water-filter": "정수 필터", "storage-bin": "보관함",
+  "long-storage-snacks": "간식", "infant-formula": "분유", "ready-to-feed-formula": "액상 분유", "infant-feeding-supplies": "수유 용품",
+  "power-bank": "보조배터리", "portable-power-station": "휴대 전원", "charging-cables": "충전선", "warm-clothes": "방한복",
+  raincoat: "우비", masks: "마스크", "rubber-gloves": "고무장갑", "rubber-boots": "장화",
+  "sealing-tape": "밀봉 테이프", "emergency-contact-card": "연락 카드", "family-photo": "가족 사진", "sanitation-bags": "위생 봉투",
+  "thermal-mat": "단열 매트", "child-comfort-kit": "아이 안심 꾸러미", "basic-documents": "서류", "door-window-locks": "문·창 잠금",
+  "door-alarm": "문 알림", "child-carrier": "아이 캐리어", "transport-cart": "운반 수레", "water-sanitation-kit": "물 위생 도구",
+  "hot-water-bag": "온수 주머니", "portable-radio-communication": "무전기", "emergency-payment-check": "비상 결제", "protective-goggles": "보호 안경",
 };
 
-function krWarehouseObject(item, group) {
-  const form = {
-    bottle: `<path d="M17 6h14v5l3 4v26c0 3-3 5-6 5H17c-3 0-5-2-5-5V15l5-4z" fill="#78c8db" stroke="#d6f6f9" stroke-width="1.3"/><path d="M28 12l6 3v26l-6 4z" fill="#367d9b"/><path d="M15 25h17v11H15z" fill="#e4f4ef"/><path d="M18 29h11" stroke="#348cad" stroke-width="2"/><path d="M17 4h14v6H17z" fill="#cee9ed"/>`,
-    jerrycan: `<path d="M9 13h29l5 5v25H9z" fill="#78bfc4" stroke="#d5f1ed" stroke-width="1.3"/><path d="M38 13l5 5v25l-5 3z" fill="#306879"/><path d="M14 12V7h16v5M19 7V4h6v3" fill="none" stroke="#d3efec" stroke-width="3"/><path d="M19 25h14M26 18v16" stroke="#d6f3ef" stroke-width="3"/>`,
-    filter: `<path d="M15 8h19l-4 11v20l-4 7h-7l-4-7V19z" fill="#72b8bf" stroke="#d3edeb" stroke-width="1.3"/><path d="M28 19l6-11-4 11v20l-4 7V24z" fill="#2e6676"/><path d="M13 8h23M18 31h11" stroke="#e0f6f1" stroke-width="3"/>`,
-    can: `<path d="M10 13h27v28q-1 5-13 5T10 41z" fill="#e3ae83" stroke="#f8dfbb" stroke-width="1.3"/><path d="M37 13h5v28q-1 3-5 4z" fill="#a86450"/><ellipse cx="24" cy="13" rx="14" ry="5" fill="#e1edf0" stroke="#fff" stroke-width="1.2"/><ellipse cx="24" cy="13" rx="8" ry="2.5" fill="#8daeb9"/><path d="M12 27h25" stroke="#fff0cf" stroke-width="7"/>`,
-    meal: `<path d="M11 10h26l5 34H9z" fill="#d3ad83" stroke="#f4dcc0" stroke-width="1.3"/><path d="M37 10l5 34-8 3 3-37z" fill="#936a55"/><path d="M12 10h25M15 20h18M16 27h15" stroke="#fff0d2" stroke-width="2"/><path d="M14 39h23" stroke="#b87d5a" stroke-width="3"/>`,
-    gas: `<path d="M13 12h25v29q-1 6-12 6T13 41z" fill="#d7a77d" stroke="#f4d1a8" stroke-width="1.3"/><path d="M38 12h5v29q0 4-5 5z" fill="#986b55"/><ellipse cx="25" cy="12" rx="12" ry="4" fill="#d9e5e6"/><path d="M20 7h11v5H20z" fill="#a8c1c5"/><path d="M24 4h5v4h-5z" fill="#e7f3f1"/><path d="M14 24h24" stroke="#bb534b" stroke-width="7"/>`,
-    battery: `<path d="M10 12h28v31H10z" fill="#8bbec5" stroke="#d7eff0" stroke-width="1.3"/><path d="M38 12l5 4v27l-5 3z" fill="#315e73"/><path d="M20 8h9v4h-9z" fill="#e8f4f3"/><path d="M20 24h9M24 20v9" stroke="#eaf8f4" stroke-width="3"/>`,
-    radio: `<path d="M8 19h31l5 5v19H8z" fill="#7198aa" stroke="#d6ecf0" stroke-width="1.3"/><path d="M39 19l5 5v19l-5 3z" fill="#2c5368"/><path d="M14 19L10 3" stroke="#d5e8ec" stroke-width="2"/><circle cx="20" cy="32" r="7" fill="#264b5f" stroke="#c7e5e8"/><path d="M31 29h8M31 34h8" stroke="#d4eff0" stroke-width="2"/>`,
-    flashlight: `<path d="M12 18h23l5 7-5 7H12z" fill="#8db6bd" stroke="#e4f3f0" stroke-width="1.3"/><path d="M35 18l5 7-5 7z" fill="#3b6d7b"/><path d="M10 16h6v18h-6z" fill="#b8d2d4"/><path d="M23 23h7" stroke="#d9edef" stroke-width="3"/>`,
-    medical: `<path d="M9 17h29l5 5v23H9z" fill="#8dbeb0" stroke="#e4f4e9" stroke-width="1.3"/><path d="M38 17l5 5v23l-5 3z" fill="#3d716e"/><path d="M17 17v-7h18v7" fill="none" stroke="#dcefe5" stroke-width="3"/><path d="M23 27h11M28 22v11" stroke="#f3fbf8" stroke-width="4"/>`,
-    pack: `<path d="M15 11h23l5 31-7 5H11z" fill="#a5b5a1" stroke="#e3ebdd" stroke-width="1.3"/><path d="M38 11l5 31-7 5V16z" fill="#5d746b"/><path d="M17 11V7h17v4M16 27h22" fill="none" stroke="#dce8dd" stroke-width="3"/>`,
-    crate: `<path d="M8 16h30v27H8z" fill="#8ea5a4" stroke="#e5eeea" stroke-width="1.3"/><path d="M38 16l6 5v22l-6 4z" fill="#446b72"/><path d="M8 16l7-5h30l-7 5z" fill="#c6d7d0"/><path d="M15 23h18M15 30h18" stroke="#d8ebe5" stroke-width="2"/>`,
-  };
-  const kind = item.id === "drinking-water" ? "bottle" : item.id === "water-container" ? "jerrycan" : item.id === "portable-water-filter" ? "filter" :
-    item.id === "canned-food" ? "can" : item.id === "butane-canister" ? "gas" : item.id === "self-heating-ration" || item.id === "shelf-stable-meal" ? "meal" :
-    item.id === "flashlight" ? "flashlight" : item.id === "radio" ? "radio" : ["batteries", "power-bank", "portable-power-station"].includes(item.id) ? "battery" :
-    item.id === "first-aid-kit" ? "medical" : item.id === "backpack" ? "pack" : group === "water" ? "filter" : group === "food" ? "meal" : group === "power" ? "battery" : "crate";
-  return `<svg class="cargo-object" viewBox="0 0 52 52" aria-hidden="true" focusable="false"><g class="cargo-ghost">${form[kind]}</g><g class="cargo-stock">${form[kind]}</g></svg>`;
+const KR_WATER_BOTTLE_ART = `<svg viewBox="0 0 48 48" width="44" height="44" focusable="false" aria-hidden="true"><rect x="18" y="3" width="12" height="6" rx="1" fill="#d7f1f5"/><path d="M18 10h12l4 5v27a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3V15z" fill="#7bd2df" stroke="#d7f1f5" stroke-width="1.5"/><rect x="15" y="22" width="18" height="12" fill="#eaf8f6"/><path d="M19 28h10" stroke="#27829a" stroke-width="2"/></svg>`;
+
+function krReadyItems(snapshot) {
+  if (!snapshot) return [];
+  return snapshot.catalog.filter((item) => {
+    const record = snapshot.items[item.id];
+    const status = snapshot.summary?.items?.[item.id];
+    return Boolean(record?.applicable && status?.state === "sufficient" && status?.confirmed &&
+      status?.verified_on && status?.stale === false && status?.target > 0 &&
+      status?.usable >= status.target && !(status?.expiring_quantity > 0) &&
+      !(status?.expired_quantity > 0) && !(status?.unknown_date_quantity > 0));
+  });
 }
 
-function krWarehouseBay(group, snapshot, escape) {
-  const catalog = snapshot?.catalog || [];
-  const byId = new Map(catalog.map((item) => [item.id, item]));
-  const preferred = KR_WAREHOUSE_ITEMS[group].map((id) => byId.get(id)).filter(Boolean);
-  const recorded = catalog.filter((item) => krSurvivalGroup(item) === group && snapshot.items[item.id]);
-  const chosen = [...new Map([...recorded, ...preferred].map((item) => [item.id, item])).values()].slice(0, 4);
-  if (!snapshot) return `<span class="rack" aria-hidden="true"><span class="rack-empty">재고를 불러오는 중</span></span>`;
-  const rows = chosen.map((item) => {
+function krReadyGrid(snapshot, escape) {
+  const ready = krReadyItems(snapshot);
+  if (!snapshot) return `<p class="ready-empty">재고를 불러오는 중입니다.</p>`;
+  if (!ready.length) return `<p class="ready-empty">재고가 완비로 확인된 품목이 없습니다. 아래에서 목표량·기한·실사를 기록하세요.</p>`;
+  return `<div class="ready-grid" role="list">${ready.map((item) => {
     const status = snapshot.summary.items[item.id];
-    const record = snapshot.items[item.id];
-    const target = status.target;
-    const active = record?.applicable ?? !["household", "optional"].includes(item.tier);
-    const inspectionCurrent = status.stale === false || (status.stale === undefined && status.state !== "needs_check");
-    const known = Boolean(active && status.confirmed && status.verified_on && inspectionCurrent && target > 0);
-    const ratio = known ? Math.min(1, Math.max(0, status.usable / target)) : 0;
-    const dateLabel = item.date_label || "표시 기한";
-    const warnings = (active ? [
-      status.expired_quantity > 0 ? `${dateLabel} 경과 ${krStockFormat(item, status.expired_quantity)}${krStockUnit(item)}` : "",
-      status.expiring_quantity > 0 ? `${dateLabel} 임박 ${krStockFormat(item, status.expiring_quantity)}${krStockUnit(item)}` : "",
-      status.unknown_date_quantity > 0 ? `${dateLabel} 미확인 ${krStockFormat(item, status.unknown_date_quantity)}${krStockUnit(item)}` : "",
-    ] : []).filter(Boolean).join(" · ");
-    const label = !active ? "선택 안 함" : target === null ? "목표 미설정" : target === 0 ? "목표 0" : !known ? "확인 필요" : `${krStockFormat(item, status.usable)}/${krStockFormat(item, target)} ${krStockUnit(item)}${status.state === "needs_check" ? " · 날짜 확인 필요" : ""}`;
-    const slotCount = item.id === "drinking-water" ? 12 : 4;
-    const slots = Array.from({ length: slotCount }, (_, index) => {
-      const fill = known ? Math.max(0, Math.min(100, ratio * slotCount * 100 - index * 100)) : 0;
-      return `<span class="cargo ${!active ? "inactive" : known ? "" : "unknown"}" style="--cargo-fill:${fill.toFixed(1)}%" aria-hidden="true">${krWarehouseObject(item, group)}</span>`;
-    }).join("");
-    return `<span class="rack-row ${item.id === "drinking-water" ? "water-row" : ""} ${warnings ? "rack-warning" : ""}" title="${escape(item.name)} · ${escape(label)}${warnings ? ` · ${escape(warnings)}` : ""}">` +
-      `<span class="rack-name">${escape(KR_WAREHOUSE_NAMES[item.id] || item.name)}</span>` +
-      `<span class="rack-slots" aria-hidden="true">${slots}</span>` +
-      `<span class="rack-meta">${escape(warnings || label)}</span></span>`;
-  }).join("");
-  const recordedCount = catalog.filter((item) => krSurvivalGroup(item) === group && snapshot.items[item.id]).length;
-  return `<span class="rack">${rows || `<span class="rack-empty">대표 품목 없음</span>`}</span><span class="rack-caption">기록한 품목 ${recordedCount}개 · 선반은 최대 4개 표시</span>`;
+    const pictogram = item.id === "drinking-water" ? KR_WATER_BOTTLE_ART : KR_READY_PICTOGRAMS[item.id] || "◈";
+    return `<div class="ready-item" role="listitem" aria-label="${escape(item.name)} · ${escape(krStockText(item, status.usable))} / ${escape(krStockText(item, status.target))}"><span class="ready-art" aria-hidden="true">${pictogram}</span>` +
+      `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(krStockText(item, status.usable))} / ${escape(krStockText(item, status.target))}</span></div>`;
+  }).join("")}</div>`;
+}
+
+const KR_RECORD_MISSIONS = [
+  { id: "water", title: "마실 물 기록", ids: ["drinking-water"], mode: "all", art: "💧" },
+  { id: "food", title: "먹을거리 기록", ids: ["shelf-stable-meal", "canned-food", "self-heating-ration"], mode: "any", art: "🥫" },
+  { id: "light", title: "빛·전원 기록", ids: ["flashlight", "batteries", "power-bank"], mode: "any", art: "🔦" },
+  { id: "care", title: "구급품 기록", ids: ["first-aid-kit"], mode: "all", art: "🏥" },
+];
+
+function krMissionState(snapshot) {
+  const readyIds = new Set(krReadyItems(snapshot).map((item) => item.id));
+  return KR_RECORD_MISSIONS.map((mission) => {
+    const count = mission.ids.filter((id) => readyIds.has(id)).length;
+    return { ...mission, count, complete: mission.mode === "any" ? count > 0 : count === mission.ids.length };
+  });
+}
+
+function krMissionView(snapshot, escape, animate = false) {
+  const missions = krMissionState(snapshot);
+  const complete = missions.filter((mission) => mission.complete).length;
+  const names = ["기록 시작", "기록 진행", "기록 확장", "기록 강화", "4분야 기록"];
+  return `<section class="mission-panel" aria-label="비축 기록 미션"><div class="mission-head"><h3>기록 미션</h3><strong>준비 기록 단계 ${complete}/4 · ${names[complete]}</strong></div>` +
+    `<div class="mission-progress" role="progressbar" aria-label="준비 기록 단계" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${complete}"><span style="width:${complete * 25}%"></span></div>` +
+    `<p>이 단계는 재고 기록과 실사 상태를 보여줍니다. 생존 확률을 뜻하지 않습니다.</p>` +
+    `<div class="mission-grid">${missions.map((mission) => `<div class="mission-item ${mission.complete ? `done${animate ? " unlock" : ""}` : "pending"}">` +
+      `<span class="mission-art" aria-hidden="true">${mission.complete ? mission.art : "○"}</span>` +
+      `<span class="mission-title">${escape(mission.title)}</span><span class="mission-state">${mission.complete ? "기록 달성" : mission.mode === "any" ? "대상 중 완비 0개" : `완비 ${mission.count}/${mission.ids.length}개`}</span></div>`).join("")}</div></section>`;
 }
 
 class KrSurvivalKitInventoryCard extends HTMLElement {
@@ -120,11 +135,66 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._focusOptionalSearch = false;
     this._categoryFilter = "all";
     this._statusFilter = "attention";
+    this._quizData = null;
+    this._quizSources = {};
+    this._quizAnswers = {};
+    this._quizIndex = 0;
   }
 
   setConfig(config) {
     this._config = config || {};
+    try {
+      const data = typeof this._config.quiz_data === "string" ? JSON.parse(this._config.quiz_data) : this._config.quiz_data;
+      this._quizData = data?.schema_version === 1 && Array.isArray(data?.questions) && Array.isArray(data?.levels) ? data : null;
+      const guideData = typeof this._config.guide_data === "string" ? JSON.parse(this._config.guide_data) : this._config.guide_data;
+      const sources = this._config.quiz_sources || guideData?.sources || data?.sources || {};
+      this._quizSources = typeof sources === "string" ? JSON.parse(sources) : sources;
+    } catch (_error) {
+      this._quizData = null;
+      this._quizSources = {};
+    }
+    let saved = null;
+    try { saved = JSON.parse(window.localStorage?.getItem("kr_survival_kit_quiz_v1") || "null"); } catch (_error) { /* local storage can be unavailable */ }
+    this._quizAnswers = saved?.version === this._quizData?.content_version && saved?.answers && typeof saved.answers === "object" ? saved.answers : {};
+    this._quizIndex = Math.max(0, this._quizData?.questions?.findIndex((question) => !this._quizAnswers[question.id]) ?? 0);
     this._render();
+  }
+
+  _saveQuizAnswers() {
+    if (!this._quizData) return;
+    try {
+      window.localStorage?.setItem("kr_survival_kit_quiz_v1", JSON.stringify({
+        version: this._quizData.content_version, answers: this._quizAnswers,
+      }));
+    } catch (_error) { /* private browsing may disable local storage; the quiz still works in memory */ }
+  }
+
+  _quizView(escape) {
+    const data = this._quizData;
+    if (!data?.questions?.length) return `<section class="quiz-panel" aria-label="상황 판단 연습"><h3>상황 판단 연습</h3><p>학습 퀴즈 자료가 연결되지 않았습니다. 상황 안내에서 공식 행동요령을 확인하세요.</p></section>`;
+    const index = Math.min(this._quizIndex, data.questions.length - 1);
+    const question = data.questions[index];
+    const level = data.levels.find((entry) => entry.id === question.level_id);
+    const selected = this._quizAnswers[question.id];
+    const correct = data.questions.filter((entry) => this._quizAnswers[entry.id] === entry.answer_id).length;
+    const answered = data.questions.filter((entry) => this._quizAnswers[entry.id]).length;
+    const choice = question.choices.find((entry) => entry.id === selected);
+    const answer = question.choices.find((entry) => entry.id === question.answer_id);
+    const sourceLinks = (question.source_ids || []).map((id) => {
+      const source = this._quizSources[id];
+      let url;
+      try { url = new URL(source?.url); } catch (_error) { return ""; }
+      if (url.protocol !== "https:") return "";
+      return `<a href="${escape(url.href)}" target="_blank" rel="noopener noreferrer">${escape(source.publisher || source.title || id)}</a>`;
+    }).filter(Boolean).join(" · ");
+    return `<section class="quiz-panel" aria-label="상황 판단 연습"><div class="quiz-head"><h3>${escape(data.title || "상황 판단 연습")}</h3><span>학습 진도 ${answered}/${data.questions.length} · 정답 ${correct}/${data.questions.length}</span></div>` +
+      `<p>학습 기록은 이 브라우저에만 저장됩니다. 실제 대피 판단이나 생존 가능성 점수가 아닙니다.</p>` +
+      `<div class="quiz-question"><small>${escape(level?.title || "학습 문제")} · ${index + 1}/${data.questions.length}</small><h4>${escape(question.prompt)}</h4>` +
+      `<div class="quiz-choices">${question.choices.map((entry) => `<button type="button" data-quiz-choice="${escape(entry.id)}" aria-pressed="${selected === entry.id}">${escape(entry.text)}</button>`).join("")}</div>` +
+      (choice ? `<div class="quiz-feedback" role="status"><p><strong>${selected === question.answer_id ? "맞았습니다." : "다시 확인해 보세요."}</strong> ${escape(choice.feedback)}</p>` +
+        `<p><strong>정답: ${escape(answer?.text || "자료 확인 필요")}</strong> ${escape(answer?.feedback || "")}</p>` +
+        `<p class="quiz-sources">${sourceLinks ? `공식 출처: ${sourceLinks}` : `<a href="${escape(this._config?.guide_path || "/kr-survival-kit/guide")}">상황 안내의 출처 확인</a>`}</p></div>` : "") +
+      `<div class="quiz-nav"><button type="button" data-quiz-nav="prev" ${index === 0 ? "disabled" : ""}>이전</button><button type="button" data-quiz-nav="next" ${index === data.questions.length - 1 ? "disabled" : ""}>다음 문제</button></div></div></section>`;
   }
 
   set hass(hass) {
@@ -225,6 +295,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       applicable: saved?.applicable ?? !["household", "optional"].includes(item.tier),
       target: saved?.target === null || saved?.target === undefined ? "" : krStockFormat(item, saved.target),
       lots: (saved?.lots || []).map((lot) => ({ ...lot, quantity: krStockFormat(item, lot.quantity) })),
+      review_interval_days: saved?.review_interval_days ?? "",
       confirm: false,
     };
     this._message = "수량을 직접 확인했을 때만 실사 확인을 선택하세요.";
@@ -237,11 +308,13 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const root = this.shadowRoot;
     this._draft.applicable = root.querySelector("#applicable").checked;
     this._draft.target = root.querySelector("#target").value;
+    this._draft.review_interval_days = root.querySelector("#review-interval").value;
     this._draft.confirm = root.querySelector("#confirm").checked;
     this._draft.lots = [...root.querySelectorAll(".lot-edit")].map((row) => ({
       lot_id: row.querySelector(".lot-id").value.trim(),
       quantity: row.querySelector(".quantity").value,
       expires_on: row.querySelector(".expiry")?.value || null,
+      received_on: row.querySelector(".received-on")?.value || null,
     }));
   }
 
@@ -255,9 +328,12 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       lot_id: lot.lot_id,
       quantity: krStockParse(item, lot.quantity),
       expires_on: item.date_kind === "expiry" ? lot.expires_on : null,
+      received_on: lot.received_on || null,
     }));
+    const reviewInterval = this._draft.review_interval_days === "" ? null : Number(this._draft.review_interval_days);
     if ((target !== null && (!Number.isInteger(target) || target < 0)) ||
-        lots.some((lot) => !lot.lot_id || !Number.isInteger(lot.quantity) || lot.quantity < 0)) {
+        lots.some((lot) => !lot.lot_id || !Number.isInteger(lot.quantity) || lot.quantity < 0) ||
+        (reviewInterval !== null && (!Number.isInteger(reviewInterval) || reviewInterval < 1 || reviewInterval > 3650))) {
       this._message = item.id === "drinking-water"
         ? "생수는 0~1,000,000 L, 소수 셋째 자리까지 입력하고 구매 단위 이름을 적으세요."
         : "목표량과 수량은 0 이상의 정수로 입력하고 구매 단위 이름을 적으세요.";
@@ -272,6 +348,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         applicable: this._draft.applicable,
         target,
         lots,
+        review_interval_days: reviewInterval,
         confirm: this._draft.confirm,
       });
       this._draft = null;
@@ -354,6 +431,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       const noteCoveredByBasis = item.note && recommendation?.basis?.includes(item.note);
       const lotText = lots.length ? lots.map((lot) =>
         `<li>${escape(lot.lot_id)} · ${escape(krStockText(item, lot.quantity))}` +
+        ` · 입고일 ${escape(lot.received_on || "미상")}` +
         (item.date_kind === "expiry" ? ` · ${escape(dateLabel)} ${escape(lot.expires_on || "미확인")}` : "") + "</li>"
       ).join("") : "<li>기록된 구매 단위 없음</li>";
       return `<article class="item" data-name="${escape(item.name)}"><div class="item-head"><div class="item-title"><h3>${escape(item.name)}</h3>` +
@@ -368,7 +446,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         (item.note && !noteCoveredByBasis ? `<p>${escape(item.note)}</p>` : "") +
         (recommendation ? `<p>계산 근거: ${escape(recommendation.basis)}</p>` : "") +
         (item.id === "water-container" && recommendation ? `<p>안전수 보관 용량 예시와 급수 용기 개수 목표는 단위가 다릅니다.</p>` : "") +
-        (saved ? `<p>기록 총수량 ${escape(krStockText(item, recorded))}${item.date_kind === "expiry" ? " (표시 기한 미확인·경과분 포함)" : ""} · 가구 목표 ${status.target === null ? "미설정" : escape(krStockText(item, status.target))} · 마지막 실사 ${escape(status.verified_on || "기록 없음")}${status.confirmed ? "" : " · 현재 수량 미확인"}</p><ul>${lotText}</ul>` : "") +
+        (saved ? `<p>기록 총수량 ${escape(krStockText(item, recorded))}${item.date_kind === "expiry" ? " (표시 기한 미확인·경과분 포함)" : ""} · 가구 목표 ${status.target === null ? "미설정" : escape(krStockText(item, status.target))} · 마지막 실사 ${escape(status.verified_on || "기록 없음")}${status.confirmed ? "" : " · 현재 수량 미확인"}</p><p>점검 주기 ${escape(status.review_interval_days ?? snapshot.default_review_interval_days ?? 30)}일 · 다음 점검일 ${escape(status.next_review_on || "미정")}</p><ul>${lotText}</ul>` : "") +
         `</details></article>`;
     }).join("");
     const regularItems = filteredItems.filter((item) => item.tier !== "optional");
@@ -397,26 +475,21 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       (draftRecommendation ? `<p class="recommendation">준비량 예시: <strong>${escape(draftRecommendation.quantity)}</strong><br>${escape(draftRecommendation.basis)}</p>` : "") +
       `<label><input id="applicable" type="checkbox" ${this._draft.applicable ? "checked" : ""}> 우리 가구에 해당</label>` +
       `<label for="target">가구 목표량 (${escape(krStockUnit(draftItem))})</label><input id="target" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(this._draft.target)}" placeholder="미설정">` +
+      `<label for="review-interval">재고 점검 주기 (일)</label><input id="review-interval" type="number" min="1" max="3650" step="1" value="${escape(this._draft.review_interval_days)}" placeholder="기본 ${escape(snapshot.default_review_interval_days ?? 30)}일"><p class="item-note">비우면 기본 ${escape(snapshot.default_review_interval_days ?? 30)}일입니다. 점검일은 소비기한이 아닙니다.</p>` +
+      (draftItem.id === "drinking-water" ? `<p class="item-note">생수의 일반 유통기한은 제조일 기준 6개월이며 승인 제품은 최장 2년입니다. 입고일로 기한을 계산하지 말고 포장 표시일을 입력하세요.</p>` : "") +
       `<h4>구매 단위별 재고</h4>` + this._draft.lots.map((lot, index) =>
         `<div class="lot-edit"><label>구매 단위 이름<input class="lot-id" value="${escape(lot.lot_id)}" maxlength="80" required></label>` +
         `<label>수량 (${escape(krStockUnit(draftItem))})<input class="quantity" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(lot.quantity)}" required></label>` +
-        (draftItem.date_kind === "expiry" ? `<label>${escape(draftItem.date_label || "표시 기한")}<input class="expiry" type="date" value="${escape(lot.expires_on || "")}"></label>` : "") +
+        `<label>입고일 (선택)<input class="received-on" type="date" value="${escape(lot.received_on || "")}"></label>` +
+        (draftItem.date_kind === "expiry" ? `<label>제품 ${escape(draftItem.date_label || "표시 기한")} (직접 입력)<input class="expiry" type="date" value="${escape(lot.expires_on || "")}"></label>` : "") +
         `<button type="button" data-remove="${index}">이 단위 삭제</button></div>`
       ).join("") + `<button type="button" id="add-lot">구매 단위 추가</button>` +
       `<label class="confirm"><input id="confirm" type="checkbox" ${this._draft.confirm ? "checked" : ""}> 실제 재고를 확인했고 오늘 실사했습니다</label>` +
       `<div class="actions"><button type="submit" class="primary">저장</button><button type="button" id="cancel">취소</button>` +
       `<button type="button" id="delete">기록 삭제</button></div></form>` : "";
-    const moduleLabels = { water: "물", food: "식품·조리", power: "전원·통신", living: "생활·보호" };
-    const warehouseSignature = snapshot ? JSON.stringify(snapshot.catalog.map((item) => {
-      const status = snapshot.summary.items[item.id];
-      return [item.id, status?.usable, status?.target, status?.state, status?.confirmed, status?.verified_on, status?.expiring_quantity];
-    })) : "";
-    const animateWarehouse = Boolean(snapshot && warehouseSignature !== this._warehouseSignature);
-    this._warehouseSignature = warehouseSignature;
-    const modules = Object.entries(moduleLabels).map(([group, label]) =>
-      `<button type="button" class="module warehouse-bay ${animateWarehouse ? "bay-updated" : ""}" data-category="${group}" aria-pressed="${this._categoryFilter === group}">` +
-      `<span class="bay-header"><span class="module-label">${label}</span><span class="bay-arrow" aria-hidden="true">↗</span></span>` +
-      `${krWarehouseBay(group, snapshot, escape)}</button>`
+    const categoryLabels = { water: "물", food: "식품·조리", power: "전원·통신", living: "생활·보호" };
+    const categoryButtons = Object.entries(categoryLabels).map(([group, label]) =>
+      `<button type="button" data-category="${group}" aria-pressed="${this._categoryFilter === group}">${label}</button>`
     ).join("");
     const counts = snapshot?.summary;
     const signals = counts ? `<div class="signals" aria-label="재고 점검 현황">` +
@@ -429,6 +502,9 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     ).join("");
     const listTitle = statusLabels[this._statusFilter] || "품목";
     const guidePath = escape(this._config?.guide_path || "/kr-survival-kit/guide");
+    const missionSignature = krMissionState(snapshot).map((mission) => mission.complete).join("");
+    const animateMission = Boolean(snapshot && missionSignature !== this._missionSignature);
+    this._missionSignature = missionSignature;
     this.shadowRoot.innerHTML = `<style>
       :host{display:block;color:var(--primary-text-color,#173048);font-family:system-ui,-apple-system,"Malgun Gothic",sans-serif}
       ha-card{display:block;padding:1.2rem;background:var(--card-background-color,#fff);border-radius:14px}
@@ -454,11 +530,6 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .guide-link{display:inline-flex;align-items:center;min-height:44px;padding:.55rem .9rem;border:1px solid #83cadb;border-radius:8px;color:#e4f8fb;font-weight:700;text-decoration:none}
       .guide-link:hover{text-decoration:underline}.guide-link:focus-visible{outline:3px solid #f2c77c;outline-offset:3px}
       .signals{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.25rem}.signals button{display:flex;gap:.7rem;align-items:baseline;background:rgba(7,19,29,.42);color:#eef7f8;border:1px solid #668b9c;min-width:6.5rem;justify-content:space-between}.signals strong{font-size:1.3rem;font-variant-numeric:tabular-nums}.signals button:hover{background:#2a5369}
-      .scene{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;align-items:stretch;perspective:900px}
-      .module{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;min-width:0;min-height:174px;padding:.35rem .25rem .8rem;border:1px solid #678a98;border-radius:12px;background:linear-gradient(145deg,#365364 0%,#1a2d3b 66%,#112431 100%);color:#f0fafb;box-shadow:inset 1px 1px 0 rgba(219,241,246,.22),0 11px 0 #0d1a24,0 18px 18px rgba(3,12,18,.38);transform:rotateX(6deg);transition:transform .18s ease,box-shadow .18s ease}
-      .module::before{content:"";position:absolute;left:12%;right:12%;top:63%;height:18%;background:linear-gradient(180deg,#32556a,#162d3d);border:1px solid #5c8395;transform:skewX(-18deg);box-shadow:0 9px 12px rgba(0,0,0,.28)}
-      .module:hover{transform:translateY(-3px) rotateX(6deg)}.module[aria-pressed="true"]{border-color:#a5e7f1;box-shadow:inset 0 0 0 2px #83d7e8,0 11px 0 #0d1a24,0 19px 22px rgba(3,12,18,.4)}
-      .module-art{position:relative;z-index:1;display:block;width:100%;max-width:145px}.module-art svg{display:block;width:100%;height:auto;filter:drop-shadow(2px 5px 3px rgba(0,0,0,.22))}.module-label{position:relative;z-index:1;font-size:.92rem;font-weight:750;line-height:1.2;text-align:center}
       .inventory-panel{padding:clamp(1rem,2.4vw,2rem);background:var(--card-background-color,#fff);color:var(--primary-text-color,#173048)}
       .inventory-heading{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}.inventory-heading h2{margin:0;font-size:1.32rem;color:var(--primary-text-color,#173048)}
       .inventory-heading p{margin:0}.filter-bar{display:flex;gap:.45rem;flex-wrap:wrap;margin:1rem 0}.filter-bar button{border-color:var(--divider-color,#9cabb2);border-radius:999px;padding:.45rem .85rem}.filter-bar button[aria-pressed="true"]{background:#176d86;border-color:#176d86;color:#fff}
@@ -468,11 +539,9 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .item-more{margin-top:.45rem}.item-more summary{font-weight:600;font-size:.88rem}.item-more p{margin:.6rem 0}.items>#optional-items{grid-column:1/-1}.items>#optional-items>.item{border-top:1px solid var(--divider-color,#d7e1e7)}
       .empty{grid-column:1/-1;padding:1.25rem;border:1px dashed var(--divider-color,#8da3ad);border-radius:10px}.items>form{grid-column:1/-1;width:100%;box-sizing:border-box}.inventory-panel form{max-width:48rem;margin:0 auto}
       button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #e0a950;outline-offset:2px}
-      @media(max-width:900px){.hero{grid-template-columns:1fr}.scene{max-width:760px}}
-      @media(max-width:620px){.scene{grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem}.module{min-height:148px}.items{grid-template-columns:1fr}.hero{padding:1.15rem}.inventory-panel{padding:1rem}}
-      @media(prefers-reduced-motion:reduce){.module{transition:none}.module:hover{transform:rotateX(6deg)}}
+      @media(max-width:620px){.items{grid-template-columns:1fr}.hero{padding:1.15rem}.inventory-panel{padding:1rem}}
       @media(prefers-color-scheme:dark){.shortage{color:#ff9d94}.needs_check{color:#f0b76d}.sufficient{color:#78d8d2}}
-      @media(max-width:400px){.item-head{flex-wrap:wrap}.module{min-height:132px}.scene{gap:.65rem}}
+      @media(max-width:400px){.item-head{flex-wrap:wrap}}
       .hero{position:relative;display:block;background:linear-gradient(135deg,#1b3a4c,#102432 65%,#0d1c2a);transition:background .5s ease}
       .hero[data-daypart="day"]{background:linear-gradient(135deg,#27566a,#173b4e 55%,#132b3a)}
       .hero[data-daypart="night"]{background:linear-gradient(135deg,#172e42,#0b1c2d 62%,#0b1724)}
@@ -481,31 +550,38 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .hero[data-weather="snow"]::after{opacity:.17;background:radial-gradient(circle at 15% 22%,#fff 0 2px,transparent 3px),radial-gradient(circle at 78% 55%,#fff 0 2px,transparent 3px),radial-gradient(circle at 46% 81%,#fff 0 2px,transparent 3px);background-size:110px 100px;animation:krSkyDrift 28s linear infinite}
       .hero>*{position:relative;z-index:1}.hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
       .atmosphere{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.atmosphere span{display:inline-flex;min-height:35px;align-items:center;padding:5px 10px;border:1px solid #79b3c082;border-radius:8px;background:#07192768;color:#d9f1f4;font-size:.84rem;font-variant-numeric:tabular-nums}
-      .atmosphere-note{font-size:.76rem!important;color:#accbd5!important;margin-top:0!important}.scene{margin-top:25px;max-width:none;gap:13px;perspective:1000px}
-      .warehouse-bay{display:block;text-align:left;min-height:0;padding:12px 12px 10px;border-color:#6c9dad;border-radius:11px;background:linear-gradient(130deg,#34586c 0,#18394d 48%,#112b3a 100%);box-shadow:inset 1px 1px 0 #ffffff45,4px 6px 0 #0b1b26,8px 14px 15px #020e17a6;transform:rotateX(3deg);transition:transform .2s ease,border-color .2s ease}
-      .warehouse-bay::before{content:none}.warehouse-bay:hover{transform:translateY(-3px) rotateX(3deg)}.warehouse-bay[aria-pressed="true"]{border-color:#a7e9f1;box-shadow:inset 0 0 0 2px #89dce8,4px 6px 0 #0b1b26,8px 14px 15px #020e17a6}
-      .bay-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #81afbf77;padding:0 2px 10px;margin-bottom:3px}.warehouse-bay .module-label{text-align:left;font-size:1rem;color:#f3fafd}.bay-arrow{font-size:1.2rem;color:#abdee6}
-      .rack{display:grid;gap:2px;min-height:188px}.rack-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(74px,1fr);grid-template-rows:auto auto;gap:1px 6px;align-items:center;min-width:0;padding:7px 3px 8px;border-bottom:4px solid #436a7d;background:linear-gradient(180deg,#152e3e33,#07182766);box-shadow:0 4px 0 #071825}.rack-row:last-child{margin-bottom:4px}
-      .rack-name{grid-column:1;font-size:.76rem;font-weight:750;line-height:1.2;color:#edf9fa;overflow-wrap:anywhere}.rack-meta{grid-column:1;font-size:.66rem;color:#bdd3db;line-height:1.25;overflow-wrap:anywhere}.rack-warning .rack-meta{color:#ffd187;font-weight:800}.rack-warning{border-left:3px solid #ebad60;padding-left:5px}
-      .rack-slots{display:flex;grid-column:2;grid-row:1/3;gap:3px;align-items:end;justify-content:flex-end;min-width:0}.cargo{position:relative;display:block;flex:1;max-width:24px;height:22px;border:1px solid #66899a;border-radius:2px;background:linear-gradient(135deg,#1c3444,#112536);transform:skewY(-6deg);box-shadow:2px 3px 0 #071621}.cargo::after{content:"";position:absolute;left:0;bottom:0;top:0;width:var(--cargo-fill);background:linear-gradient(130deg,#b6e6e8,#4eb3c8 60%,#32849c);box-shadow:inset 1px 1px #eefbfc99}.cargo.unknown{border-style:dashed;background:repeating-linear-gradient(135deg,#243d4e 0 4px,#1b3141 4px 8px)}.cargo.inactive{opacity:.35}.rack-caption{display:block;margin-top:8px;color:#c6dce3;font-size:.69rem;text-align:right}.rack-empty{display:grid;place-items:center;color:#bfd5dd;font-size:.78rem}
-      .cargo::after{border-radius:inherit}.warehouse-bay[data-category="water"] .cargo{max-width:17px;height:26px;border-radius:5px 5px 3px 3px}.warehouse-bay[data-category="water"] .cargo::before{content:"";position:absolute;top:-5px;left:28%;width:44%;height:4px;border:1px solid #88aab6;border-radius:2px 2px 0 0;background:#9ec4cf}.warehouse-bay[data-category="food"] .cargo{height:20px;border-radius:4px 4px 6px 6px}.warehouse-bay[data-category="food"] .cargo::before{content:"";position:absolute;top:-3px;left:-1px;right:-1px;height:5px;border:1px solid #819eaa;border-radius:50%;background:#477188}.warehouse-bay[data-category="power"] .cargo{max-width:19px;height:23px;border-radius:3px}.warehouse-bay[data-category="power"] .cargo::before{content:"";position:absolute;top:-4px;left:35%;width:30%;height:3px;background:#9cc9d1}.warehouse-bay[data-category="living"] .cargo::before{content:"+";position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);font-size:13px;font-weight:900;color:#d8f2f4a8}
-      .warehouse-bay .rack-slots .cargo{flex:1;max-width:35px;height:34px;border:0;border-radius:0;background:none;transform:none;box-shadow:none}.rack-slots .cargo::before,.rack-slots .cargo::after{content:none!important}.rack-slots .cargo-object{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(2px 3px 2px #06131cb3)}.cargo-ghost{opacity:.12;filter:grayscale(1)}.cargo-stock{clip-path:inset(0 calc(100% - var(--cargo-fill)) 0 0);filter:drop-shadow(0 0 2px #9de7f0b3)}.cargo.unknown .cargo-ghost{opacity:.42}.cargo.inactive .cargo-ghost{opacity:.18}.cargo.inactive .cargo-stock{opacity:0}
-      .water-row .rack-slots{grid-column:1/-1;grid-row:3;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));justify-content:stretch;width:100%;gap:2px;margin-top:5px}.warehouse-bay .water-row .cargo{min-width:0;max-width:none;height:27px}.water-row .rack-name{grid-column:1}.water-row .rack-meta{grid-column:2;grid-row:1;text-align:right;font-size:.72rem}.water-row{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr)}.rack-row{background:linear-gradient(160deg,#2a45554d,#07182766 58%);border-bottom:5px solid #49778b;box-shadow:0 4px 0 #071825,0 8px 8px #020d17a6}.rack-row::after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:4px;background:linear-gradient(90deg,#a3cad599,#385f76,#1b394c)}
+      .atmosphere-note{font-size:.76rem!important;color:#accbd5!important;margin-top:0!important}
       .rotation-meta{font-size:.83rem;color:#8b5c0b;font-weight:650}
-      .scene-hint{display:none;color:#bbd3db!important;font-size:.78rem!important;margin:12px 2px 0!important}@keyframes krStockIn{from{transform:translateY(-15px) rotate(-5deg);opacity:.2}to{transform:translateY(0) rotate(0);opacity:1}}@keyframes krSkyDrift{from{background-position:0 0}to{background-position:100px 180px}}.bay-updated .cargo-stock{animation:krStockIn .55s cubic-bezier(.17,.84,.31,1) both}
-      @media(max-width:900px){.scene{max-width:none}}@media(max-width:620px){.scene{display:flex;overflow-x:auto;overscroll-behavior-inline:contain;scroll-snap-type:x mandatory;padding:2px 8px 18px 2px}.warehouse-bay{flex:0 0 min(83%,290px);min-width:230px;scroll-snap-align:start;min-height:0}.water-row .rack-meta{grid-column:1/-1;grid-row:2;text-align:left}.scene-hint{display:block}.hero{padding:1.15rem}}
-      @media(max-width:290px){.warehouse-bay{flex-basis:94%}.rack-row{grid-template-columns:1fr}.rack-slots{grid-column:1;grid-row:auto;justify-content:flex-start;margin:5px 0}.rack-caption{text-align:left}}
-      @media(prefers-reduced-motion:reduce){.hero,.warehouse-bay{transition:none}.warehouse-bay:hover{transform:rotateX(3deg)}.hero[data-weather]::after,.bay-updated .cargo-stock{animation:none}}
+      .ready-panel{margin-top:1.5rem;padding:1rem;border:1px solid #719aaa80;border-radius:12px;background:#102b3aab}
+      .ready-panel h3{margin:0 0 .85rem;color:#ecf8f9;font-size:1.03rem}.ready-panel h3 span{color:#a9dce2;font-variant-numeric:tabular-nums}
+      .ready-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:.5rem}
+      .ready-item{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:start;gap:.27rem;min-width:0;padding:.72rem .3rem .64rem;border:1px solid #547d8e;border-radius:9px;background:#25485b;color:#f4fafa;text-align:center}
+      .ready-art{display:grid;place-items:center;min-height:3rem;font-size:2.35rem;line-height:1;filter:none}.ready-name{font-size:.76rem;font-weight:750;line-height:1.25;overflow-wrap:anywhere}.ready-number{font-size:.66rem;color:#d3e9ec;line-height:1.25;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+      .ready-empty{margin:.15rem 0!important;padding:.7rem 0;color:#d9e9eb!important;line-height:1.55}
+      .ready-art svg{display:block;width:44px;height:44px}
+      @keyframes krSkyDrift{from{background-position:0 0}to{background-position:100px 180px}}
+      @media(prefers-reduced-motion:reduce){.hero,.mission-progress span{transition:none!important}.hero[data-weather]::after,.mission-item.unlock .mission-art{animation:none!important}}
+      @media(max-width:1100px){.ready-grid{grid-template-columns:repeat(8,minmax(0,1fr))}}
+      @media(max-width:850px){.ready-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+      @media(max-width:650px){.ready-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+      @media(max-width:450px){.ready-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ready-panel{padding:.8rem}}
+      .mission-panel{margin-top:1.25rem}.mission-head{display:flex;gap:.5rem 1rem;align-items:baseline;justify-content:space-between;flex-wrap:wrap}.mission-head h3{margin:0;color:#f0f9fa}.mission-head strong{color:#bde9e9;font-size:.84rem}.mission-panel>p{max-width:none;font-size:.8rem;color:#c3dce1}
+      .mission-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem;margin-top:.6rem}.mission-item{display:grid;grid-template-columns:2.6rem minmax(0,1fr);gap:.15rem .55rem;align-items:center;min-width:0;padding:.55rem .7rem;border:1px solid #537d8d;border-radius:8px;background:#18394a}.mission-item.done{border-color:#84c5cb;background:#21566a}.mission-art{grid-row:1/3;display:grid;place-items:center;font-size:1.6rem}.mission-item.pending .mission-art{font-size:1.2rem;color:#a6c7ce}.mission-title{font-size:.81rem;font-weight:700}.mission-state{font-size:.72rem;color:#c7dfe3}
+      .mission-progress{height:8px;margin:.65rem 0 .55rem;overflow:hidden;border:1px solid #6e9baa;border-radius:999px;background:#0e2a39}.mission-progress span{display:block;height:100%;background:#83d4d2;border-radius:999px;transition:width .45s ease}
+      .mission-item{position:relative}.mission-item.done::after{content:"✓";position:absolute;right:.55rem;top:.35rem;display:grid;place-items:center;width:1.1rem;height:1.1rem;border-radius:50%;background:#c5f1e9;color:#145269;font-size:.72rem;font-weight:900}.mission-item.unlock .mission-art{animation:krMissionUnlock .5s ease-out both}@keyframes krMissionUnlock{from{transform:scale(.65);opacity:.25}to{transform:scale(1);opacity:1}}
+      .quiz-panel{padding:1.2rem clamp(1rem,2.4vw,2rem);border-top:1px solid var(--divider-color,#d7e1e7);background:var(--card-background-color,#fff);color:var(--primary-text-color,#173048)}.quiz-panel h3{margin:0}.quiz-panel p{max-width:60rem}.quiz-head{display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap}.quiz-head span{font-size:.84rem;font-weight:700}.quiz-question{max-width:65rem;margin-top:1rem;padding:1rem;border:1px solid var(--divider-color,#9cabb2);border-radius:10px}.quiz-question small{color:var(--secondary-text-color,#405564)}.quiz-question h4{font-size:1rem;line-height:1.5}.quiz-choices{display:grid;gap:.5rem}.quiz-choices button{text-align:left}.quiz-choices button[aria-pressed="true"]{border-color:#197f83;background:#dff2f1;color:#113d49;font-weight:700}.quiz-feedback{padding:.65rem .8rem;border-left:3px solid #197f83;background:#e5f3f2;color:#173b45!important}.quiz-feedback p{margin:.3rem 0;color:#173b45}.quiz-sources a{color:#075c72;text-decoration:underline;font-weight:700}.quiz-sources a:focus-visible{outline:3px solid #d28b24;outline-offset:2px}.quiz-nav{display:flex;justify-content:space-between;gap:.5rem;margin-top:.8rem}.quiz-nav button:disabled{opacity:.5;cursor:default}
+      @media(max-width:650px){.mission-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      @media(max-width:400px){.mission-item{grid-template-columns:1fr;text-align:center}.mission-art{grid-row:auto}}
     </style><ha-card><section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨"><span id="local-clock">--:--</span><span id="local-weather">날씨 연동 안 됨</span></div></div><p class="atmosphere-note" id="time-source">HA 시간대 · 시각 기준 주야 테마</p>` +
       `<p class="hero-copy">${snapshot ? Object.keys(snapshot.items).length ? "기록된 품목의 상태를 살펴보고 필요한 것부터 점검하세요." : "저장된 재고 기록이 없습니다. 품목을 열어 실제 수량과 목표를 확인하세요." : this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` +
       `<div class="hero-links"><a class="guide-link" href="${guidePath}">상황 안내 보기</a></div>${signals}` +
       (counts ? `<p class="filter-note">부족·확인 필요·기한 임박 수치는 서로 겹칠 수 있습니다. 부족 0건이 준비 완료를 뜻하지 않습니다.</p>` : "") +
-      `</div><div class="scene" aria-label="물, 식품·조리, 전원·통신, 생활·보호 선반. 좁은 화면에서는 옆으로 넘겨 선택">${modules}</div><p class="scene-hint">선반을 옆으로 넘겨 분류를 선택하세요.</p></section>` +
+      `</div>${krMissionView(snapshot, escape, animateMission)}<section class="ready-panel" aria-label="목표량을 채우고 확인한 품목"><h3>완비한 물품 <span>${krReadyItems(snapshot).length}개</span></h3>${krReadyGrid(snapshot, escape)}</section></section>` +
       `<section class="inventory-panel" id="inventory-list"><div class="inventory-heading"><h2>${listTitle} <span>${filteredItems.length}개</span></h2><button type="button" id="refresh">새로고침</button></div>` +
-      `<div class="filter-bar" aria-label="품목 상태 필터">${statusButtons}</div>` +
+      `<div class="filter-bar" aria-label="품목 분류 필터">${categoryButtons}</div><div class="filter-bar" aria-label="품목 상태 필터">${statusButtons}</div>` +
       `<p class="filter-note">실제 수량을 확인했을 때만 실사로 기록하세요. 4인·3일 기본 준비량은 계산 예시이며 목표·재고에 자동 적용되지 않습니다.</p>` +
       (this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : "") +
-      `<div class="items">${snapshot ? (edit || (filteredItems.length ? rows : `<p class="empty">조건에 맞는 품목이 없습니다. 다른 필터를 선택하세요.</p>`) + optionalRows) : `<p class="empty">${this._loading ? "재고를 불러오는 중입니다." : "재고를 표시할 수 없습니다."}</p>`}</div></section></ha-card>`;
+      `<div class="items">${snapshot ? (edit || (filteredItems.length ? rows : `<p class="empty">조건에 맞는 품목이 없습니다. 다른 필터를 선택하세요.</p>`) + optionalRows) : `<p class="empty">${this._loading ? "재고를 불러오는 중입니다." : "재고를 표시할 수 없습니다."}</p>`}</div></section>${this._quizView(escape)}</ha-card>`;
     this.shadowRoot.querySelector("#optional-items")?.addEventListener("toggle", (event) => {
       this._optionalOpen = event.currentTarget.open;
     });
@@ -524,6 +600,19 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       }
     });
     this.shadowRoot.querySelector("#refresh")?.addEventListener("click", () => this._load());
+    this.shadowRoot.querySelectorAll("[data-quiz-choice]").forEach((button) => button.addEventListener("click", () => {
+      const question = this._quizData?.questions?.[this._quizIndex];
+      if (!question?.choices?.some((choice) => choice.id === button.dataset.quizChoice)) return;
+      this._quizAnswers[question.id] = button.dataset.quizChoice;
+      this._saveQuizAnswers();
+      this._render();
+      [...this.shadowRoot.querySelectorAll("[data-quiz-choice]")].find((entry) => entry.dataset.quizChoice === button.dataset.quizChoice)?.focus({ preventScroll: true });
+    }));
+    this.shadowRoot.querySelectorAll("[data-quiz-nav]").forEach((button) => button.addEventListener("click", () => {
+      this._quizIndex = Math.max(0, Math.min(this._quizData.questions.length - 1, this._quizIndex + (button.dataset.quizNav === "next" ? 1 : -1)));
+      this._render();
+      this.shadowRoot.querySelector("[data-quiz-choice]")?.focus({ preventScroll: true });
+    }));
     this.shadowRoot.querySelectorAll("[data-category]").forEach((button) => button.addEventListener("click", (event) => {
       const category = button.dataset.category;
       this._categoryFilter = this._categoryFilter === category ? "all" : category;
@@ -561,7 +650,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     });
     this.shadowRoot.querySelector("#delete")?.addEventListener("click", () => this._delete());
     this.shadowRoot.querySelector("#add-lot")?.addEventListener("click", () => {
-      this._captureDraft(); this._draft.lots.push({ lot_id: "", quantity: 0, expires_on: null }); this._render();
+      this._captureDraft(); this._draft.lots.push({ lot_id: "", quantity: 0, expires_on: null, received_on: null }); this._render();
     });
     this.shadowRoot.querySelectorAll("[data-remove]").forEach((button) => button.addEventListener("click", () => {
       this._captureDraft(); this._draft.lots.splice(Number(button.dataset.remove), 1); this._render();

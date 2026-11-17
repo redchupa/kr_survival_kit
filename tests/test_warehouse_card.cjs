@@ -11,7 +11,7 @@ class MockElement {
   attachShadow() { this.shadowRoot = { querySelector: (selector) => elements[selector] }; }
 }
 const context = { HTMLElement: MockElement, customElements: { define() {} }, window: { customCards: [], requestAnimationFrame: (callback) => callback() }, Intl, Date };
-vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testBay = krWarehouseBay; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse;", context);
+vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse;", context);
 
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -19,36 +19,23 @@ const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
 const item = { id: "drinking-water", name: "생수", tier: "rotation", unit: "ml", date_kind: "expiry" };
 const record = { applicable: true };
 const snapshot = (status) => ({ catalog: [item], items: { [item.id]: record }, summary: { items: { [item.id]: status } } });
-const base = { target: 1000, usable: 0, confirmed: true, verified_on: "2026-11-16", state: "shortage", expiring_quantity: 0, expired_quantity: 0, unknown_date_quantity: 0 };
+const base = { target: 24000, usable: 24000, confirmed: true, verified_on: "2026-11-16", stale: false, state: "sufficient", expiring_quantity: 0, expired_quantity: 0, unknown_date_quantity: 0 };
+const catalog = JSON.parse(fs.readFileSync(path.join(__dirname, "../custom_components/kr_survival_kit/content/catalog.ko.json"), "utf8")).items;
+assert.equal(catalog.filter((entry) => !context.pictograms[entry.id]).length, 0, "every item has its own pictogram");
+assert.equal(new Set(Object.values(context.pictograms)).size, catalog.length, "pictograms are unique");
 
-const zero = context.testBay("water", snapshot(base), escape);
-assert.match(zero, /0\/1 L/);
-assert.doesNotMatch(zero, /class="cargo unknown"/);
-assert.equal((zero.match(/--cargo-fill:0\.0%/g) || []).length, 12);
-assert.equal((zero.match(/class="cargo-object"/g) || []).length, 12);
-
-const unknown = context.testBay("water", snapshot({ ...base, confirmed: false, state: "needs_check" }), escape);
-assert.match(unknown, /확인 필요/);
-assert.equal((unknown.match(/class="cargo unknown"/g) || []).length, 12);
-
-const partial = context.testBay("water", snapshot({ ...base, usable: 500 }), escape);
-assert.equal((partial.match(/--cargo-fill:100\.0%/g) || []).length, 6);
-const twoLitres = context.testBay("water", snapshot({ ...base, target: 24000, usable: 2000 }), escape);
-const fourLitres = context.testBay("water", snapshot({ ...base, target: 24000, usable: 4000 }), escape);
-assert.equal((twoLitres.match(/--cargo-fill:100\.0%/g) || []).length, 1);
-assert.equal((fourLitres.match(/--cargo-fill:100\.0%/g) || []).length, 2);
-assert.match(twoLitres, /2\/24 L/);
-assert.match(fourLitres, /4\/24 L/);
-const mixedDate = context.testBay("water", snapshot({ ...base, target: 24000, usable: 2000, state: "needs_check", stale: false, unknown_date_quantity: 22000 }), escape);
-assert.equal((mixedDate.match(/--cargo-fill:100\.0%/g) || []).length, 1);
-assert.match(mixedDate, /2\/24 L · 날짜 확인 필요/);
-assert.match(mixedDate, /표시 기한 미확인 22L/);
-const staleDate = context.testBay("water", snapshot({ ...base, target: 24000, usable: 2000, state: "needs_check", stale: true }), escape);
-assert.equal((staleDate.match(/--cargo-fill:100\.0%/g) || []).length, 0);
-const expired = context.testBay("water", snapshot({ ...base, expired_quantity: 200, unknown_date_quantity: 100 }), escape);
-assert.match(expired, /rack-warning/);
-assert.match(expired, /표시 기한 경과 0.2L/);
-assert.match(expired, /표시 기한 미확인 0.1L/);
+const complete = context.testGrid(snapshot(base), escape);
+assert.equal((complete.match(/class="ready-item"/g) || []).length, 1);
+assert.equal((complete.match(/class="ready-art"/g) || []).length, 1);
+assert.match(complete, /24 L \/ 24 L/);
+for (const changed of [
+  { usable: 0, state: "shortage" }, { usable: 2000, state: "shortage" },
+  { confirmed: false, state: "needs_check" }, { stale: true, state: "needs_check" },
+  { expired_quantity: 1000 }, { expiring_quantity: 1000 }, { unknown_date_quantity: 1000 },
+  { target: 0 }, { state: "needs_check" },
+]) assert.equal(context.readyItems(snapshot({ ...base, ...changed })).length, 0, JSON.stringify(changed));
+assert.equal(context.readyItems({ ...snapshot(base), items: { [item.id]: { applicable: false } } }).length, 0);
+assert.match(context.testGrid(snapshot({ ...base, usable: 0, state: "shortage" }), escape), /아래에서 목표량·기한·실사를 기록하세요/);
 assert.equal(context.stockFormat(item, 1001), "1.001");
 assert.equal(context.stockParse(item, "1.001"), 1001);
 assert.equal(context.stockFormat(item, 1), "0.001");
@@ -58,17 +45,8 @@ assert.equal(context.stockParse({ id: "water-container", unit: "개" }, "2.5"), 
 assert.equal(context.stockParse(item, "1.0001"), NaN);
 assert.equal(context.stockParse(item, "-1"), NaN);
 assert.equal(context.stockParse(item, "1000000.001"), NaN);
-const inactive = context.testBay("water", {
-  catalog: [item], items: { [item.id]: { applicable: false } },
-  summary: { items: { [item.id]: { ...base, state: "not_applicable", expired_quantity: 200 } } },
-}, escape);
-assert.match(inactive, /선택 안 함/);
-assert.doesNotMatch(inactive, /표시 기한 경과/);
-
 const suspicious = { ...item, id: "unknown-item", name: '<img src=x onerror="alert(1)">' };
-const malicious = context.testBay("living", {
-  catalog: [suspicious], items: { [suspicious.id]: record }, summary: { items: { [suspicious.id]: base } },
-}, escape);
+const malicious = context.testGrid({ catalog: [suspicious], items: { [suspicious.id]: record }, summary: { items: { [suspicious.id]: base } } }, escape);
 assert.doesNotMatch(malicious, /<img/);
 assert.match(malicious, /&lt;img/);
 
@@ -118,4 +96,4 @@ handlers.category({ detail: 1 });
 assert.deepEqual(focus, ["category", "status", "refresh"]);
 assert.equal(scrolled, 1);
 
-console.log("Warehouse fill, unknown/zero, inactive and rotation warnings, escaping, weather freshness, and keyboard focus passed");
+console.log("Complete-only 2D grid, catalog pictograms, L units, escaping, weather freshness, and keyboard focus passed");

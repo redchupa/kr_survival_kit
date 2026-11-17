@@ -68,6 +68,7 @@ async def main():
             blocking=True, return_response=True, context=context,
         )
         assert before["revision"] == 0, before
+        assert before["default_review_interval_days"] == 30
         water_catalog = next(item for item in before["catalog"] if item["id"] == "drinking-water")
         assert (water_catalog["unit"], water_catalog["display_unit"], water_catalog["display_scale"]) == ("ml", "L", 1000)
         updated = await hass.services.async_call(
@@ -165,11 +166,13 @@ async def main():
             {"item_id": "drinking-water", "revision": 1, "applicable": True,
              "target": 3251,
              "lots": [
-                 {"lot_id": "2 L bottle", "quantity": 2000, "expires_on": expiring_date},
-                 {"lot_id": "1.25 L bottle", "quantity": 1250, "expires_on": expiring_date},
+                 {"lot_id": "2 L bottle", "quantity": 2000, "expires_on": expiring_date,
+                  "received_on": dt_util.now().date().isoformat()},
+                 {"lot_id": "1.25 L bottle", "quantity": 1250, "expires_on": expiring_date,
+                  "received_on": dt_util.now().date().isoformat()},
                  {"lot_id": "legacy 1 ml", "quantity": 1, "expires_on": expiring_date},
              ],
-             "confirm": True},
+             "confirm": True, "review_interval_days": 14},
             blocking=True, return_response=True, context=context,
         )
         assert updated["revision"] == 2
@@ -185,6 +188,30 @@ async def main():
         water_record = restored_entry.runtime_data.snapshot["items"]["drinking-water"]
         assert water_record["target"] == 3251
         assert [lot["quantity"] for lot in water_record["lots"]] == [2000, 1250, 1]
+        assert water_record["review_interval_days"] == 14
+        assert water_record["lots"][0]["received_on"] == dt_util.now().date().isoformat()
+        assert "received_on" not in water_record["lots"][2]
+        restored_view = await restarted.services.async_call(
+            DOMAIN, "get_inventory", {}, blocking=True, return_response=True, context=context,
+        )
+        water_status = restored_view["summary"]["items"]["drinking-water"]
+        assert water_status["review_interval_days"] == 14
+        assert water_status["review_days_remaining"] == 14
+        assert water_status["expiry_days_remaining"] == 7
+        assert water_status["next_review_on"] == (dt_util.now().date() + timedelta(days=14)).isoformat()
+        for bad_interval in (0, True, 3651):
+            try:
+                await restarted.services.async_call(
+                    DOMAIN, "set_item",
+                    {"item_id": "drinking-water", "revision": 2, "applicable": True,
+                     "target": 3251, "lots": [], "confirm": True,
+                     "review_interval_days": bad_interval}, blocking=True, context=context,
+                )
+            except Exception:
+                pass
+            else:
+                raise AssertionError("Invalid review interval was accepted")
+        assert restored_entry.runtime_data.snapshot["revision"] == 2
         assert restarted.states.get(inventory_states["부족한 품목"].entity_id).state == "0"
         assert restarted.states.get(inventory_states["기한 임박 품목"].entity_id).state == "1"
         ration_date = (dt_util.now().date() + timedelta(days=12)).isoformat()
@@ -246,7 +273,8 @@ async def main():
                           "saved_revision": 6, "stale_revision": "rejected", "save_failure": "rejected",
                           "viewer": "read_write_rejected", "boolean_input": "rejected",
                           "ration": "added_edited_deleted", "water_litre_roundtrip": "3251ml_after_restart",
-                          "concurrent_edit": "one_rejected"}))
+                          "concurrent_edit": "one_rejected", "received_on": "roundtrip",
+                          "review_interval_days": "roundtrip_and_invalid_rejected"}))
 
 
 if __name__ == "__main__":

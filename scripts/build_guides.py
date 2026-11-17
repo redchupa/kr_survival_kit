@@ -121,6 +121,64 @@ def validate_guide(guide, release=False):
         raise ValueError("Release blocked: content_version must be a release version")
 
 
+def validate_quiz(quiz, guide, release=False):
+    if quiz["schema_version"] != 1:
+        raise ValueError("Unsupported quiz schema")
+    if quiz["content_version"] != guide["content_version"]:
+        raise ValueError("Quiz and guide content versions differ")
+    for field in ("title", "intro"):
+        line(quiz[field], f"quiz.{field}")
+    validate_review(quiz, "quiz", release)
+    if not isinstance(quiz["levels"], list) or not quiz["levels"]:
+        raise ValueError("Quiz levels must be nonempty")
+    levels = set()
+    for level in quiz["levels"]:
+        key = level["id"]
+        if not ID.fullmatch(key) or key in levels:
+            raise ValueError(f"Invalid or duplicate quiz level {key}")
+        levels.add(key)
+        for field in ("title", "description"):
+            line(level[field], f"quiz.levels.{key}.{field}")
+    questions = quiz["questions"]
+    if not isinstance(questions, list) or not 5 <= len(questions) <= 8:
+        raise ValueError("Quiz must contain 5 to 8 questions")
+    scenarios = {item["id"]: item for item in guide["scenarios"]}
+    sources = guide["sources"]
+    seen = set()
+    used_levels = set()
+    for question in questions:
+        key = question["id"]
+        if not ID.fullmatch(key) or key in seen:
+            raise ValueError(f"Invalid or duplicate quiz question {key}")
+        seen.add(key)
+        if question["level_id"] not in levels:
+            raise ValueError(f"Unknown quiz level for {key}")
+        used_levels.add(question["level_id"])
+        if question["scenario_id"] not in scenarios:
+            raise ValueError(f"Unknown guide scenario for {key}")
+        line(question["prompt"], f"quiz.questions.{key}.prompt")
+        source_refs(question["source_ids"], sources, f"quiz.questions.{key}")
+        if any(not sources[ref]["url"] for ref in question["source_ids"]):
+            raise ValueError(f"Quiz question {key} needs official linked sources")
+        if not set(question["source_ids"]).intersection(scenarios[question["scenario_id"]]["source_ids"]):
+            raise ValueError(f"Quiz question {key} needs a matching scenario source")
+        choices = question["choices"]
+        if not isinstance(choices, list) or len(choices) != 3:
+            raise ValueError(f"Quiz question {key} needs three choices")
+        choice_ids = set()
+        for choice in choices:
+            choice_id = choice["id"]
+            if not ID.fullmatch(choice_id) or choice_id in choice_ids:
+                raise ValueError(f"Invalid or duplicate quiz choice for {key}")
+            choice_ids.add(choice_id)
+            line(choice["text"], f"quiz.questions.{key}.choices.{choice_id}.text")
+            line(choice["feedback"], f"quiz.questions.{key}.choices.{choice_id}.feedback")
+        if question["answer_id"] not in choice_ids:
+            raise ValueError(f"Quiz question {key} has no matching answer")
+    if used_levels != levels:
+        raise ValueError("Each quiz level must contain a question")
+
+
 def validate_catalog(catalog, sources):
     if catalog["schema_version"] != 1:
         raise ValueError("Unsupported catalog schema")
@@ -157,10 +215,11 @@ def guide_stamp(guide):
     return f"안내 버전 {guide['content_version']} · {status} · 최근 출처 확인 {last_check}"
 
 
-def source_links(sources, refs):
+def source_links(sources, refs, labels=None):
+    labels = labels or {}
     return " · ".join(
         f'<a href="{escape(sources[ref]["url"], quote=True)}">'
-        f'{escape(source_label(sources[ref]))}</a>'
+        f'{escape(labels.get(ref, source_label(sources[ref])))}</a>'
         for ref in refs
     )
 
@@ -276,7 +335,11 @@ def render_html(guide):
         cards="\n".join(cards),
         print_rows="\n".join(paper[key] for key in PAPER_SCENARIOS),
         screen_sources="\n".join(screen_sources),
-        print_sources=source_links(sources, checkpoints["source_ids"]),
+        print_sources=source_links(sources, checkpoints["source_ids"], {
+            "mois-2026": "행정안전부 2026 행동요령",
+            "civil-preparedness": "국민안전24 비상대비",
+            "civil-alerts": "민방공경보",
+        }),
         print_condition=escape(checkpoints["condition"]),
         print_checkpoints="".join(
             f'<div><dt>{escape(row["when"])}</dt><dd>{escape(row["text"])}</dd></div>'
@@ -473,8 +536,10 @@ def main():
 
     try:
         guide = json.loads((CONTENT / "guide.ko.json").read_text(encoding="utf-8"))
+        quiz = json.loads((CONTENT / "quiz.ko.json").read_text(encoding="utf-8"))
         catalog = json.loads((CONTENT / "catalog.ko.json").read_text(encoding="utf-8"))
         validate_guide(guide, release=args.release)
+        validate_quiz(quiz, guide, release=args.release)
         validate_catalog(catalog, guide["sources"])
         household_path = CONTENT / "household.ko.json"
         validate_household(json.loads(household_path.read_text(encoding="utf-8")), release=args.release)

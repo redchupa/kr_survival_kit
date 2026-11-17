@@ -206,6 +206,23 @@ class GuideTests(unittest.TestCase):
         self.assertIn("자동 적용하지 않습니다", detail)
         self.assertIn(detail, render_html(self.guide))
 
+    def test_printed_five_minute_check_is_limited_and_legible(self):
+        html = render_html(self.guide)
+        css = (ROOT / "scripts/guide.css").read_text(encoding="utf-8")
+        self.assertIn('class="paper-start"', html)
+        self.assertIn("첫 5분 행동 점검", html)
+        self.assertIn("전체 비축품을 5분 안에 갖춘다는 뜻이 아닙니다", html)
+        self.assertIn("찾느라 대피를 늦추지 마세요", html)
+        self.assertEqual(html.count('class="paper-start-list"'), 1)
+        for number in ("01", "02", "03"):
+            self.assertIn(f"{number}　", html)
+        self.assertIn("print-color-adjust: exact", css)
+        self.assertIn("border-left: 4pt solid var(--print-accent)", css)
+        footer = html.split('<p class="references">', 1)[1].split("</p>", 1)[0]
+        self.assertIn("국민안전24 비상대비", footer)
+        self.assertIn("민방공경보", footer)
+        self.assertNotIn("국민안전24 · 민방공경보", footer)
+
 
 if __name__ == "__main__":
     unittest.main()

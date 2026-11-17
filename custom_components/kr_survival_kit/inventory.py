@@ -14,6 +14,8 @@ class RevisionConflict(InventoryError):
 
 
 MAX_AMOUNT = 1_000_000_000
+MAX_REVIEW_DAYS = 3650
+_UNSET = object()
 
 
 def _date(value):
@@ -24,6 +26,11 @@ def _date(value):
         return parsed
     except (TypeError, ValueError) as error:
         raise InventoryError("Invalid ISO date") from error
+
+
+def _review_days(value):
+    if value is not None and (type(value) is not int or not 1 <= value <= MAX_REVIEW_DAYS):
+        raise InventoryError("review_interval_days must be an integer from 1 to 3650 or null")
 
 
 def validate_item(catalog_item, applicable, target, lots):
@@ -37,8 +44,8 @@ def validate_item(catalog_item, applicable, target, lots):
         raise InventoryError("No more than 200 purchase lots per item")
     seen = set()
     for lot in lots:
-        if not isinstance(lot, dict) or set(lot) != {"lot_id", "quantity", "expires_on"}:
-            raise InventoryError("Each lot needs lot_id, quantity, and expires_on")
+        if not isinstance(lot, dict) or not {"lot_id", "quantity", "expires_on"} <= set(lot) or set(lot) - {"lot_id", "quantity", "expires_on", "received_on"}:
+            raise InventoryError("Each lot needs lot_id, quantity, and expires_on; received_on is optional")
         lot_id = lot["lot_id"]
         if (not isinstance(lot_id, str) or not lot_id or len(lot_id) > 80
                 or any(ord(char) < 32 or ord(char) == 127 for char in lot_id)
@@ -47,6 +54,8 @@ def validate_item(catalog_item, applicable, target, lots):
         seen.add(lot_id)
         if type(lot["quantity"]) is not int or not 0 <= lot["quantity"] <= MAX_AMOUNT:
             raise InventoryError("quantity must be an integer from 0 to 1000000000")
+        if lot.get("received_on") is not None:
+            _date(lot["received_on"])
         expiry = lot["expires_on"]
         if catalog_item["date_kind"] == "expiry":
             if expiry is not None:
@@ -69,12 +78,14 @@ def summarize(catalog, records, today, inspection_days=30, expiry_days=30):
             verified_on = None
             confirmed = False
             lots = []
+            review_days = inspection_days
         else:
             applicable = record["applicable"]
             target = record["target"]
             verified_on = record["verified_on"]
             confirmed = record.get("confirmed", verified_on is not None)
             lots = record["lots"]
+            review_days = record.get("review_interval_days") or inspection_days
         usable = 0
         unconfirmed = 0
         expiring = 0
@@ -96,7 +107,10 @@ def summarize(catalog, records, today, inspection_days=30, expiry_days=30):
                 if expiry_date <= today + timedelta(days=expiry_days):
                     expiring += quantity
             usable += quantity
-        stale = not confirmed or verified_on is None or _date(verified_on) < today - timedelta(days=inspection_days)
+        receipt_dates = [_date(lot["received_on"]) for lot in lots if lot["quantity"] > 0 and lot.get("received_on") is not None]
+        review_anchor = _date(verified_on) if verified_on is not None else min(receipt_dates, default=None)
+        next_review = review_anchor + timedelta(days=review_days) if review_anchor else None
+        stale = not confirmed or verified_on is None or today > next_review
         if not applicable or target == 0:
             state = "not_applicable"
         elif target is None or stale:
@@ -121,6 +135,10 @@ def summarize(catalog, records, today, inspection_days=30, expiry_days=30):
             "expired_quantity": expired,
             "unknown_date_quantity": unconfirmed,
             "next_expiry_on": next_expiry.isoformat() if next_expiry else None,
+            "expiry_days_remaining": (next_expiry - today).days if next_expiry else None,
+            "review_interval_days": review_days,
+            "next_review_on": next_review.isoformat() if next_review else None,
+            "review_days_remaining": (next_review - today).days if next_review else None,
             "target": target,
             "verified_on": verified_on,
             "confirmed": confirmed,
@@ -156,11 +174,12 @@ class Inventory:
                         or type(record.get("confirmed", False)) is not bool):
                     raise InventoryError("Invalid inventory record")
                 validate_item(self.catalog[item_id], record["applicable"], record["target"], record["lots"])
+                _review_days(record.get("review_interval_days"))
                 if record["verified_on"] is not None:
                     _date(record["verified_on"])
         self.snapshot = deepcopy(data)
 
-    async def set_item(self, item_id, revision, applicable, target, lots, confirm, today):
+    async def set_item(self, item_id, revision, applicable, target, lots, confirm, today, review_interval_days=_UNSET):
         if item_id not in self.catalog:
             raise InventoryError("Unknown item")
         if type(confirm) is not bool:
@@ -168,6 +187,8 @@ class Inventory:
         if type(revision) is not int or revision < 0:
             raise InventoryError("revision must be a nonnegative integer")
         validate_item(self.catalog[item_id], applicable, target, lots)
+        if review_interval_days is not _UNSET:
+            _review_days(review_interval_days)
         today = _date(today).isoformat()
         async with self.lock:
             if revision != self.snapshot["revision"]:
@@ -175,13 +196,17 @@ class Inventory:
             candidate = deepcopy(self.snapshot)
             candidate["revision"] += 1
             previous = candidate["items"].get(item_id, {})
-            candidate["items"][item_id] = {
+            updated = {
                 "applicable": applicable,
                 "target": target,
                 "verified_on": today if confirm else previous.get("verified_on"),
                 "confirmed": confirm,
                 "lots": deepcopy(lots),
             }
+            effective_review_days = previous.get("review_interval_days") if review_interval_days is _UNSET else review_interval_days
+            if effective_review_days is not None:
+                updated["review_interval_days"] = effective_review_days
+            candidate["items"][item_id] = updated
             await self.store.async_save(candidate)
             self.snapshot = candidate
         for listener in tuple(self.listeners):

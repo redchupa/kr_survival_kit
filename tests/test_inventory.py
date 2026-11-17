@@ -233,3 +233,73 @@ async def test_litre_display_metadata_preserves_millilitre_storage():
     assert record["target"] == 24000
     assert [lot["quantity"] for lot in record["lots"]] == [2000, 1250, 1]
     assert summarize(CATALOG, restored.snapshot["items"], TODAY)["items"][WATER]["usable"] == 3251
+
+
+@pytest.mark.asyncio
+async def test_received_date_and_review_interval_are_separate_from_expiry():
+    store = FakeStore()
+    stock = Inventory(store, CATALOG)
+    lot = {"lot_id": "bottle", "quantity": 2000, "expires_on": "2027-05-01", "received_on": "2026-11-01"}
+    await stock.set_item(WATER, 0, True, 2000, [lot], False, TODAY, review_interval_days=14)
+    item = summarize(CATALOG, stock.snapshot["items"], TODAY)["items"][WATER]
+    assert (item["next_review_on"], item["review_days_remaining"]) == ("2026-11-15", 6)
+    assert (item["next_expiry_on"], item["expiry_days_remaining"]) == ("2027-05-01", 173)
+    assert item["state"] == "needs_check"  # Intake is not a verified inspection.
+    await stock.set_item(WATER, 1, True, 2000, [lot], True, TODAY)
+    confirmed = summarize(CATALOG, stock.snapshot["items"], TODAY)["items"][WATER]
+    assert (confirmed["next_review_on"], confirmed["review_days_remaining"]) == ("2026-11-23", 14)
+    assert confirmed["state"] == "sufficient"
+    overdue = summarize(CATALOG, stock.snapshot["items"], "2026-11-24")["items"][WATER]
+    assert overdue["review_days_remaining"] == -1
+    assert overdue["stale"] is True
+    assert overdue["state"] == "needs_check"
+    restored = Inventory(store, CATALOG)
+    await restored.load()
+    assert restored.snapshot["items"][WATER]["review_interval_days"] == 14
+    assert restored.snapshot["items"][WATER]["lots"][0]["received_on"] == "2026-11-01"
+    await restored.set_item(WATER, 2, True, 2000, [lot], True, TODAY, review_interval_days=None)
+    reset = summarize(CATALOG, restored.snapshot["items"], TODAY)["items"][WATER]
+    assert reset["review_interval_days"] == 30
+    assert reset["next_review_on"] == "2026-12-09"
+
+
+@pytest.mark.asyncio
+async def test_legacy_v1_and_invalid_new_fields_preserve_store():
+    store = FakeStore()
+    store.saved = {"schema_version": 1, "revision": 7, "items": {WATER: {
+        "applicable": True, "target": 1000, "verified_on": TODAY, "confirmed": True,
+        "lots": [{"lot_id": "legacy", "quantity": 1000, "expires_on": "2027-01-01"}],
+    }}}
+    stock = Inventory(store, CATALOG)
+    await stock.load()
+    assert stock.snapshot == store.saved
+    assert summarize(CATALOG, stock.snapshot["items"], TODAY)["items"][WATER]["review_interval_days"] == 30
+    for bad in (0, -1, True, 3651, "30"):
+        with pytest.raises(InventoryError, match="review_interval_days"):
+            await stock.set_item(WATER, 7, True, 1000, stock.snapshot["items"][WATER]["lots"], True, TODAY, bad)
+    for bad in ("20261101", "2026-02-30", True):
+        with pytest.raises(InventoryError, match="date"):
+            await stock.set_item(WATER, 7, True, 1000, [{
+                "lot_id": "new", "quantity": 1000, "expires_on": "2027-01-01", "received_on": bad,
+            }], True, TODAY)
+    assert stock.snapshot == store.saved
+    store.fail = True
+    with pytest.raises(OSError):
+        await stock.set_item(WATER, 7, True, 1000, [{
+            "lot_id": "new", "quantity": 1000, "expires_on": "2027-01-01", "received_on": TODAY,
+        }], True, TODAY, 7)
+    assert stock.snapshot == store.saved
+
+
+@pytest.mark.asyncio
+async def test_concurrent_review_interval_update_keeps_winning_revision():
+    stock = Inventory(FakeStore(), CATALOG)
+    lot = {"lot_id": "water", "quantity": 1000, "expires_on": "2027-01-01", "received_on": TODAY}
+    attempts = await asyncio.gather(
+        stock.set_item(WATER, 0, True, 1000, [lot], True, TODAY, 7),
+        stock.set_item(WATER, 0, True, 1000, [lot], True, TODAY, 90),
+        return_exceptions=True,
+    )
+    assert sum(isinstance(value, RevisionConflict) for value in attempts) == 1
+    assert stock.snapshot["revision"] == 1
+    assert stock.snapshot["items"][WATER]["review_interval_days"] in (7, 90)

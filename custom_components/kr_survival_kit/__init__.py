@@ -12,7 +12,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PLATFORMS
-from .inventory import MAX_AMOUNT, Inventory, InventoryError, RevisionConflict, summarize
+from .inventory import MAX_AMOUNT, MAX_REVIEW_DAYS, Inventory, InventoryError, RevisionConflict, summarize
 from .mqtt_publish import MqttPublisher, async_remove_discovery
 
 
@@ -28,6 +28,12 @@ def _nonnegative_int(value):
     return value
 
 
+def _review_interval(value):
+    if value is not None and (type(value) is not int or not 1 <= value <= MAX_REVIEW_DAYS):
+        raise vol.Invalid("Expected review interval from 1 to 3650 days or null")
+    return value
+
+
 SET_SCHEMA = vol.Schema({
     vol.Optional("entry_id"): str,
     vol.Required("item_id"): str,
@@ -36,6 +42,7 @@ SET_SCHEMA = vol.Schema({
     vol.Required("target"): vol.Any(None, _nonnegative_int),
     vol.Required("lots"): [_lot],
     vol.Required("confirm"): bool,
+    vol.Optional("review_interval_days"): _review_interval,
 })
 DELETE_SCHEMA = vol.Schema({
     vol.Optional("entry_id"): str,
@@ -126,6 +133,7 @@ def _set_item(hass):
             revision = await inventory.set_item(
                 data["item_id"], data["revision"], data["applicable"],
                 data["target"], data["lots"], data["confirm"], dt_util.now().date().isoformat(),
+                **({"review_interval_days": data["review_interval_days"]} if "review_interval_days" in data else {}),
             )
         except RevisionConflict as error:
             raise HomeAssistantError(str(error)) from error
@@ -160,6 +168,7 @@ def _get_inventory(hass):
         )
         snapshot["catalog"] = deepcopy(list(inventory.catalog.values()))
         snapshot["household"] = deepcopy(inventory.household)
+        snapshot["default_review_interval_days"] = inspection_days
         return snapshot
     return handle
 

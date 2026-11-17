@@ -80,7 +80,7 @@ def verify_pdf(guide):
     comms = guide["communication_loss"]
     assert action_page.index(compact(comms["first_action"])) < action_page.index("공습경보")
     assert compact(comms["paper_note"]) in action_page
-    assert "국민안전24·비상대비" in action_page
+    assert "국민안전24비상대비" in action_page
     for item in guide["scenarios"]:
         if item["id"] == "prepare":
             continue
