@@ -88,27 +88,76 @@ function krReadyItems(snapshot) {
   });
 }
 
-function krReadyGrid(snapshot, escape) {
+function krIsSelectable(item) {
+  return ["household", "optional"].includes(item.tier);
+}
+
+function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item) =>
+  !krIsSelectable(item) && snapshot.items[item.id]?.applicable !== false)) {
   if (!snapshot) return `<p class="ready-empty">재고를 불러오는 중입니다.</p>`;
-  const visible = snapshot.catalog.filter((item) => {
-    const record = snapshot.items[item.id];
-    return record ? record.applicable : !["household", "optional"].includes(item.tier);
-  });
   if (!visible.length) return `<p class="ready-empty">활성화한 물품이 없습니다.</p>`;
   const readyIds = new Set(krReadyItems(snapshot).map((item) => item.id));
   return `<div class="ready-grid" role="list">${visible.map((item) => {
     const status = snapshot.summary.items[item.id];
     const ready = readyIds.has(item.id);
+    const inactive = krIsSelectable(item) && !snapshot.items[item.id]?.applicable;
     const pictogram = item.id === "drinking-water" ? KR_WATER_BOTTLE_ART : KR_READY_PICTOGRAMS[item.id] || "◈";
     const current = status.usable ?? 0;
     const quantity = `${krStockText(item, current)} / ${status.target == null ? "목표 미설정" : krStockText(item, status.target)}`;
-    const label = ready ? "완비" : !status.confirmed || status.stale ? "실사 필요" :
+    const label = inactive ? "미사용" : ready ? "완비" : !status.confirmed || status.stale ? "실사 필요" :
       status.expiring_quantity > 0 ? "기한 임박" : status.expired_quantity > 0 ? "기한 경과" :
       status.unknown_date_quantity > 0 ? "기한 확인" : status.state === "shortage" ? "부족" : "";
     const percent = status.target > 0 ? Math.floor(Math.min(1, current / status.target) * 100) : 0;
     return `<div class="ready-item" data-item="${escape(item.id)}" data-complete="${ready}" role="listitem" aria-label="${escape([item.name, quantity, label].filter(Boolean).join(" · "))}"><span class="ready-art" aria-hidden="true">${pictogram}</span>` +
-      `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(quantity)}</span><span aria-hidden="true" class="stock-meter"><span style="width:${percent}%"></span></span>${label ? `<span class="stock-label">${label}</span>` : ""}</div>`;
+      `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(quantity)}</span><span aria-hidden="true" class="stock-meter"><span style="width:${percent}%"></span></span>${label ? `<span class="stock-label">${label}</span>` : ""}${inactive ? `<button type="button" data-edit="${escape(item.id)}" aria-label="${escape(item.name)} 설정">설정</button>` : ""}</div>`;
   }).join("")}</div>`;
+}
+
+const KR_STOCK_RANKS = [
+  ["아이언", "#c0c8cd"], ["브론즈", "#ffc493"], ["실버", "#dbe8ff"],
+  ["골드", "#ffe393"], ["플레티넘", "#8cf4de"], ["에메랄드", "#8cf2ad"],
+  ["다이아", "#9adaff"], ["마스터", "#d4bbff"], ["그랜드마스터", "#ffa9b2"],
+  ["챌린저", "#ffe39a"],
+];
+
+function krStockScore(snapshot) {
+  const base = snapshot.catalog.filter((item) => !krIsSelectable(item));
+  if (!base.length) return 0;
+  const total = base.reduce((sum, item) => {
+    const status = snapshot.summary.items[item.id];
+    if (snapshot.items[item.id]?.applicable === false || !status.confirmed ||
+        !status.verified_on || status.stale !== false || !(status.target > 0)) return sum;
+    const usable = Math.max(0, status.usable - (status.expiring_quantity ?? 0));
+    return sum + Math.min(1, usable / status.target);
+  }, 0);
+  return Math.floor(total / base.length * 100);
+}
+
+function krStockRankView(snapshot) {
+  if (!snapshot) return "";
+  const score = krStockScore(snapshot);
+  const index = Math.min(KR_STOCK_RANKS.length - 1, Math.floor(score / 10));
+  const [rank, color] = KR_STOCK_RANKS[index];
+  const next = KR_STOCK_RANKS[index + 1];
+  const message = next ? `${next[0]}까지 ${(index + 1) * 10 - score}점` : "최고 등급 달성";
+  return `<section class="stock-rank" aria-labelledby="stock-rank-title" style="--rank-color:${color}">
+    <div class="stock-rank-head"><div><h3 id="stock-rank-title">비축 등급</h3><strong>${rank}</strong></div><div class="stock-score"><b>${score}</b><span> / 100점</span></div></div>
+    <progress aria-label="비축 점수" value="${score}" max="100"></progress>
+    <p>${message}</p>
+    <details><summary>점수 계산 기준</summary><p>기본품의 목표 달성률을 같은 비중으로 합산해 100점으로 환산합니다. 최근에 실사했고 기한이 충분한 재고만 점수에 반영합니다. 목표 미설정과 미확인은 0점입니다. 선택 물품과 퀴즈는 별도입니다. 이 점수는 재고 준비의 진도입니다.</p></details>
+    </section>`;
+}
+
+function krStockShelves(snapshot, escape, showInactive) {
+  const optional = snapshot?.catalog.filter(krIsSelectable) ?? [];
+  const active = optional.filter((item) => snapshot.items[item.id]?.applicable);
+  const inactive = optional.filter((item) => !snapshot.items[item.id]?.applicable);
+  const ready = krReadyItems(snapshot);
+  const shelves = `<section class="ready-panel" aria-labelledby="essentials-shelf"><h3 id="essentials-shelf">기본 비축 물품 <span>완비 ${ready.filter((item) => !krIsSelectable(item)).length}종</span></h3>${krReadyGrid(snapshot, escape)}</section>`;
+  if (!optional.length) return shelves;
+  return shelves + `<section class="ready-panel" aria-labelledby="optional-shelf-title"><h3 id="optional-shelf-title">선택 물품 <span>사용 중 ${active.length}종 · 완비 ${ready.filter(krIsSelectable).length}종</span></h3>
+    ${active.length ? krReadyGrid(snapshot, escape, active) : '<p class="ready-empty">아래 목록에서 우리 집에 필요한 물품을 고르세요.</p>'}
+    ${inactive.length ? `<details id="optional-shelf" ${showInactive ? "open" : ""}><summary>아직 사용하지 않는 물품 ${inactive.length}종 보기</summary>${krReadyGrid(snapshot, escape, inactive)}</details>` : ""}</section>`;
 }
 
 const KR_RECORD_MISSIONS = [
@@ -148,6 +197,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._loading = false;
     this._loadError = false;
     this._optionalOpen = false;
+    this._optionalShelfOpen = false;
     this._optionalQuery = "";
     this._focusOptionalSearch = false;
     this._categoryFilter = "all";
@@ -560,6 +610,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .atmosphere{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.atmosphere span{display:inline-flex;min-height:35px;align-items:center;padding:5px 10px;border:1px solid #79b3c082;border-radius:8px;background:#07192768;color:#d9f1f4;font-size:.84rem;font-variant-numeric:tabular-nums}
       .atmosphere-note{font-size:.76rem!important;color:#accbd5!important;margin-top:0!important}
       .rotation-meta{font-size:.83rem;color:#8b5c0b;font-weight:650}
+      .stock-rank{margin-top:1.25rem;padding:1rem;border:1px solid var(--rank-color);border-radius:14px;background:#122e40;color:#f0f9fa}.stock-rank-head{display:flex;justify-content:space-between;align-items:end;gap:.5rem;flex-wrap:wrap}.stock-rank h3{margin:0 0 .2rem;font-size:.92rem}.stock-rank-head strong{font-size:clamp(1.25rem,4vw,2rem);color:var(--rank-color)}.stock-score{font-variant-numeric:tabular-nums;color:#dceff1}.stock-score b{font-size:clamp(1.4rem,5vw,2.4rem);color:var(--rank-color)}.stock-rank progress{display:block;width:100%;height:.7rem;margin:.7rem 0;accent-color:var(--rank-color)}.stock-rank p{margin:.45rem 0;line-height:1.5}.stock-rank summary,#optional-shelf summary{cursor:pointer;color:#c5eff2;padding:.4rem 0}.stock-rank details p{font-size:.83rem}.ready-item button{margin-top:.3rem;min-height:44px;padding:.35rem .6rem}.ready-panel details .ready-grid{margin-top:.65rem}
       .ready-panel{margin-top:1.5rem;padding:1rem;border:1px solid #719aaa80;border-radius:12px;background:#102b3aab}
       .ready-panel h3{margin:0 0 .85rem;color:#ecf8f9;font-size:1.03rem}.ready-panel h3 span{color:#a9dce2;font-variant-numeric:tabular-nums}
       .ready-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:.5rem}
@@ -586,7 +637,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       (snapshot ? `<div class="household-strip"><div><strong>${people}인 가구 · 3일</strong><p>생수 ${people * 6} L · 식사 ${people * 9}인분</p></div><form id="household-form"><label>가구 인원 (명)<input id="household-size" type="number" required min="1" max="99" value="${escape(people)}" ${this._draft ? "disabled" : ""}></label><button type="submit" ${this._draft || this._saving ? "disabled" : ""}>인원 적용</button></form>${this._householdMessage ? `<p role="status">${escape(this._householdMessage)}</p>` : ""}</div>` : "") +
       `${signals}` +
       (counts ? `<p class="filter-note">부족·확인 필요·기한 임박 수치는 서로 겹칠 수 있습니다. 부족 0건이 준비 완료를 뜻하지 않습니다.</p>` : "") +
-      `</div>${krMissionView(snapshot, escape, animateMission)}<section class="ready-panel" aria-label="비축 물품 현황"><h3>비축 물품 <span>완비 ${krReadyItems(snapshot).length}종</span></h3>${krReadyGrid(snapshot, escape)}</section></section>` +
+      `</div>${krStockRankView(snapshot)}${krMissionView(snapshot, escape, animateMission)}${krStockShelves(snapshot, escape, this._optionalShelfOpen)}</section>` +
       `<section class="inventory-panel" id="inventory-list"><div class="inventory-heading"><h2>${listTitle} <span>${filteredItems.length}개</span></h2><button type="button" id="refresh">새로고침</button></div>` +
       `<div class="filter-bar" aria-label="품목 분류 필터">${categoryButtons}</div><div class="filter-bar" aria-label="품목 상태 필터">${statusButtons}</div>` +
       `<p class="filter-note">인원을 바꾸면 기본 목표가 갱신됩니다. 직접 저장한 목표는 품목의 목표 설정에서 비우면 기본값을 다시 따릅니다.</p>` +
@@ -651,6 +702,9 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       this._optionalOpen = true;
       this._focusOptionalSearch = true;
       this._render();
+    });
+    this.shadowRoot.querySelector("#optional-shelf")?.addEventListener("toggle", (event) => {
+      this._optionalShelfOpen = event.currentTarget.open;
     });
     this.shadowRoot.querySelectorAll("[data-edit]").forEach((button) => button.addEventListener("click", () =>
       this._edit(snapshot.catalog.find((item) => item.id === button.dataset.edit))));

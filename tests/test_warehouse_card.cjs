@@ -11,7 +11,7 @@ class MockElement {
   attachShadow() { this.shadowRoot = { querySelector: (selector) => elements[selector] }; }
 }
 const context = { HTMLElement: MockElement, customElements: { define() {}, get() {} }, window: { customCards: [], requestAnimationFrame: (callback) => callback() }, Intl, Date };
-vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse;", context);
+vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse;", context);
 
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -36,6 +36,17 @@ for (const changed of [
 ]) assert.equal(context.readyItems(snapshot({ ...base, ...changed })).length, 0, JSON.stringify(changed));
 assert.equal(context.readyItems({ ...snapshot(base), items: { [item.id]: { applicable: false } } }).length, 0);
 assert.match(context.testGrid(snapshot({ ...base, usable: 0, state: "shortage" }), escape), /0 L \/ 24 L/);
+assert.equal(context.stockScore(snapshot({ ...base, usable: 12000 })), 50);
+assert.equal(context.stockScore(snapshot({ ...base, expiring_quantity: 6000 })), 75);
+assert.equal(context.stockScore(snapshot({ ...base, stale: true })), 0);
+assert.equal(context.stockScore(snapshot({ ...base, target: null })), 0);
+assert.equal(context.stockScore(snapshot({ ...base, usable: 48000 })), 100);
+const withOptional = snapshot(base);
+withOptional.catalog.push({ id: "radio", tier: "optional" });
+assert.equal(context.stockScore(withOptional), 100);
+for (const [index, rank] of ["아이언", "브론즈", "실버", "골드", "플레티넘", "에메랄드", "다이아", "마스터", "그랜드마스터", "챌린저"].entries()) {
+  assert.match(context.stockRank(snapshot({ ...base, target: 100, usable: index * 10 })), new RegExp(`<strong>${rank}</strong>`));
+}
 assert.equal(context.stockFormat(item, 1001), "1.001");
 assert.equal(context.stockParse(item, "1.001"), 1001);
 assert.equal(context.stockFormat(item, 1), "0.001");

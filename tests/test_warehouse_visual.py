@@ -115,19 +115,28 @@ def main():
                 assert "준비 기록 단계 1/4" in page.locator("kr-survival-kit-inventory-card .mission-head").inner_text()
                 assert page.locator("kr-survival-kit-inventory-card .mission-progress").get_attribute("aria-valuenow") == "1"
 
+        render(make_snapshot(None))
+        shelf = page.locator('kr-survival-kit-inventory-card [aria-labelledby="optional-shelf-title"]')
+        inactive = shelf.locator("#optional-shelf")
+        inactive.locator("summary").click()
+        assert inactive.locator('[data-item="self-heating-ration"] .stock-label').inner_text() == "미사용"
+        assert shelf.locator('[data-item="radio"] .ready-art').is_visible()
+        assert page.locator("kr-survival-kit-inventory-card .stock-rank").get_by_role("progressbar").get_attribute("value") == "22"
         render(make_snapshot(24, demo_full=True))
+        assert inactive.get_attribute("open") is not None
+        assert "챌린저" in page.locator("kr-survival-kit-inventory-card .stock-rank").inner_text()
         assert ready.count() == 14, ready.count()
         assert "준비 기록 단계 4/4" in page.locator("kr-survival-kit-inventory-card .mission-head").inner_text()
         assert page.locator("kr-survival-kit-inventory-card .mission-progress").get_attribute("aria-valuenow") == "4"
         assert page.locator("kr-survival-kit-inventory-card .mission-item.done").count() == 4
-        assert page.locator("kr-survival-kit-inventory-card .ready-grid").evaluate("el => getComputedStyle(el).gridTemplateColumns.split(' ').length") == 10
+        assert page.locator("kr-survival-kit-inventory-card [aria-labelledby=\"essentials-shelf\"] .ready-grid").evaluate("el => getComputedStyle(el).gridTemplateColumns.split(' ').length") == 10
         assert ready.locator(".ready-art").count() == 14
         page.wait_for_timeout(600)
         page.screenshot(path=str(EVIDENCE / "warehouse-synthetic-desktop.jpg"), type="jpeg", quality=88)
         page.set_viewport_size({"width": 375, "height": 812})
         assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth")
-        assert page.locator("kr-survival-kit-inventory-card .ready-grid").evaluate("el => getComputedStyle(el).gridTemplateColumns.split(' ').length") == 2
-        page.locator("kr-survival-kit-inventory-card .ready-panel").scroll_into_view_if_needed()
+        assert page.locator("kr-survival-kit-inventory-card [aria-labelledby=\"essentials-shelf\"] .ready-grid").evaluate("el => getComputedStyle(el).gridTemplateColumns.split(' ').length") == 2
+        page.locator("kr-survival-kit-inventory-card .ready-panel").first.scroll_into_view_if_needed()
         page.screenshot(path=str(EVIDENCE / "warehouse-synthetic-mobile.jpg"), type="jpeg", quality=88)
         page.evaluate("document.body.style.zoom = '2'")
         assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth"), "375px at 200% zoom overflow"
