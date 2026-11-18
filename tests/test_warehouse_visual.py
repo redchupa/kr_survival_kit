@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((ROOT / "custom_components/kr_survival_kit/content/catalog.ko.json").read_text(encoding="utf-8"))["items"]
 QUIZ = json.loads((ROOT / "custom_components/kr_survival_kit/content/quiz.ko.json").read_text(encoding="utf-8"))
-GUIDE_SOURCES = json.loads((ROOT / "custom_components/kr_survival_kit/content/guide.ko.json").read_text(encoding="utf-8"))["sources"]
+GUIDE = json.loads((ROOT / "custom_components/kr_survival_kit/content/guide.ko.json").read_text(encoding="utf-8"))
 IDS = [
     "drinking-water", "water-container", "portable-water-filter", "water-sanitation-kit",
     "shelf-stable-meal", "canned-food", "butane-canister", "self-heating-ration",
@@ -60,7 +60,7 @@ def make_snapshot(water_litres=None, expired=False, demo_full=False):
         else:
             details[item_id] = {
                 "state": "not_applicable" if item["tier"] in ("household", "optional") else "needs_check",
-                "usable": 0, "target": None, "confirmed": False, "verified_on": None,
+                "usable": 0, "target": 24000 if item_id == "drinking-water" else None, "confirmed": False, "verified_on": None,
                 "expiring_quantity": 0, "expired_quantity": 0, "unknown_date_quantity": 0, "next_expiry_on": None,
             }
     return {
@@ -87,17 +87,18 @@ def main():
             .demo{padding:10px 24px;background:#294d5e;color:#fff;font-weight:700}
             </style><div class="demo">가상 데이터 데모 · 개인 재고 아님</div></html>""")
         page.add_script_tag(path=str(ROOT / "custom_components/kr_survival_kit/www/kr-survival-kit-card.js"))
-        page.evaluate("""({quiz, sources}) => {
+        page.evaluate("""() => {
             window.demoCard = document.createElement('kr-survival-kit-inventory-card');
-            window.demoCard.setConfig({guide_path: '#', quiz_data: quiz, quiz_sources: sources});
+            window.demoCard.setConfig({});
             document.body.append(window.demoCard);
             window.demoCard._hass = {config: {time_zone: 'Asia/Seoul'}, states: {}};
-        }""", {"quiz": QUIZ, "sources": GUIDE_SOURCES})
+        }""")
 
         def render(snapshot):
             page.evaluate("snapshot => { window.demoCard._snapshot = snapshot; window.demoCard._render(); }", snapshot)
 
-        ready = page.locator("kr-survival-kit-inventory-card .ready-item")
+        ready = page.locator('kr-survival-kit-inventory-card .ready-item[data-complete="true"]')
+        water_tile = page.locator('kr-survival-kit-inventory-card .ready-item[data-item="drinking-water"]')
         for stage, amount, expired, expected in [
             ("unknown", None, False, 0), ("zero", 0, False, 0),
             ("two-litres", 2, False, 0), ("four-litres", 4, False, 0),
@@ -105,13 +106,14 @@ def main():
         ]:
             render(make_snapshot(amount, expired))
             assert ready.count() == expected, (stage, ready.count(), expected)
+            assert water_tile.locator(".ready-art").count() == 1
+            assert f"{0 if expired else amount or 0} L / 24 L" in water_tile.inner_text()
+            assert ("실사 필요" in water_tile.inner_text()) == (amount is None)
             if expected:
                 assert ready.locator(".ready-art").count() == 1
                 assert "24 L / 24 L" in ready.inner_text()
                 assert "준비 기록 단계 1/4" in page.locator("kr-survival-kit-inventory-card .mission-head").inner_text()
                 assert page.locator("kr-survival-kit-inventory-card .mission-progress").get_attribute("aria-valuenow") == "1"
-            else:
-                assert "목표량·기한·실사를 기록하세요" in page.locator("kr-survival-kit-inventory-card .ready-empty").inner_text()
 
         render(make_snapshot(24, demo_full=True))
         assert ready.count() == 14, ready.count()
@@ -119,7 +121,7 @@ def main():
         assert page.locator("kr-survival-kit-inventory-card .mission-progress").get_attribute("aria-valuenow") == "4"
         assert page.locator("kr-survival-kit-inventory-card .mission-item.done").count() == 4
         assert page.locator("kr-survival-kit-inventory-card .ready-grid").evaluate("el => getComputedStyle(el).gridTemplateColumns.split(' ').length") == 10
-        assert page.locator("kr-survival-kit-inventory-card .ready-art").count() == 14
+        assert ready.locator(".ready-art").count() == 14
         page.wait_for_timeout(600)
         page.screenshot(path=str(EVIDENCE / "warehouse-synthetic-desktop.jpg"), type="jpeg", quality=88)
         page.set_viewport_size({"width": 375, "height": 812})
@@ -133,36 +135,50 @@ def main():
         page.evaluate("document.body.style.zoom = ''")
         page.set_viewport_size({"width": 1280, "height": 900})
 
+        assert page.locator("kr-survival-kit-inventory-card .quiz-panel").count() == 0
+        assert page.get_by_role("link", name="상황 안내 보기").count() == 0
+        page.evaluate("""({guide, quiz}) => {
+            window.demoCard.hidden = true;
+            window.demoGuide = document.createElement('kr-survival-kit-guide-card');
+            window.demoGuide.setConfig({guide_data: guide, quiz_data: quiz});
+            document.body.append(window.demoGuide);
+        }""", {"guide": GUIDE, "quiz": QUIZ})
         first = QUIZ["questions"][0]
         wrong = next(choice for choice in first["choices"] if choice["id"] != first["answer_id"])
-        wrong_button = page.locator(f'kr-survival-kit-inventory-card [data-quiz-choice="{wrong["id"]}"]')
+        wrong_button = page.locator(f'kr-survival-kit-guide-card [data-quiz-choice="{wrong["id"]}"]')
         wrong_button.focus()
         page.keyboard.press("Enter")
-        assert "다시 확인해 보세요" in page.locator("kr-survival-kit-inventory-card .quiz-feedback").inner_text()
-        assert "정답:" in page.locator("kr-survival-kit-inventory-card .quiz-feedback").inner_text()
-        assert page.locator("kr-survival-kit-inventory-card .quiz-sources a[href^='https://']").count() >= 1
-        assert page.locator(f'kr-survival-kit-inventory-card [data-quiz-choice="{wrong["id"]}"]').evaluate("el => el === el.getRootNode().activeElement")
-        page.locator(f'kr-survival-kit-inventory-card [data-quiz-choice="{first["answer_id"]}"]').click()
-        assert "맞았습니다" in page.locator("kr-survival-kit-inventory-card .quiz-feedback").inner_text()
-        assert "정답 1/8" in page.locator("kr-survival-kit-inventory-card .quiz-head").inner_text()
+        assert "다시 확인해 보세요" in page.locator("kr-survival-kit-guide-card .quiz-feedback").inner_text()
+        assert "정답:" in page.locator("kr-survival-kit-guide-card .quiz-feedback").inner_text()
+        assert page.locator("kr-survival-kit-guide-card .quiz-sources a[href^='https://']").count() >= 1
+        assert page.locator(f'kr-survival-kit-guide-card [data-quiz-choice="{wrong["id"]}"]').evaluate("el => el === el.getRootNode().activeElement")
+        page.locator(f'kr-survival-kit-guide-card [data-quiz-choice="{first["answer_id"]}"]').click()
+        assert "맞았습니다" in page.locator("kr-survival-kit-guide-card .quiz-feedback").inner_text()
+        assert "정답 1/8" in page.locator("kr-survival-kit-guide-card .quiz-head").inner_text()
         stored_quiz = page.evaluate("JSON.parse(localStorage.getItem('kr_survival_kit_quiz_v1'))")
         assert stored_quiz["answers"] == {first["id"]: first["answer_id"]}
         assert "items" not in stored_quiz and "summary" not in stored_quiz
         page.evaluate("""() => {
             const saved = JSON.parse(localStorage.getItem('kr_survival_kit_quiz_v1'));
             saved.answers['unknown-question'] = 'invented';
-            saved.answers[window.demoCard._quizData.questions[1].id] = 'invalid-choice';
+            saved.answers[window.demoGuide._quizData.questions[1].id] = 'invalid-choice';
             localStorage.setItem('kr_survival_kit_quiz_v1', JSON.stringify(saved));
         }""")
-        page.evaluate("({quiz, sources}) => window.demoCard.setConfig({guide_path:'#', quiz_data:quiz, quiz_sources:sources})", {"quiz": json.dumps(QUIZ, ensure_ascii=False), "sources": json.dumps(GUIDE_SOURCES, ensure_ascii=False)})
-        assert "학습 진도 1/8" in page.locator("kr-survival-kit-inventory-card .quiz-head").inner_text()
-        page.locator("kr-survival-kit-inventory-card .quiz-panel").scroll_into_view_if_needed()
+        page.evaluate("({guide, quiz}) => window.demoGuide.setConfig({guide_data: guide, quiz_data:quiz})", {"guide": GUIDE, "quiz": json.dumps(QUIZ, ensure_ascii=False)})
+        assert "학습 진도 1/8" in page.locator("kr-survival-kit-guide-card .quiz-head").inner_text()
+        page.locator("kr-survival-kit-guide-card .quiz-panel").scroll_into_view_if_needed()
         page.screenshot(path=str(EVIDENCE / "quiz-synthetic-desktop.jpg"), type="jpeg", quality=88)
         page.set_viewport_size({"width": 375, "height": 812})
         page.evaluate("document.body.style.zoom = '2'")
         assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth"), "quiz at 375px/200% overflow"
-        page.locator("kr-survival-kit-inventory-card .quiz-question").scroll_into_view_if_needed()
+        page.locator("kr-survival-kit-guide-card .quiz-question").scroll_into_view_if_needed()
         page.screenshot(path=str(EVIDENCE / "quiz-synthetic-mobile-zoom.jpg"), type="jpeg", quality=88)
+        page.locator("kr-survival-kit-guide-card [data-quiz-nav='next']").click()
+        page.locator("kr-survival-kit-guide-card [data-quiz-reset]").click()
+        assert "학습 진도 0/8" in page.locator("kr-survival-kit-guide-card .quiz-head").inner_text()
+        assert page.evaluate("JSON.parse(localStorage.getItem('kr_survival_kit_quiz_v1')).answers") == {}
+        page.evaluate("() => { window.demoGuide.remove(); window.demoCard.hidden = false; }")
+        page.evaluate("document.body.style.zoom = ''")
         page.emulate_media(reduced_motion="reduce")
         assert page.locator("kr-survival-kit-inventory-card .ready-art").first.evaluate("el => getComputedStyle(el).animationName") == "none"
         render(make_snapshot(2))
@@ -196,11 +212,6 @@ def main():
         target.fill("24.001")
         quantity.fill("4.25")
         review.fill("60")
-        page.locator("kr-survival-kit-inventory-card [data-quiz-nav='next']").click()
-        assert quantity.input_value() == "4.25", "Quiz navigation lost unsaved inventory"
-        page.locator("kr-survival-kit-inventory-card [data-quiz-reset]").click()
-        assert "학습 진도 0/8" in page.locator("kr-survival-kit-inventory-card .quiz-head").inner_text()
-        assert page.evaluate("JSON.parse(localStorage.getItem('kr_survival_kit_quiz_v1')).answers") == {}
         assert target.input_value() == "24.001"
         assert review.input_value() == "60"
         page.evaluate("""() => {
@@ -262,7 +273,6 @@ def main():
         saved_bottle = page.evaluate("window.savedBottle")["lots"][0]
         assert (saved_bottle["quantity"], saved_bottle["bottle_ml"], saved_bottle["bottle_count"]) == (24000, 2000, 12)
 
-        guide = json.loads((ROOT / "custom_components/kr_survival_kit/content/guide.ko.json").read_text(encoding="utf-8"))
         page.evaluate("""({guide, quiz, snapshot}) => {
             const panel = document.createElement('kr-survival-kit-panel');
             panel.route = {path: '/home'};
@@ -270,18 +280,20 @@ def main():
             document.body.replaceChildren(panel);
             panel.hass = {config: {time_zone: 'Asia/Seoul'}, states: {}, user: {is_admin: true},
                 connection: {sendMessagePromise: async () => ({response: snapshot})}};
-        }""", {"guide": guide, "quiz": QUIZ, "snapshot": make_snapshot(24)})
+        }""", {"guide": GUIDE, "quiz": QUIZ, "snapshot": make_snapshot(24)})
         panel = page.locator("kr-survival-kit-panel")
         assert panel.locator("a[aria-current='page']").inner_text() == "비축 관리"
-        assert panel.locator("kr-survival-kit-panel-inventory .ready-item").count() == 1
+        assert panel.locator("kr-survival-kit-panel-inventory .ready-art").count() > 1
+        assert panel.locator(".quiz-panel").count() == 0
         panel.evaluate("element => element.route = {path: '/guide'}")
         assert panel.locator("a[aria-current='page']").inner_text() == "상황 안내"
+        assert panel.locator(".quiz-panel").count() == 1
         assert panel.get_by_role("link", name="A4 행동 카드 열기").get_attribute("href") == "/kr_survival_kit_assets/kr-survival-kit-a4.pdf"
         assert panel.get_by_role("link", name="오프라인 안내 열기").get_attribute("href") == "/kr_survival_kit_assets/kr-survival-kit-offline.html"
         assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth")
 
         browser.close()
-    print("Synthetic complete-only 2D transitions, 10/2-column layouts, 200% zoom, L/ml edit/conflict, and screenshots passed")
+    print("Synthetic inventory and quiz transitions, 10/2-column layouts, 200% zoom, L/ml edit/conflict, and screenshots passed")
 
 
 if __name__ == "__main__":

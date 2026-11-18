@@ -24,21 +24,17 @@ def main():
         "household_summary": summary,
     }, ensure_ascii=False, separators=(",", ":"))
     quiz_payload = json.dumps(quiz, ensure_ascii=False, separators=(",", ":"))
-    quiz_sources_payload = json.dumps(guide["sources"], ensure_ascii=False, separators=(",", ":"))
     yaml = (
         f"# content_version: {guide['content_version']}\n"
         "title: KR Survival Kit\nviews:\n"
         "  - title: 비축 관리\n    path: home\n    type: panel\n    cards:\n"
         "      - type: custom:kr-survival-kit-inventory-card\n"
-        "        guide_path: /kr-survival-kit/guide\n"
-        "        quiz_data: >-\n"
-        + block(quiz_payload, 10) + "\n"
-        + "        quiz_sources: >-\n"
-        + block(quiz_sources_payload, 10) + "\n"
         + "  - title: 상황 안내\n    path: guide\n    type: panel\n    cards:\n"
         + "      - type: custom:kr-survival-kit-guide-card\n"
         + "        guide_data: >-\n"
         + block(guide_payload, 10) + "\n"
+        + "        quiz_data: >-\n"
+        + block(quiz_payload, 10) + "\n"
     )
     OUTPUT.mkdir(parents=True, exist_ok=True)
     target = OUTPUT / "dashboard.yaml"

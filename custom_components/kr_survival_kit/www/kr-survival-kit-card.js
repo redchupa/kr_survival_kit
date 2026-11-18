@@ -89,14 +89,25 @@ function krReadyItems(snapshot) {
 }
 
 function krReadyGrid(snapshot, escape) {
-  const ready = krReadyItems(snapshot);
   if (!snapshot) return `<p class="ready-empty">재고를 불러오는 중입니다.</p>`;
-  if (!ready.length) return `<p class="ready-empty">재고가 완비로 확인된 품목이 없습니다. 아래에서 목표량·기한·실사를 기록하세요.</p>`;
-  return `<div class="ready-grid" role="list">${ready.map((item) => {
+  const visible = snapshot.catalog.filter((item) => {
+    const record = snapshot.items[item.id];
+    return record ? record.applicable : !["household", "optional"].includes(item.tier);
+  });
+  if (!visible.length) return `<p class="ready-empty">활성화한 물품이 없습니다.</p>`;
+  const readyIds = new Set(krReadyItems(snapshot).map((item) => item.id));
+  return `<div class="ready-grid" role="list">${visible.map((item) => {
     const status = snapshot.summary.items[item.id];
+    const ready = readyIds.has(item.id);
     const pictogram = item.id === "drinking-water" ? KR_WATER_BOTTLE_ART : KR_READY_PICTOGRAMS[item.id] || "◈";
-    return `<div class="ready-item" role="listitem" aria-label="${escape(item.name)} · ${escape(krStockText(item, status.usable))} / ${escape(krStockText(item, status.target))}"><span class="ready-art" aria-hidden="true">${pictogram}</span>` +
-      `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(krStockText(item, status.usable))} / ${escape(krStockText(item, status.target))}</span></div>`;
+    const current = status.usable ?? 0;
+    const quantity = `${krStockText(item, current)} / ${status.target == null ? "목표 미설정" : krStockText(item, status.target)}`;
+    const label = ready ? "완비" : !status.confirmed || status.stale ? "실사 필요" :
+      status.expiring_quantity > 0 ? "기한 임박" : status.expired_quantity > 0 ? "기한 경과" :
+      status.unknown_date_quantity > 0 ? "기한 확인" : status.state === "shortage" ? "부족" : "";
+    const percent = status.target > 0 ? Math.floor(Math.min(1, current / status.target) * 100) : 0;
+    return `<div class="ready-item" data-item="${escape(item.id)}" data-complete="${ready}" role="listitem" aria-label="${escape([item.name, quantity, label].filter(Boolean).join(" · "))}"><span class="ready-art" aria-hidden="true">${pictogram}</span>` +
+      `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(quantity)}</span><span aria-hidden="true" class="stock-meter"><span style="width:${percent}%"></span></span>${label ? `<span class="stock-label">${label}</span>` : ""}</div>`;
   }).join("")}</div>`;
 }
 
@@ -141,72 +152,11 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._focusOptionalSearch = false;
     this._categoryFilter = "all";
     this._statusFilter = "attention";
-    this._quizData = null;
-    this._quizSources = {};
-    this._quizAnswers = {};
-    this._quizIndex = 0;
   }
 
   setConfig(config) {
     this._config = config || {};
-    try {
-      const data = typeof this._config.quiz_data === "string" ? JSON.parse(this._config.quiz_data) : this._config.quiz_data;
-      this._quizData = data?.schema_version === 1 && Array.isArray(data?.questions) && Array.isArray(data?.levels) ? data : null;
-      const guideData = typeof this._config.guide_data === "string" ? JSON.parse(this._config.guide_data) : this._config.guide_data;
-      const sources = this._config.quiz_sources || guideData?.sources || data?.sources || {};
-      this._quizSources = typeof sources === "string" ? JSON.parse(sources) : sources;
-    } catch (_error) {
-      this._quizData = null;
-      this._quizSources = {};
-    }
-    let saved = null;
-    try { saved = JSON.parse(window.localStorage?.getItem("kr_survival_kit_quiz_v1") || "null"); } catch (_error) { /* local storage can be unavailable */ }
-    this._quizAnswers = {};
-    if (saved?.version === this._quizData?.content_version) {
-      for (const question of this._quizData?.questions || []) {
-        const answer = saved?.answers?.[question.id];
-        if (question.choices.some((choice) => choice.id === answer)) this._quizAnswers[question.id] = answer;
-      }
-    }
-    this._quizIndex = Math.max(0, this._quizData?.questions?.findIndex((question) => !this._quizAnswers[question.id]) ?? 0);
     this._render();
-  }
-
-  _saveQuizAnswers() {
-    if (!this._quizData) return;
-    try {
-      window.localStorage?.setItem("kr_survival_kit_quiz_v1", JSON.stringify({
-        version: this._quizData.content_version, answers: this._quizAnswers,
-      }));
-    } catch (_error) { /* private browsing may disable local storage; the quiz still works in memory */ }
-  }
-
-  _quizView(escape) {
-    const data = this._quizData;
-    if (!data?.questions?.length) return `<section class="quiz-panel" aria-label="상황 판단 연습"><h3>상황 판단 연습</h3><p>학습 퀴즈 자료가 연결되지 않았습니다. 상황 안내에서 공식 행동요령을 확인하세요.</p></section>`;
-    const index = Math.min(this._quizIndex, data.questions.length - 1);
-    const question = data.questions[index];
-    const level = data.levels.find((entry) => entry.id === question.level_id);
-    const selected = this._quizAnswers[question.id];
-    const correct = data.questions.filter((entry) => this._quizAnswers[entry.id] === entry.answer_id).length;
-    const answered = data.questions.filter((entry) => this._quizAnswers[entry.id]).length;
-    const choice = question.choices.find((entry) => entry.id === selected);
-    const answer = question.choices.find((entry) => entry.id === question.answer_id);
-    const sourceLinks = (question.source_ids || []).map((id) => {
-      const source = this._quizSources[id];
-      let url;
-      try { url = new URL(source?.url); } catch (_error) { return ""; }
-      if (url.protocol !== "https:") return "";
-      return `<a href="${escape(url.href)}" target="_blank" rel="noopener noreferrer">${escape(source.publisher || source.title || id)}</a>`;
-    }).filter(Boolean).join(" · ");
-    return `<section class="quiz-panel" aria-label="상황 판단 연습"><div class="quiz-head"><h3>${escape(data.title || "상황 판단 연습")}</h3><span>학습 진도 ${answered}/${data.questions.length} · 정답 ${correct}/${data.questions.length}</span></div>` +
-      `<p>학습 기록은 이 브라우저에만 저장됩니다. 실제 대피 판단이나 생존 가능성 점수가 아닙니다.</p>` +
-      `<div class="quiz-question"><small>${escape(level?.title || "학습 문제")} · ${index + 1}/${data.questions.length}</small><h4>${escape(question.prompt)}</h4>` +
-      `<div class="quiz-choices">${question.choices.map((entry) => `<button type="button" data-quiz-choice="${escape(entry.id)}" aria-pressed="${selected === entry.id}">${escape(entry.text)}</button>`).join("")}</div>` +
-      (choice ? `<div class="quiz-feedback" role="status"><p><strong>${selected === question.answer_id ? "맞았습니다." : "다시 확인해 보세요."}</strong> ${escape(choice.feedback)}</p>` +
-        `<p><strong>정답: ${escape(answer?.text || "자료 확인 필요")}</strong> ${escape(answer?.feedback || "")}</p>` +
-        `<p class="quiz-sources">${sourceLinks ? `공식 출처: ${sourceLinks}` : `<a href="${escape(this._config?.guide_path || "/kr-survival-kit/guide")}">상황 안내의 출처 확인</a>`}</p></div>` : "") +
-      `<div class="quiz-nav"><button type="button" data-quiz-nav="prev" ${index === 0 ? "disabled" : ""}>이전</button><button type="button" data-quiz-nav="next" ${index === data.questions.length - 1 ? "disabled" : ""}>다음 문제</button></div><button type="button" data-quiz-reset>학습 기록 지우고 다시 풀기</button></div></section>`;
   }
 
   set hass(hass) {
@@ -562,7 +512,6 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       `<button type="button" data-status="${value}" aria-pressed="${this._statusFilter === value}">${label}</button>`
     ).join("");
     const listTitle = statusLabels[this._statusFilter] || "품목";
-    const guidePath = escape(this._config?.guide_path || "/kr-survival-kit/guide");
     const missionSignature = krMissionState(snapshot).map((mission) => mission.complete).join("");
     const animateMission = Boolean(snapshot && missionSignature !== this._missionSignature);
     this._missionSignature = missionSignature;
@@ -587,9 +536,6 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .hero{background:linear-gradient(125deg,#111d28 0%,#1b3445 58%,#294858 100%);color:#edf7f8;padding:clamp(1.1rem,3vw,2.5rem);display:grid;grid-template-columns:minmax(16rem,.82fr) minmax(0,1.18fr);gap:clamp(1rem,3vw,2.5rem);align-items:center}
       .hero h2{font-size:clamp(1.65rem,3vw,2.45rem);line-height:1.18;letter-spacing:-.045em;margin:0 0 .8rem;color:#f3fafb}
       .hero p{color:#c6d9df;max-width:35rem}.hero .hero-copy{font-size:1rem;line-height:1.6}
-      .hero-links{margin-top:1.2rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
-      .guide-link{display:inline-flex;align-items:center;min-height:44px;padding:.55rem .9rem;border:1px solid #83cadb;border-radius:8px;color:#e4f8fb;font-weight:700;text-decoration:none}
-      .guide-link:hover{text-decoration:underline}.guide-link:focus-visible{outline:3px solid #f2c77c;outline-offset:3px}
       .signals{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.25rem}.signals button{display:flex;gap:.7rem;align-items:baseline;background:rgba(7,19,29,.42);color:#eef7f8;border:1px solid #668b9c;min-width:6.5rem;justify-content:space-between}.signals strong{font-size:1.3rem;font-variant-numeric:tabular-nums}.signals button:hover{background:#2a5369}
       .inventory-panel{padding:clamp(1rem,2.4vw,2rem);background:var(--card-background-color,#fff);color:var(--primary-text-color,#173048)}
       .inventory-heading{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}.inventory-heading h2{margin:0;font-size:1.32rem;color:var(--primary-text-color,#173048)}
@@ -620,6 +566,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .ready-item{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:start;gap:.27rem;min-width:0;padding:.72rem .3rem .64rem;border:1px solid #547d8e;border-radius:9px;background:#25485b;color:#f4fafa;text-align:center}
       .ready-art{display:grid;place-items:center;min-height:3rem;font-size:2.35rem;line-height:1;filter:none}.ready-name{font-size:.76rem;font-weight:750;line-height:1.25;overflow-wrap:anywhere}.ready-number{font-size:.66rem;color:#d3e9ec;line-height:1.25;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
       .ready-empty{margin:.15rem 0!important;padding:.7rem 0;color:#d9e9eb!important;line-height:1.55}
+      .ready-item[data-complete="true"]{border-color:#8bd8bb;background:#23564f}.stock-meter{display:block;width:80%;height:4px;border-radius:999px;background:#18303d;overflow:hidden}.stock-meter span{display:block;height:100%;background:#8ed4df;border-radius:inherit}.ready-item[data-complete="true"] .stock-meter span{background:#9de8be}.stock-label{font-size:.65rem;color:#e1eff2}
       .ready-art svg{display:block;width:44px;height:44px}
       @keyframes krSkyDrift{from{background-position:0 0}to{background-position:100px 180px}}
       @media(prefers-reduced-motion:reduce){.hero,.mission-progress span{transition:none!important}.hero[data-weather]::after,.mission-item.unlock .mission-art{animation:none!important}}
@@ -631,20 +578,20 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .mission-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem;margin-top:.6rem}.mission-item{display:grid;grid-template-columns:2.6rem minmax(0,1fr);gap:.15rem .55rem;align-items:center;min-width:0;padding:.55rem .7rem;border:1px solid #537d8d;border-radius:8px;background:#18394a}.mission-item.done{border-color:#84c5cb;background:#21566a}.mission-art{grid-row:1/3;display:grid;place-items:center;font-size:1.6rem}.mission-item.pending .mission-art{font-size:1.2rem;color:#a6c7ce}.mission-title{font-size:.81rem;font-weight:700}.mission-state{font-size:.72rem;color:#c7dfe3}
       .mission-progress{height:8px;margin:.65rem 0 .55rem;overflow:hidden;border:1px solid #6e9baa;border-radius:999px;background:#0e2a39}.mission-progress span{display:block;height:100%;background:#83d4d2;border-radius:999px;transition:width .45s ease}
       .mission-item{position:relative}.mission-item.done::after{content:"✓";position:absolute;right:.55rem;top:.35rem;display:grid;place-items:center;width:1.1rem;height:1.1rem;border-radius:50%;background:#c5f1e9;color:#145269;font-size:.72rem;font-weight:900}.mission-item.unlock .mission-art{animation:krMissionUnlock .5s ease-out both}@keyframes krMissionUnlock{from{transform:scale(.65);opacity:.25}to{transform:scale(1);opacity:1}}
-      .quiz-panel{padding:1.2rem clamp(1rem,2.4vw,2rem);border-top:1px solid var(--divider-color,#d7e1e7);background:var(--card-background-color,#fff);color:var(--primary-text-color,#173048)}.quiz-panel h3{margin:0}.quiz-panel p{max-width:60rem}.quiz-head{display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap}.quiz-head span{font-size:.84rem;font-weight:700}.quiz-question{max-width:65rem;margin-top:1rem;padding:1rem;border:1px solid var(--divider-color,#9cabb2);border-radius:10px}.quiz-question small{color:var(--secondary-text-color,#405564)}.quiz-question h4{font-size:1rem;line-height:1.5}.quiz-choices{display:grid;gap:.5rem}.quiz-choices button{text-align:left}.quiz-choices button[aria-pressed="true"]{border-color:#197f83;background:#dff2f1;color:#113d49;font-weight:700}.quiz-feedback{padding:.65rem .8rem;border-left:3px solid #197f83;background:#e5f3f2;color:#173b45!important}.quiz-feedback p{margin:.3rem 0;color:#173b45}.quiz-sources a{color:#075c72;text-decoration:underline;font-weight:700}.quiz-sources a:focus-visible{outline:3px solid #d28b24;outline-offset:2px}.quiz-nav{display:flex;justify-content:space-between;gap:.5rem;margin-top:.8rem}.quiz-nav button:disabled{opacity:.5;cursor:default}
+
       @media(max-width:650px){.mission-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
       @media(max-width:400px){.mission-item{grid-template-columns:1fr;text-align:center}.mission-art{grid-row:auto}}
     </style><ha-card><section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨"><span id="local-clock">--:--</span><span id="local-weather">날씨 연동 안 됨</span></div></div><p class="atmosphere-note" id="time-source">HA 시간대 · 시각 기준 주야 테마</p>` +
       `<p class="hero-copy">${snapshot ? Object.keys(snapshot.items).length ? "기록된 품목의 상태를 살펴보고 필요한 것부터 점검하세요." : "저장된 재고 기록이 없습니다. 품목을 열어 실제 수량과 목표를 확인하세요." : this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` +
       (snapshot ? `<div class="household-strip"><div><strong>${people}인 가구 · 3일</strong><p>생수 ${people * 6} L · 식사 ${people * 9}인분</p></div><form id="household-form"><label>가구 인원 (명)<input id="household-size" type="number" required min="1" max="99" value="${escape(people)}" ${this._draft ? "disabled" : ""}></label><button type="submit" ${this._draft || this._saving ? "disabled" : ""}>인원 적용</button></form>${this._householdMessage ? `<p role="status">${escape(this._householdMessage)}</p>` : ""}</div>` : "") +
-      `<div class="hero-links"><a class="guide-link" href="${guidePath}">상황 안내 보기</a></div>${signals}` +
+      `${signals}` +
       (counts ? `<p class="filter-note">부족·확인 필요·기한 임박 수치는 서로 겹칠 수 있습니다. 부족 0건이 준비 완료를 뜻하지 않습니다.</p>` : "") +
-      `</div>${krMissionView(snapshot, escape, animateMission)}<section class="ready-panel" aria-label="목표량을 채우고 확인한 품목"><h3>완비한 물품 <span>${krReadyItems(snapshot).length}개</span></h3>${krReadyGrid(snapshot, escape)}</section></section>` +
+      `</div>${krMissionView(snapshot, escape, animateMission)}<section class="ready-panel" aria-label="비축 물품 현황"><h3>비축 물품 <span>완비 ${krReadyItems(snapshot).length}종</span></h3>${krReadyGrid(snapshot, escape)}</section></section>` +
       `<section class="inventory-panel" id="inventory-list"><div class="inventory-heading"><h2>${listTitle} <span>${filteredItems.length}개</span></h2><button type="button" id="refresh">새로고침</button></div>` +
       `<div class="filter-bar" aria-label="품목 분류 필터">${categoryButtons}</div><div class="filter-bar" aria-label="품목 상태 필터">${statusButtons}</div>` +
       `<p class="filter-note">인원을 바꾸면 기본 목표가 갱신됩니다. 직접 저장한 목표는 품목의 목표 설정에서 비우면 기본값을 다시 따릅니다.</p>` +
       (this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : "") +
-      `<div class="items">${snapshot ? (edit || (filteredItems.length ? rows : `<p class="empty">조건에 맞는 품목이 없습니다. 다른 필터를 선택하세요.</p>`) + optionalRows) : `<p class="empty">${this._loading ? "재고를 불러오는 중입니다." : "재고를 표시할 수 없습니다."}</p>`}</div></section>${this._quizView(escape)}</ha-card>`;
+      `<div class="items">${snapshot ? (edit || (filteredItems.length ? rows : `<p class="empty">조건에 맞는 품목이 없습니다. 다른 필터를 선택하세요.</p>`) + optionalRows) : `<p class="empty">${this._loading ? "재고를 불러오는 중입니다." : "재고를 표시할 수 없습니다."}</p>`}</div></section></ha-card>`;
     this.shadowRoot.querySelector("#optional-items")?.addEventListener("toggle", (event) => {
       this._optionalOpen = event.currentTarget.open;
     });
@@ -680,29 +627,6 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       update();
     });
     this.shadowRoot.querySelector("#refresh")?.addEventListener("click", () => this._load());
-    this.shadowRoot.querySelectorAll("[data-quiz-choice]").forEach((button) => button.addEventListener("click", () => {
-      this._captureDraft();
-      const question = this._quizData?.questions?.[this._quizIndex];
-      if (!question?.choices?.some((choice) => choice.id === button.dataset.quizChoice)) return;
-      this._quizAnswers[question.id] = button.dataset.quizChoice;
-      this._saveQuizAnswers();
-      this._render();
-      [...this.shadowRoot.querySelectorAll("[data-quiz-choice]")].find((entry) => entry.dataset.quizChoice === button.dataset.quizChoice)?.focus({ preventScroll: true });
-    }));
-    this.shadowRoot.querySelectorAll("[data-quiz-nav]").forEach((button) => button.addEventListener("click", () => {
-      this._captureDraft();
-      this._quizIndex = Math.max(0, Math.min(this._quizData.questions.length - 1, this._quizIndex + (button.dataset.quizNav === "next" ? 1 : -1)));
-      this._render();
-      this.shadowRoot.querySelector("[data-quiz-choice]")?.focus({ preventScroll: true });
-    }));
-    this.shadowRoot.querySelector("[data-quiz-reset]")?.addEventListener("click", () => {
-      this._captureDraft();
-      this._quizAnswers = {};
-      this._quizIndex = 0;
-      this._saveQuizAnswers();
-      this._render();
-      this.shadowRoot.querySelector("[data-quiz-choice]")?.focus({ preventScroll: true });
-    });
     this.shadowRoot.querySelectorAll("[data-category]").forEach((button) => button.addEventListener("click", (event) => {
       const category = button.dataset.category;
       this._categoryFilter = this._categoryFilter === category ? "all" : category;
@@ -764,13 +688,76 @@ class KrSurvivalKitGuideCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._scenario = "prepare";
     this._sheet = "first-day";
+    this._quizData = null;
+    this._quizSources = {};
+    this._quizAnswers = {};
+    this._quizIndex = 0;
   }
 
   setConfig(config) {
     this._assetPath = config.asset_path || "/local";
     this._guide = typeof config.guide_data === "string" ? JSON.parse(config.guide_data) : config.guide_data;
     if (!this._guide?.scenarios?.length || !this._guide?.playbook?.length) throw new Error("상황 안내 자료가 없습니다.");
+    this._loadQuiz(config.quiz_data);
     this._render();
+  }
+
+  _loadQuiz(quiz) {
+    try {
+      const data = typeof quiz === "string" ? JSON.parse(quiz) : quiz;
+      this._quizData = data?.schema_version === 1 && Array.isArray(data?.questions) && Array.isArray(data?.levels) ? data : null;
+      this._quizSources = this._guide.sources;
+    } catch (_error) {
+      this._quizData = null;
+      this._quizSources = {};
+    }
+    let saved = null;
+    try { saved = JSON.parse(window.localStorage?.getItem("kr_survival_kit_quiz_v1") || "null"); } catch (_error) { /* local storage can be unavailable */ }
+    this._quizAnswers = {};
+    if (saved?.version === this._quizData?.content_version) {
+      for (const question of this._quizData?.questions || []) {
+        const answer = saved?.answers?.[question.id];
+        if (question.choices.some((choice) => choice.id === answer)) this._quizAnswers[question.id] = answer;
+      }
+    }
+    this._quizIndex = Math.max(0, this._quizData?.questions?.findIndex((question) => !this._quizAnswers[question.id]) ?? 0);
+  }
+
+  _saveQuizAnswers() {
+    if (!this._quizData) return;
+    try {
+      window.localStorage?.setItem("kr_survival_kit_quiz_v1", JSON.stringify({
+        version: this._quizData.content_version, answers: this._quizAnswers,
+      }));
+    } catch (_error) { /* private browsing may disable local storage; the quiz still works in memory */ }
+  }
+
+  _quizView(escape) {
+    const data = this._quizData;
+    if (!data?.questions?.length) return "";
+    const index = Math.min(this._quizIndex, data.questions.length - 1);
+    const question = data.questions[index];
+    const level = data.levels.find((entry) => entry.id === question.level_id);
+    const selected = this._quizAnswers[question.id];
+    const correct = data.questions.filter((entry) => this._quizAnswers[entry.id] === entry.answer_id).length;
+    const answered = data.questions.filter((entry) => this._quizAnswers[entry.id]).length;
+    const choice = question.choices.find((entry) => entry.id === selected);
+    const answer = question.choices.find((entry) => entry.id === question.answer_id);
+    const sourceLinks = (question.source_ids || []).map((id) => {
+      const source = this._quizSources[id];
+      let url;
+      try { url = new URL(source?.url); } catch (_error) { return ""; }
+      if (url.protocol !== "https:") return "";
+      return `<a href="${escape(url.href)}" target="_blank" rel="noopener noreferrer">${escape(source.publisher || source.title || id)}</a>`;
+    }).filter(Boolean).join(" · ");
+    return `<section class="quiz-panel" aria-label="상황 판단 연습"><div class="quiz-head"><h3>${escape(data.title || "상황 판단 연습")}</h3><span>학습 진도 ${answered}/${data.questions.length} · 정답 ${correct}/${data.questions.length}</span></div>` +
+      `<p>학습 기록은 이 브라우저에만 저장됩니다. 실제 대피 판단이나 생존 가능성 점수가 아닙니다.</p>` +
+      `<div class="quiz-question"><small>${escape(level?.title || "학습 문제")} · ${index + 1}/${data.questions.length}</small><h4>${escape(question.prompt)}</h4>` +
+      `<div class="quiz-choices">${question.choices.map((entry) => `<button type="button" data-quiz-choice="${escape(entry.id)}" aria-pressed="${selected === entry.id}">${escape(entry.text)}</button>`).join("")}</div>` +
+      (choice ? `<div class="quiz-feedback" role="status"><p><strong>${selected === question.answer_id ? "맞았습니다." : "다시 확인해 보세요."}</strong> ${escape(choice.feedback)}</p>` +
+        `<p><strong>정답: ${escape(answer?.text || "자료 확인 필요")}</strong> ${escape(answer?.feedback || "")}</p>` +
+        `<p class="quiz-sources">${sourceLinks ? `공식 출처: ${sourceLinks}` : `공식 참고 자료를 확인하세요.`}</p></div>` : "") +
+      `<div class="quiz-nav"><button type="button" data-quiz-nav="prev" ${index === 0 ? "disabled" : ""}>이전</button><button type="button" data-quiz-nav="next" ${index === data.questions.length - 1 ? "disabled" : ""}>다음 문제</button></div><button type="button" data-quiz-reset>학습 기록 지우고 다시 풀기</button></div></section>`;
   }
 
   set hass(value) { this._hass = value; }
@@ -812,10 +799,33 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       .reference-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.reference-item{padding:18px;border:1px solid #466b7d;border-radius:12px;background:#1e3949}.reference-item span{color:#b4e5ea;font-size:.84rem;font-weight:700}.reference-item h4{margin:8px 0;color:#f2f8f9}.reference-item p{margin:0;line-height:1.7;color:#c5d8df}@media(max-width:700px){.reference-grid{grid-template-columns:1fr}}
       .references{padding:20px 25px;margin-top:24px}.references summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:700}.references p{color:var(--muted);line-height:1.6}.references ul{columns:2;column-gap:30px;padding-left:1.2rem}.references li{break-inside:avoid;line-height:1.6;margin:0 0 10px}.references a{color:#a9e1ec}.references a:hover{text-decoration:none}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #f3c77b;outline-offset:3px}
       @media(max-width:760px){.hero{grid-template-columns:1fr;min-height:0}.orb{display:none}.layout{grid-template-columns:1fr}.rail{padding:18px}.nav-items{grid-template-columns:repeat(auto-fit,minmax(125px,1fr))}.references ul{columns:1}}@media(max-width:420px){.shell{padding:12px}.hero{padding:22px;border-radius:15px}.layout{gap:12px;margin-top:12px}.action-top,.action-body,.timeline{padding:20px}.timeline{margin-top:12px}.time-row{grid-template-columns:80px minmax(0,1fr);gap:13px}.time-rail{padding-right:12px}.time-when{font-size:.82rem}.time-copy{padding-bottom:22px}.rail{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:14px}.rail h2{grid-column:1/-1;margin:0 0 4px}.nav-group,.nav-items{display:contents}.nav-group h3{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.nav-items button{min-height:42px;text-align:center;font-size:.84rem;padding:8px 2px}.references{margin-top:12px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+      .quiz-panel{margin-top:24px;border-radius:18px;padding:1.2rem clamp(1rem,2.4vw,2rem);border:1px solid var(--line);background:#172938;color:#e7f3f6}.quiz-panel h3{margin:0}.quiz-panel p{max-width:60rem}.quiz-head{display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap}.quiz-head span{font-size:.84rem;font-weight:700}.quiz-question{max-width:65rem;margin-top:1rem;padding:1rem;border:1px solid var(--divider-color,#9cabb2);border-radius:10px}.quiz-question small{color:var(--muted)}.quiz-question h4{font-size:1rem;line-height:1.5}.quiz-choices{display:grid;gap:.5rem}.quiz-choices button{text-align:left}.quiz-choices button[aria-pressed="true"]{border-color:#197f83;background:#dff2f1;color:#113d49;font-weight:700}.quiz-feedback{padding:.65rem .8rem;border-left:3px solid #197f83;background:#e5f3f2;color:#173b45!important}.quiz-feedback p{margin:.3rem 0;color:#173b45}.quiz-sources a{color:#075c72;text-decoration:underline;font-weight:700}.quiz-sources a:focus-visible{outline:3px solid #d28b24;outline-offset:2px}.quiz-nav{display:flex;justify-content:space-between;gap:.5rem;margin-top:.8rem}.quiz-nav button:disabled{opacity:.5;cursor:default}
+      .quiz-panel button{font:inherit;color:#e7f3f6;background:#213e4d;border:1px solid #547b8e;border-radius:8px;padding:10px 12px;min-height:44px;cursor:pointer}.quiz-panel [data-quiz-reset]{margin-top:10px}
     </style><ha-card><main class="shell"><header class="hero"><div class="hero-content"><h2>상황 안내</h2><p><strong>${esc(guide.official_first)}</strong> 받은 경보를 선택하면 첫 행동을 바로 확인할 수 있습니다.</p><div class="hero-actions"><a href="${esc(this._assetPath)}/kr-survival-kit-a4.pdf" target="_blank" rel="noopener">A4 행동 카드 열기</a><a class="secondary" href="${esc(this._assetPath)}/kr-survival-kit-offline.html" target="_blank" rel="noopener">오프라인 안내 열기</a><a class="secondary" href="/kr-survival-kit/home">비축 관리로</a></div></div><div class="orb" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 8 82 21v25c0 23-13 36-32 47C31 82 18 69 18 46V21z" fill="#7bc8d9" stroke="#dafaff" stroke-width="2"/><path d="M50 18 73 27v19c0 17-8 28-23 37-15-9-23-20-23-37V27z" fill="#22506a"/><path d="M50 30v34M33 47h34" stroke="#bbf1f3" stroke-width="7" stroke-linecap="round"/></svg></div></header>
     <div class="layout"><nav class="rail" aria-label="상황 선택"><h2>상황별 첫 행동</h2>${scenarioNav}</nav><section class="action" aria-live="polite"><div class="action-top"><p class="kind">${esc(scenario.kind)}</p><h2>${esc(scenario.title)}</h2><h3>먼저 할 일</h3><p class="first-action">${esc(scenario.first_action)}</p></div><div class="action-body"><h3>이어 확인할 일</h3>${detail}${household}<div class="comms"><strong>전화·인터넷이 끊기면</strong>${esc(guide.communication_loss.first_action)} ${esc(guide.communication_loss.paper_note)}</div></div></section></div>
     <section class="timeline" aria-labelledby="timeline-title"><div class="section-head"><h2 id="timeline-title">${sheetHeading}</h2><p>${sheetSummary}</p></div><div class="sheet-tabs" role="tablist" aria-label="상세 행동 안내">${sheetNav}</div><div id="sheet-panel" role="tabpanel" aria-labelledby="tab-${esc(sheet.id)}" tabindex="0"><h3>${esc(sheet.title)}</h3><p class="sheet-intro">${esc(sheet.intro)}</p>${sheet.layout === "reference" ? `<div class="reference-grid">${rows}</div>` : `<ol class="time-list">${rows}</ol>`}</div></section>
+    ${this._quizView(esc)}
     <details class="references"><summary>공식 참고 자료와 파일 보관 방법</summary><p>외부 출처는 인터넷 연결이 필요합니다. PDF는 열린 화면에서 인쇄·다운로드하고, HTML은 브라우저의 ‘다른 이름으로 저장’으로 미리 보관하세요.</p><ul>${uniqueSources.map((source) => `<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.publisher)} · ${esc(source.title)}</a></li>`).join("")}</ul></details></main></ha-card>`;
+    this.shadowRoot.querySelectorAll("[data-quiz-choice]").forEach((button) => button.addEventListener("click", () => {
+      const question = this._quizData?.questions?.[this._quizIndex];
+      if (!question?.choices?.some((choice) => choice.id === button.dataset.quizChoice)) return;
+      this._quizAnswers[question.id] = button.dataset.quizChoice;
+      this._saveQuizAnswers();
+      this._render();
+      [...this.shadowRoot.querySelectorAll("[data-quiz-choice]")].find((entry) => entry.dataset.quizChoice === button.dataset.quizChoice)?.focus({ preventScroll: true });
+    }));
+    this.shadowRoot.querySelectorAll("[data-quiz-nav]").forEach((button) => button.addEventListener("click", () => {
+      this._quizIndex = Math.max(0, Math.min(this._quizData.questions.length - 1, this._quizIndex + (button.dataset.quizNav === "next" ? 1 : -1)));
+      this._render();
+      this.shadowRoot.querySelector("[data-quiz-choice]")?.focus({ preventScroll: true });
+    }));
+    this.shadowRoot.querySelector("[data-quiz-reset]")?.addEventListener("click", () => {
+      this._quizAnswers = {};
+      this._quizIndex = 0;
+      this._saveQuizAnswers();
+      this._render();
+      this.shadowRoot.querySelector("[data-quiz-choice]")?.focus({ preventScroll: true });
+    });
     this.shadowRoot.querySelectorAll("[data-scenario]").forEach((button) => button.addEventListener("click", () => {
       this._scenario = button.dataset.scenario;
       this._render();
@@ -893,8 +903,8 @@ class KrSurvivalKitPanel extends HTMLElement {
     const { guide, quiz, asset_path } = this._config;
     const card = document.createElement(isGuide ? "kr-survival-kit-panel-guide" : "kr-survival-kit-panel-inventory");
     card.setConfig(isGuide
-      ? { guide_data: guide, asset_path }
-      : { quiz_data: quiz, quiz_sources: guide.sources });
+      ? { guide_data: guide, asset_path, quiz_data: quiz }
+      : {});
     this.shadowRoot.querySelector("main").replaceChildren(card);
     this._card = card;
     if (this._hass) card.hass = this._hass;

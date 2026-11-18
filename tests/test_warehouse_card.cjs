@@ -35,7 +35,7 @@ for (const changed of [
   { target: 0 }, { state: "needs_check" },
 ]) assert.equal(context.readyItems(snapshot({ ...base, ...changed })).length, 0, JSON.stringify(changed));
 assert.equal(context.readyItems({ ...snapshot(base), items: { [item.id]: { applicable: false } } }).length, 0);
-assert.match(context.testGrid(snapshot({ ...base, usable: 0, state: "shortage" }), escape), /아래에서 목표량·기한·실사를 기록하세요/);
+assert.match(context.testGrid(snapshot({ ...base, usable: 0, state: "shortage" }), escape), /0 L \/ 24 L/);
 assert.equal(context.stockFormat(item, 1001), "1.001");
 assert.equal(context.stockParse(item, "1.001"), 1001);
 assert.equal(context.stockFormat(item, 1), "0.001");
@@ -96,4 +96,4 @@ handlers.category({ detail: 1 });
 assert.deepEqual(focus, ["category", "status", "refresh"]);
 assert.equal(scrolled, 1);
 
-console.log("Complete-only 2D grid, catalog pictograms, L units, escaping, weather freshness, and keyboard focus passed");
+console.log("Inventory grid, catalog pictograms, L units, escaping, weather freshness, and keyboard focus passed");
