@@ -23,9 +23,9 @@ set_item:
       example: 5000
     lots:
       name: Purchase lots
-      description: List of lot_id, quantity, and expires_on (ISO date or null).
+      description: List of lot_id, quantity, and expires_on (ISO date or null). Optional location is a storage place up to 60 characters, e.g. "주방 팬트리 3층 선반".
       required: true
-      example: '[{"lot_id":"bottles-1","quantity":2000,"expires_on":"2027-02-01"}]'
+      example: '[{"lot_id":"bottles-1","quantity":2000,"expires_on":"2027-02-01","location":"현관 팬트리"}]'
     confirm:
       name: Confirm physical inspection
       description: Set true only after checking the actual item and quantity.

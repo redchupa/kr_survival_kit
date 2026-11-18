@@ -110,4 +110,31 @@ assert.equal(quests[0].itemId, "drinking-water");
 const expHtml = context.expiringStrip({ today: "2026-11-18", catalog: [item], items: { "drinking-water": { applicable: true } }, summary: { items: { "drinking-water": { ...base, expiring_quantity: 2000, next_expiry_on: "2026-11-25" } } } }, escape);
 assert.match(expHtml, /D-7/);
 
-console.log("Inventory grid, catalog pictograms, L units, escaping, weather freshness, survival days, quests, and keyboard focus passed");
+// Storage locations: per-lot free text, shown on tiles, grouped in the "보관 위치별 보기" panel.
+assert.equal(context.krCleanLocation("  주방   팬트리\n3층  "), "주방 팬트리 3층");
+assert.equal(context.krCleanLocation("가".repeat(70)).length, 60);
+assert.equal(context.krCleanLocation(null), "");
+const placed = {
+  ...snapshot(base),
+  items: { [item.id]: { applicable: true, lots: [
+    { lot_id: "a", quantity: 4000, location: "주방 팬트리 3층 선반" },
+    { lot_id: "b", quantity: 20000, location: "현관 팬트리" },
+    { lot_id: "c", quantity: 0, location: "" },
+  ] } },
+};
+assert.deepEqual([...context.krItemLocations(placed.items[item.id])], ["현관 팬트리", "주방 팬트리 3층 선반"]);
+const placedTile = context.testGrid(placed, escape);
+assert.match(placedTile, /class="ready-loc"[^>]*>.*현관 팬트리 외 1곳/);
+assert.match(placedTile, /보관 위치 현관 팬트리, 주방 팬트리 3층 선반/);
+assert.doesNotMatch(context.testGrid(snapshot(base), escape), /ready-loc/, "no tag without a location");
+const hostile = { ...placed, items: { [item.id]: { applicable: true, lots: [{ lot_id: "x", quantity: 1, location: '<img src=x onerror="alert(1)">' }] } } };
+assert.doesNotMatch(context.testGrid(hostile, escape), /<img/, "location text is escaped on tiles");
+assert.doesNotMatch(context.krLocationPanel(hostile, escape), /<img/, "location text is escaped in the panel");
+const panel = context.krLocationPanel(placed, escape, true);
+assert.match(panel, /보관 위치별 보기 <span>2곳<\/span>/);
+assert.match(panel, /<details id="location-panel" open>/);
+assert.match(panel, /현관 팬트리 <span>1종<\/span>.*data-edit="drinking-water"[^>]*>생수<b>20 L<\/b>/s);
+assert.match(context.krLocationPanel(snapshot(base), escape), /아직 보관 위치를 적은 물품이 없습니다/);
+assert.deepEqual([...context.krAllLocations(placed)], ["주방 팬트리 3층 선반", "현관 팬트리"]);
+
+console.log("Inventory grid, catalog pictograms, L units, escaping, weather freshness, survival days, quests, keyboard focus, and storage locations passed");

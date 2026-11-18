@@ -344,3 +344,27 @@ async def test_household_and_bottle_inputs_survive_restart():
                                               "expires_on": None}], True, TODAY)
     assert targets()[WATER]["target"] == 0
     assert targets()[WATER]["recommended_target"] == 30000
+
+
+@pytest.mark.asyncio
+async def test_storage_location_per_lot_survives_restart_and_rejects_bad_text():
+    store = FakeStore()
+    stock = Inventory(store, CATALOG)
+    entry = {"lot_id": "entry", "quantity": 12000, "expires_on": "2027-05-01", "location": "현관 팬트리"}
+    kitchen = {"lot_id": "kitchen", "quantity": 12000, "expires_on": "2027-08-01", "location": "주방 팬트리 3층 선반"}
+    unplaced = {"lot_id": "unplaced", "quantity": 0, "expires_on": None, "location": None}
+    await stock.set_item(WATER, 0, True, 24000, [entry, kitchen, unplaced], True, TODAY)
+    status = summarize(CATALOG, stock.snapshot["items"], TODAY)["items"][WATER]
+    assert status["usable"] == 24000
+
+    reloaded = Inventory(store, CATALOG)
+    await reloaded.load()
+    assert [lot.get("location") for lot in reloaded.snapshot["items"][WATER]["lots"]] == ["현관 팬트리", "주방 팬트리 3층 선반", None]
+
+    before = deepcopy(store.saved)
+    for bad in ["", "  현관", "현관 ", "가" * 61, "현관\n팬트리", 3, ["현관"]]:
+        with pytest.raises(InventoryError, match="location"):
+            await reloaded.set_item(WATER, 1, True, 24000, [{**entry, "location": bad}], True, TODAY)
+    assert store.saved == before
+    # Exactly 60 characters is allowed.
+    await reloaded.set_item("flashlight", 1, True, 2, [{"lot_id": "a", "quantity": 2, "expires_on": None, "location": "나" * 60}], True, TODAY)

@@ -15,6 +15,8 @@ class RevisionConflict(InventoryError):
 
 MAX_AMOUNT = 1_000_000_000
 MAX_REVIEW_DAYS = 3650
+MAX_LOCATION_LENGTH = 60
+LOT_KEYS = {"lot_id", "quantity", "expires_on", "received_on", "bottle_ml", "bottle_count", "label_check_on", "location"}
 DEFAULT_HOUSEHOLD_SIZE = 4
 _UNSET = object()
 
@@ -57,8 +59,8 @@ def validate_item(catalog_item, applicable, target, lots):
         raise InventoryError("No more than 200 purchase lots per item")
     seen = set()
     for lot in lots:
-        if not isinstance(lot, dict) or not {"lot_id", "quantity", "expires_on"} <= set(lot) or set(lot) - {"lot_id", "quantity", "expires_on", "received_on", "bottle_ml", "bottle_count", "label_check_on"}:
-            raise InventoryError("Each lot needs lot_id, quantity, and expires_on; received_on is optional")
+        if not isinstance(lot, dict) or not {"lot_id", "quantity", "expires_on"} <= set(lot) or set(lot) - LOT_KEYS:
+            raise InventoryError("Each lot needs lot_id, quantity, and expires_on; received_on and location are optional")
         lot_id = lot["lot_id"]
         if (not isinstance(lot_id, str) or not lot_id or len(lot_id) > 80
                 or any(ord(char) < 32 or ord(char) == 127 for char in lot_id)
@@ -67,6 +69,13 @@ def validate_item(catalog_item, applicable, target, lots):
         seen.add(lot_id)
         if type(lot["quantity"]) is not int or not 0 <= lot["quantity"] <= MAX_AMOUNT:
             raise InventoryError("quantity must be an integer from 0 to 1000000000")
+        # Free-text storage place such as "현관 팬트리" or "주방 팬트리 3층 선반".
+        location = lot.get("location")
+        if location is not None and (
+                not isinstance(location, str) or not location or location != location.strip()
+                or len(location) > MAX_LOCATION_LENGTH
+                or any(ord(char) < 32 or ord(char) == 127 for char in location)):
+            raise InventoryError("location must be trimmed text of 1 to 60 printable characters or null")
         if {"bottle_ml", "bottle_count"} & lot.keys():
             volume, count = lot.get("bottle_ml"), lot.get("bottle_count")
             if (catalog_item["id"] != "drinking-water" or type(volume) is not int

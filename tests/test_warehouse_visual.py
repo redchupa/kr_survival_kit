@@ -298,7 +298,11 @@ def main():
         card.locator('.shelf-edit[data-edit="drinking-water"]').click()
         assert card.locator(".capacity").input_value() == "2"
         assert card.locator(".received-on").input_value() == "2026-11-18"
-        assert card.locator("#confirm, #add-lot").count() == 0
+        assert card.locator("#confirm").count() == 0
+        # Entry stays a single lot by default; splitting stock is only for a second storage place.
+        assert card.locator(".lot-edit").count() == 1
+        assert "다른 위치" in card.locator("#add-lot").inner_text()
+        assert card.locator(".lot-edit .location").input_value() == ""
         card.locator(".bottle-count").fill("12")
         assert "24 L" in card.locator(".lot-total").inner_text()
         card.locator(".expiry").fill("2027-01-01")

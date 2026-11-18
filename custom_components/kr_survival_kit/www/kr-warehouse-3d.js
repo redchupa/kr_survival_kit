@@ -1362,7 +1362,8 @@ export class KrWarehouseThreeEngine {
       const statusLabel = ready ? "완비" : status.state === "shortage" ? "부족" : status.expiring_quantity > 0 ? "기한 임박" : "실사 필요";
       const slotNo = `${ROW_LETTERS[r % ROW_LETTERS.length]}-${String(col + 1).padStart(2, "0")}`;
 
-      slot.userData = { item, name: shortName, slotNo, qtyText, statusLabel, baseY: 0.37, hitMesh };
+      const places = [...new Set((snapshot.items[item.id]?.lots || []).map((lot) => String(lot.location || "").trim()).filter(Boolean))];
+      slot.userData = { item, name: shortName, slotNo, qtyText, statusLabel, places, baseY: 0.37, hitMesh };
       hitMesh.userData = { slot };
       this.worldGroup.add(slot);
       this.slotGroups.push(slot);
@@ -1718,7 +1719,9 @@ export class KrWarehouseThreeEngine {
       this.tooltip.hidden = false;
       this.tooltip.style.left = `${Math.min(rect.width - 190, Math.max(10, px + 14))}px`;
       this.tooltip.style.top = `${Math.max(10, py - 20)}px`;
-      this.tooltip.innerHTML = `<strong>${hit.userData.name} <small>${hit.userData.slotNo}</small></strong><span>${hit.userData.qtyText} · ${hit.userData.statusLabel}</span><small>클릭하여 수정</small>`;
+      const esc = (value) => String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      const places = hit.userData.places?.length ? `<span>📍 ${esc(hit.userData.places.join(" · "))}</span>` : "";
+      this.tooltip.innerHTML = `<strong>${esc(hit.userData.name)} <small>${hit.userData.slotNo}</small></strong><span>${esc(hit.userData.qtyText)} · ${hit.userData.statusLabel}</span>${places}<small>클릭하여 수정</small>`;
     } else {
       this.tooltip.hidden = true;
     }
