@@ -138,6 +138,36 @@ function buildItemMesh(item, ratio, toneColor, isReady) {
     const led = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.04, 0.04), ledMat);
     led.position.set(0, h * 0.7, 0.22);
     group.add(box, led);
+  } else if (id === "rice") {
+    const sackMat = new THREE.MeshStandardMaterial({ color: 0xf4ebd9, roughness: 0.7 });
+    const bandMat = new THREE.MeshStandardMaterial({ color: 0xd94848, roughness: 0.5 });
+    for (let i = 0; i < Math.min(count, 3); i++) {
+      const sack = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.14, 0.56), sackMat);
+      sack.position.y = 0.07 + i * 0.145; sack.castShadow = true; sack.receiveShadow = true;
+      const band = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.04, 0.14), bandMat);
+      band.position.y = sack.position.y;
+      group.add(sack, band);
+    }
+  } else if (id === "metal-fuel-can") {
+    const canMat = new THREE.MeshStandardMaterial({ color: 0xc92a2a, roughness: 0.35, metalness: 0.65 });
+    const capMat = new THREE.MeshStandardMaterial({ color: 0xffd166, roughness: 0.3, metalness: 0.7 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.48, 0.24), canMat);
+    body.position.y = 0.24; body.castShadow = true;
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.08, 10), capMat);
+    cap.position.set(0.12, 0.5, 0);
+    group.add(body, cap);
+  } else if (id === "gas-mask" || id === "sleeping-bag") {
+    const color = id === "gas-mask" ? 0x343a40 : 0x2b8a3e;
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.2 });
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.52, 16), mat);
+    cyl.rotation.z = Math.PI / 2; cyl.position.y = 0.18; cyl.castShadow = true;
+    group.add(cyl);
+  } else if (["cash-krw", "cash-usd", "crypto-cold-wallet", "basic-documents"].includes(id)) {
+    const color = id === "crypto-cold-wallet" ? 0xf7931a : id === "cash-usd" ? 0x2b8a3e : 0x3b82f6;
+    const caseMat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.6 });
+    const safe = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.22, 0.36), caseMat);
+    safe.position.y = 0.11; safe.castShadow = true;
+    group.add(safe);
   } else {
     // Stacked supply crates / packs
     const baseColor = isReady ? 0x38b000 : ratio > 0 ? 0x4895ef : 0xadb5bd;
@@ -158,6 +188,14 @@ function buildItemMesh(item, ratio, toneColor, isReady) {
   return group;
 }
 
+const OPT_CAT_MAP = {
+  water_cook: new Set(["water-container", "faucet-water-tank", "water-purification-tablets", "portable-stove", "butane-canister", "butane-torch", "self-heating-ration", "rice", "canned-food", "salt-jar", "honey-gift-set", "lighter", "solid-fuel", "manual-can-opener", "insulated-bottle", "cooler-ice-pack", "portable-water-filter", "long-storage-snacks", "water-sanitation-kit"]),
+  power_light: new Set(["radio", "candles", "home-solar-panel", "portable-solar-panel", "power-bank", "portable-power-station", "charging-cables", "portable-radio-communication", "door-alarm", "metal-fuel-can", "fuel-siphon-nozzle"]),
+  care_infant: new Set(["infant-supplies", "prescription-preparedness", "infant-formula", "ready-to-feed-formula", "infant-feeding-supplies", "child-id-card", "child-comfort-kit", "child-carrier"]),
+  gear_protect: new Set(["hand-warmers", "sleeping-bag", "large-plastic-bags", "warm-clothes", "raincoat", "masks", "gas-mask", "gas-mask-filter", "earplugs", "compressed-towel", "rubber-gloves", "rubber-boots", "sealing-tape", "portable-toilet", "toilet-coagulant", "cat-litter", "sanitation-bags", "thermal-mat", "hot-water-bag", "protective-goggles"]),
+  doc_move: new Set(["storage-bin", "emergency-contact-card", "family-photo", "basic-documents", "door-window-locks", "lock-tools", "transport-cart", "emergency-payment-check", "cash-krw", "cash-usd", "crypto-cold-wallet"]),
+};
+
 export class KrWarehouseThreeEngine {
   constructor(canvas, tooltipEl, getSnapshot, getFilter, onSelectItem, getTheme) {
     this.canvas = canvas;
@@ -172,6 +210,8 @@ export class KrWarehouseThreeEngine {
     this.distance = 8.4;
     this.autoRotate = true;
     this.zone = "essentials";
+    this.optCategory = "all";
+    this.onlyActive = false;
     this.dragging = false;
     this.dragMoved = false;
     this.lastX = 0;
@@ -259,7 +299,13 @@ export class KrWarehouseThreeEngine {
     }).map((i) => i.id));
 
     const essentials = snapshot.catalog.filter((i) => !["household", "optional"].includes(i.tier));
-    const allOptional = snapshot.catalog.filter((i) => ["household", "optional"].includes(i.tier));
+    let allOptional = snapshot.catalog.filter((i) => ["household", "optional"].includes(i.tier));
+    if (this.onlyActive) {
+      allOptional = allOptional.filter((i) => snapshot.items[i.id]?.applicable);
+    }
+    if (this.optCategory !== "all" && OPT_CAT_MAP[this.optCategory]) {
+      allOptional = allOptional.filter((i) => OPT_CAT_MAP[this.optCategory].has(i.id));
+    }
     const itemsToShow = this.zone === "optional" ? allOptional : essentials;
 
     const cols = itemsToShow.length > 35 ? 8 : 6;
@@ -373,7 +419,37 @@ export class KrWarehouseThreeEngine {
         this.pitch = Math.max(0.18, Math.min(1.22, this.pitch + dy * 0.007));
         this.lastX = e.clientX;
         this.lastY = e.clientY;
-      } else {
+      } else if (id === "rice") {
+    const sackMat = new THREE.MeshStandardMaterial({ color: 0xf4ebd9, roughness: 0.7 });
+    const bandMat = new THREE.MeshStandardMaterial({ color: 0xd94848, roughness: 0.5 });
+    for (let i = 0; i < Math.min(count, 3); i++) {
+      const sack = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.14, 0.56), sackMat);
+      sack.position.y = 0.07 + i * 0.145; sack.castShadow = true; sack.receiveShadow = true;
+      const band = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.04, 0.14), bandMat);
+      band.position.y = sack.position.y;
+      group.add(sack, band);
+    }
+  } else if (id === "metal-fuel-can") {
+    const canMat = new THREE.MeshStandardMaterial({ color: 0xc92a2a, roughness: 0.35, metalness: 0.65 });
+    const capMat = new THREE.MeshStandardMaterial({ color: 0xffd166, roughness: 0.3, metalness: 0.7 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.48, 0.24), canMat);
+    body.position.y = 0.24; body.castShadow = true;
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.08, 10), capMat);
+    cap.position.set(0.12, 0.5, 0);
+    group.add(body, cap);
+  } else if (id === "gas-mask" || id === "sleeping-bag") {
+    const color = id === "gas-mask" ? 0x343a40 : 0x2b8a3e;
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.2 });
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.52, 16), mat);
+    cyl.rotation.z = Math.PI / 2; cyl.position.y = 0.18; cyl.castShadow = true;
+    group.add(cyl);
+  } else if (["cash-krw", "cash-usd", "crypto-cold-wallet", "basic-documents"].includes(id)) {
+    const color = id === "crypto-cold-wallet" ? 0xf7931a : id === "cash-usd" ? 0x2b8a3e : 0x3b82f6;
+    const caseMat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.6 });
+    const safe = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.22, 0.36), caseMat);
+    safe.position.y = 0.11; safe.castShadow = true;
+    group.add(safe);
+  } else {
         this._raycast(e.clientX - rect.left, e.clientY - rect.top);
       }
     };
@@ -429,7 +505,37 @@ export class KrWarehouseThreeEngine {
         this.tooltip.style.left = `${Math.min(rect.width - 190, Math.max(10, px + 14))}px`;
         this.tooltip.style.top = `${Math.max(10, py - 20)}px`;
         this.tooltip.innerHTML = `<strong>${hit.userData.name}</strong><span>${hit.userData.qtyText} · ${hit.userData.statusLabel}</span><small>클릭하여 수정</small>`;
-      } else {
+      } else if (id === "rice") {
+    const sackMat = new THREE.MeshStandardMaterial({ color: 0xf4ebd9, roughness: 0.7 });
+    const bandMat = new THREE.MeshStandardMaterial({ color: 0xd94848, roughness: 0.5 });
+    for (let i = 0; i < Math.min(count, 3); i++) {
+      const sack = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.14, 0.56), sackMat);
+      sack.position.y = 0.07 + i * 0.145; sack.castShadow = true; sack.receiveShadow = true;
+      const band = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.04, 0.14), bandMat);
+      band.position.y = sack.position.y;
+      group.add(sack, band);
+    }
+  } else if (id === "metal-fuel-can") {
+    const canMat = new THREE.MeshStandardMaterial({ color: 0xc92a2a, roughness: 0.35, metalness: 0.65 });
+    const capMat = new THREE.MeshStandardMaterial({ color: 0xffd166, roughness: 0.3, metalness: 0.7 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.48, 0.24), canMat);
+    body.position.y = 0.24; body.castShadow = true;
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.08, 10), capMat);
+    cap.position.set(0.12, 0.5, 0);
+    group.add(body, cap);
+  } else if (id === "gas-mask" || id === "sleeping-bag") {
+    const color = id === "gas-mask" ? 0x343a40 : 0x2b8a3e;
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.2 });
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.52, 16), mat);
+    cyl.rotation.z = Math.PI / 2; cyl.position.y = 0.18; cyl.castShadow = true;
+    group.add(cyl);
+  } else if (["cash-krw", "cash-usd", "crypto-cold-wallet", "basic-documents"].includes(id)) {
+    const color = id === "crypto-cold-wallet" ? 0xf7931a : id === "cash-usd" ? 0x2b8a3e : 0x3b82f6;
+    const caseMat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.6 });
+    const safe = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.22, 0.36), caseMat);
+    safe.position.y = 0.11; safe.castShadow = true;
+    group.add(safe);
+  } else {
         this.tooltip.hidden = true;
       }
     }

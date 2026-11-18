@@ -1,0 +1,57 @@
+blueprint:
+  name: KR Survival Kit - 주간 순환 소비 및 부족 알림
+  description: 매주 지정한 요일과 시각에 유통기한 임박, 부족, 실사 필요 품목이 있으면 모바일 앱으로 알림을 보냅니다.
+  domain: automation
+  input:
+    notify_device:
+      name: 알림을 받을 기기 (모바일 앱)
+      description: Home Assistant Companion App이 설치된 스마트폰을 선택하세요.
+      selector:
+        device:
+          integration: mobile_app
+    weekday:
+      name: 알림 요일
+      default: "sun"
+      selector:
+        select:
+          options:
+            - label: 일요일
+              value: "sun"
+            - label: 토요일
+              value: "sat"
+            - label: 수요일
+              value: "wed"
+            - label: 월요일
+              value: "mon"
+    check_time:
+      name: 확인 시각
+      default: "10:00:00"
+      selector:
+        time: {}
+
+trigger:
+  - platform: time
+    at: !input check_time
+
+condition:
+  - condition: time
+    weekday:
+      - !input weekday
+  - condition: template
+    value_template: >
+      {{ (states('sensor.kr_survival_kit_expiring_count') | int(0) > 0)
+         or (states('sensor.kr_survival_kit_shortage_count') | int(0) > 0)
+         or (states('sensor.kr_survival_kit_needs_check_count') | int(0) > 0) }}
+
+action:
+  - domain: mobile_app
+    type: notify
+    device_id: !input notify_device
+    title: "KR Survival Kit 주간 비축 점검"
+    message: >
+      기한 임박 {{ states('sensor.kr_survival_kit_expiring_count') | int(0) }}종 ·
+      부족 {{ states('sensor.kr_survival_kit_shortage_count') | int(0) }}종 ·
+      실사 필요 {{ states('sensor.kr_survival_kit_needs_check_count') | int(0) }}종이 있습니다.
+      대시보드에서 확인하고 먼저 소비·보충해 보세요!
+    data:
+      url: "/kr-survival-kit/home"

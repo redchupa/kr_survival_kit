@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 사용법 및 설치 가이드 (README)
+    url: https://github.com/redchupa/kr_survival_kit#readme
+    about: 설치 방법, 2D/3D 창고, 경보음 테스트 및 문제 해결 방법을 먼저 확인하세요.

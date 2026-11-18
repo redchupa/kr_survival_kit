@@ -1,0 +1,30 @@
+name: 버그 신고 (Bug Report)
+description: 동작 오류, 화면 깨짐, 저장 실패 등 불편한 점을 제보해 주세요.
+title: "[버그] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        집 주소, 연락처, 실제 보유 재고 내역 등 개인정보는 절대 입력하지 마세요.
+  - type: textarea
+    id: description
+    attributes:
+      label: 어떤 문제가 발생했나요?
+      description: 기대했던 동작과 실제 발생한 현상을 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 방법
+      description: 예) 3D 창고 탭 클릭 -> 선택 물품 랙 선택 -> ...
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: KR Survival Kit 및 Home Assistant 버전
+      placeholder: "예: KR Survival Kit v0.7.0 / HA 2026.11.0"
+    validations:
+      required: false

@@ -1,0 +1,19 @@
+name: 행동요령·출처 정정 요청 (Content Fix)
+description: 재난 행동요령 문구 수정이나 공식 출처 링크 정정이 필요할 때 제보해 주세요.
+title: "[문구 정정] "
+labels: ["content"]
+body:
+  - type: input
+    id: target
+    attributes:
+      label: 수정이 필요한 항목 (상황 ID 또는 품목명)
+      placeholder: "예: 공습경보 / 부탄가스"
+    validations:
+      required: true
+  - type: textarea
+    id: detail
+    attributes:
+      label: 정정 내용 및 공식 출처 URL
+      description: 행정안전부, 국민안전24 등 공식 출처 링크와 함께 정정 사유를 적어 주세요.
+    validations:
+      required: true

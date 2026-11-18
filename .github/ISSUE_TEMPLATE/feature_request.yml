@@ -1,0 +1,19 @@
+name: 기능 및 품목 제안 (Feature Request)
+description: 새로운 비상 물품, UI 개선, 편의 기능 아이디어를 제안해 주세요.
+title: "[제안] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: 제안 내용
+      description: 추가되었으면 하는 품목이나 개선되었으면 하는 기능을 자유롭게 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: 필요한 이유 / 활용 시나리오
+      description: 평시 순환 소비나 비상시 어떻게 도움이 되는지 설명해 주세요.
+    validations:
+      required: false

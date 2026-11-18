@@ -168,8 +168,26 @@ function krDaysUntil(isoDate, todayIso) {
   return Math.round((a - b) / 86400000);
 }
 
+function krSurvivalDays(snapshot) {
+  if (!snapshot?.summary?.items) return { waterDays: 0, foodDays: 0 };
+  const people = Math.max(1, snapshot.household_size || 4);
+  const items = snapshot.summary.items;
+  const waterMl = items["drinking-water"]?.usable || 0;
+  const waterDays = Math.round((waterMl / (people * 2000)) * 10) / 10;
+  const mults = {
+    "instant-rice": 1, "cup-noodles": 1, "shelf-stable-meal": 1,
+    "spam-canned-ham": 2, "canned-tuna": 1.5, "canned-pupa": 1,
+    "canned-whelk": 1.5, "canned-fruit": 1, "self-heating-ration": 1,
+    "long-storage-snacks": 0.5, rice: 8,
+  };
+  let servings = 0;
+  for (const [id, m] of Object.entries(mults)) servings += (items[id]?.usable || 0) * m;
+  const foodDays = Math.round((servings / (people * 3)) * 10) / 10;
+  return { waterDays, foodDays };
+}
+
 function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item) =>
-  !krIsSelectable(item)), editing = false) {
+  !krIsSelectable(item)), editing = false, quickMode = false) {
   if (!snapshot) return `<p class="ready-empty">재고를 불러오는 중입니다.</p>`;
   if (!visible.length) return `<p class="ready-empty">이 조건에 맞는 물품이 없습니다.</p>`;
   const readyIds = new Set(krReadyItems(snapshot).map((item) => item.id));
@@ -187,8 +205,9 @@ function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item)
     const badgeTone = inactive ? "muted" : ready ? "ok" : status.expired_quantity > 0 || status.state === "shortage" ? "warn" : "alert";
     const percent = status.target > 0 ? Math.floor(Math.min(1, current / status.target) * 100) : 0;
     const action = inactive ? "설정" : "수정";
+    const quickBtns = quickMode && !inactive ? `<div class="quick-bar"><button type="button" class="qbtn" data-quick="${escape(item.id)}:-1" aria-label="${escape(item.name)} 1 줄이기" ${editing ? "disabled" : ""}>−1</button><button type="button" class="qbtn" data-quick="${escape(item.id)}:1" aria-label="${escape(item.name)} 1 늘리기" ${editing ? "disabled" : ""}>+1</button></div>` : "";
     return `<div class="ready-item" data-item="${escape(item.id)}" data-complete="${ready}" data-tone="${badgeTone}" role="listitem"><button type="button" class="shelf-edit" data-edit="${escape(item.id)}" aria-label="${escape([`${item.name} ${action}`, quantity, label].filter(Boolean).join(" · "))}" ${editing ? "disabled" : ""}><span class="tile-top"><span class="tile-led" aria-hidden="true"></span>${dDay !== null && dDay <= 90 ? `<span class="dday-tag">D${dDay >= 0 ? `-${dDay}` : `+${Math.abs(dDay)}`}</span>` : ""}<span class="shelf-action">${action}</span></span><span class="ready-art" aria-hidden="true">${pictogram}</span>` +
-      `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(quantity)}</span><span aria-hidden="true" class="stock-meter"><span style="width:${percent}%"></span></span>${label ? `<span class="stock-label">${escape(label)}</span>` : ""}</button></div>`;
+      `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(quantity)}</span><span aria-hidden="true" class="stock-meter"><span style="width:${percent}%"></span></span>${label ? `<span class="stock-label">${escape(label)}</span>` : ""}</button>${quickBtns}</div>`;
   }).join("")}</div>`;
 }
 
@@ -279,7 +298,7 @@ function krStockRankView(snapshot, open = false) {
     </details>`;
 }
 
-function krStockShelves(snapshot, escape, showInactive, editing, filter, optCategory = "all", optSearch = "") {
+function krStockShelves(snapshot, escape, showInactive, editing, filter, optCategory = "all", optSearch = "", quickMode = false) {
   const optional = snapshot?.catalog.filter(krIsSelectable) ?? [];
   const matches = (item) => {
     if (filter === "all") return true;
@@ -298,13 +317,15 @@ function krStockShelves(snapshot, escape, showInactive, editing, filter, optCate
     return item.name.toLowerCase().includes(query) || shortName.includes(query);
   });
   const ready = krReadyItems(snapshot);
-  const shelves = `<section class="ready-panel" aria-labelledby="essentials-shelf"><div class="shelf-head"><h3 id="essentials-shelf" tabindex="-1">기본 비축 물품 <span>완비 ${ready.filter((item) => !krIsSelectable(item)).length}종</span></h3></div>${krReadyGrid(snapshot, escape, essentials, editing)}</section>`;
+  const quickToggle = `<button type="button" id="toggle-quick-mode" aria-pressed="${quickMode}" title="모달을 열지 않고 바로 +1 / -1 소비·보충">${quickMode ? "⚡ 빠른 ±1 켜짐" : "⚡ 빠른 ±1"}</button>`;
+  const shelves = `<section class="ready-panel" aria-labelledby="essentials-shelf"><div class="shelf-head"><h3 id="essentials-shelf" tabindex="-1">기본 비축 물품 <span>완비 ${ready.filter((item) => !krIsSelectable(item)).length}종</span></h3>${quickToggle}</div>${krReadyGrid(snapshot, escape, essentials, editing, quickMode)}</section>`;
   if (!optional.length) return shelves;
   const categoryBar = `<div class="opt-toolbar"><div class="opt-cats" role="group" aria-label="선택 물품 분류">${KR_OPTIONAL_CATEGORIES.map((cat) =>
     `<button type="button" data-opt-cat="${cat.id}" aria-pressed="${optCategory === cat.id}">${cat.label}</button>`).join("")}</div><input id="opt-search" type="search" placeholder="품목 검색..." aria-label="미사용 선택 물품 검색" value="${escape(optSearch)}"></div>`;
+  const backupBar = `<div class="backup-bar"><button type="button" id="backup-export">💾 재고 백업 저장 (JSON)</button><label class="backup-import-btn">📂 백업 복원<input type="file" id="backup-import" accept="application/json,.json" hidden></label></div>`;
   return shelves + `<section class="ready-panel" aria-labelledby="optional-shelf-title"><div class="shelf-head"><h3 id="optional-shelf-title">선택 물품 <span>사용 중 ${active.length}종 · 완비 ${ready.filter(krIsSelectable).length}종</span></h3></div>
-    ${active.length ? krReadyGrid(snapshot, escape, active, editing) : '<p class="ready-empty">표시할 선택 물품이 없습니다.</p>'}
-    ${inactive.length && filter === "all" ? `<details id="optional-shelf" ${showInactive ? "open" : ""}><summary>아직 사용하지 않는 물품 ${inactive.length}종 보기</summary>${categoryBar}${krReadyGrid(snapshot, escape, filteredInactive, editing)}</details>` : ""}</section>`;
+    ${active.length ? krReadyGrid(snapshot, escape, active, editing, quickMode) : '<p class="ready-empty">표시할 선택 물품이 없습니다.</p>'}
+    ${inactive.length && filter === "all" ? `<details id="optional-shelf" ${showInactive ? "open" : ""}><summary>아직 사용하지 않는 물품 ${inactive.length}종 보기</summary>${categoryBar}${krReadyGrid(snapshot, escape, filteredInactive, editing, false)}</details>` : ""}${backupBar}</section>`;
 }
 
 const KR_RECORD_MISSIONS = [
@@ -395,6 +416,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._statusFilter = "all";
     this._optCategory = "all";
     this._optSearch = "";
+    this._quickMode = false;
     let savedView;
     try { savedView = window.localStorage?.getItem("kr_survival_kit_view"); } catch { /* optional */ }
     this._viewMode = savedView === "3d" ? "3d" : "2d";
@@ -612,6 +634,96 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     if (!this._draft) this._returnToShelf();
   }
 
+  async _quickAdjust(itemId, delta) {
+    if (this._saving || !this._snapshot) return;
+    const item = this._snapshot.catalog.find((c) => c.id === itemId);
+    if (!item) return;
+    this._saving = true;
+    const saved = this._snapshot.items[itemId];
+    const step = itemId === "drinking-water" ? 1000 : 1;
+    const lots = (saved?.lots?.length ? saved.lots : [{ lot_id: "lot-1", quantity: 0, expires_on: null, received_on: null }]).map((l) => ({ ...l }));
+    const nextQty = Math.max(0, (lots[0].quantity || 0) + delta * step);
+    if (lots[0].bottle_ml && lots[0].bottle_count !== undefined) {
+      lots[0].bottle_count = Math.max(0, Math.round(nextQty / lots[0].bottle_ml));
+      lots[0].quantity = lots[0].bottle_ml * lots[0].bottle_count;
+    } else {
+      lots[0].quantity = nextQty;
+    }
+    try {
+      await this._call("set_item", {
+        item_id: item.id,
+        revision: this._snapshot.revision,
+        applicable: saved?.applicable ?? true,
+        target: saved?.target ?? null,
+        lots,
+        ...(saved?.review_interval_days ? { review_interval_days: saved.review_interval_days } : {}),
+        confirm: true,
+        apply_date_defaults: true,
+      });
+      await this._load();
+      this._message = `${KR_READY_SHORT_NAMES[item.id] || item.name} 수량을 ${delta > 0 ? "+1" : "−1"} 반영했습니다.`;
+    } catch (error) {
+      await this._load();
+      this._message = `빠른 수정 실패: ${error.message || "다시 시도하세요."}`;
+    } finally {
+      this._saving = false;
+      this._render();
+    }
+  }
+
+  _exportBackup() {
+    if (!this._snapshot) return;
+    const payload = JSON.stringify({
+      schema: "kr-survival-kit-backup-v1",
+      exported_at: new Date().toISOString(),
+      household_size: this._snapshot.household_size ?? 4,
+      items: this._snapshot.items ?? {},
+    }, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kr-survival-kit-backup-${this._snapshot.today || "export"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    this._message = "재고 백업 파일을 저장했습니다.";
+    this._render();
+  }
+
+  async _importBackup(file) {
+    if (!file || this._saving || !this._snapshot) return;
+    this._saving = true;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (parsed?.schema !== "kr-survival-kit-backup-v1" || typeof parsed.items !== "object") {
+        throw new Error("유효한 백업 파일이 아닙니다.");
+      }
+      let count = 0;
+      for (const [itemId, rec] of Object.entries(parsed.items)) {
+        if (!this._snapshot.catalog.some((c) => c.id === itemId)) continue;
+        await this._call("set_item", {
+          item_id: itemId,
+          revision: this._snapshot.revision,
+          applicable: Boolean(rec.applicable),
+          target: rec.target ?? null,
+          lots: Array.isArray(rec.lots) ? rec.lots : [],
+          ...(rec.review_interval_days ? { review_interval_days: rec.review_interval_days } : {}),
+          confirm: true,
+          apply_date_defaults: true,
+        });
+        await this._load();
+        count++;
+      }
+      this._message = `백업에서 ${count}개 품목을 복원했습니다.`;
+    } catch (err) {
+      this._message = `백업 복원 실패: ${err.message || "파일 형식을 확인하세요."}`;
+    } finally {
+      this._saving = false;
+      this._render();
+    }
+  }
+
   async _delete() {
     if (this._saving) return;
     if (!window.confirm("이 품목의 가구 재고 기록을 삭제할까요?")) return;
@@ -691,7 +803,10 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const missionSignature = krMissionState(snapshot).map((mission) => mission.complete).join("");
     const animateMission = Boolean(snapshot && missionSignature !== this._missionSignature);
     this._missionSignature = missionSignature;
-    const stage3d = this._viewMode === "3d" && snapshot ? `<section class="warehouse-3d-stage" aria-label="3D 입체 창고 뷰"><div class="warehouse-3d-bar"><div class="controls" role="group" aria-label="창고 구역"><button type="button" data-3d-zone="essentials" aria-pressed="true">기본 비축 랙</button><button type="button" data-3d-zone="optional" aria-pressed="false">선택 물품 랙</button></div><div class="controls"><button type="button" id="toggle-3d-spin" aria-pressed="true">자동 회전</button><button type="button" id="reset-3d-cam">시점 초기화</button></div></div><canvas id="warehouse-3d-canvas"></canvas><div id="warehouse-3d-tooltip" role="status" hidden></div></section>` : "";
+    const optCatSelect = `<select id="zone-3d-cat" data-3d-cat aria-label="3D 선택 물품 분류">${KR_OPTIONAL_CATEGORIES.map((c) => `<option value="${c.id}">${c.label}</option>`).join("")}</select>`;
+    const stage3d = this._viewMode === "3d" && snapshot ? `<section class="warehouse-3d-stage" aria-label="3D 입체 창고 뷰"><div class="warehouse-3d-bar"><div class="controls" role="group" aria-label="창고 구역"><button type="button" data-3d-zone="essentials" aria-pressed="true">기본 비축 랙</button><button type="button" data-3d-zone="optional" aria-pressed="false">선택 물품 랙</button>${optCatSelect}<button type="button" id="toggle-3d-active" aria-pressed="false">사용 중만</button></div><div class="controls"><button type="button" id="toggle-3d-spin" aria-pressed="true">자동 회전</button><button type="button" id="reset-3d-cam">시점 초기화</button></div></div><canvas id="warehouse-3d-canvas"></canvas><div id="warehouse-3d-tooltip" role="status" hidden></div></section>` : "";
+    const surv = krSurvivalDays(snapshot);
+    const survChip = snapshot ? `<span class="survival-chip" title="${people}인 가구 기준 예상 생존 가능 일수">💧 생수 ${surv.waterDays}일분 · 🍱 식량 ${surv.foodDays}일분</span>` : "";
     this._stop3D();
     this.toggleAttribute?.("data-view", this._viewMode === "3d");
     if (this._viewMode === "3d") this.setAttribute?.("data-view", "3d");
@@ -756,6 +871,14 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .expiring-chips{display:flex;flex-wrap:wrap;gap:.35rem}
       .exp-chip{min-height:34px;padding:.2rem .6rem;font-size:.78rem;border-radius:999px;border-color:rgba(255,180,100,.55);background:rgba(255,160,70,.16);color:#fff2dc;display:inline-flex;align-items:center;gap:.35rem}
       .exp-chip strong{color:#ffb366}
+      .survival-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px;border:1px solid rgba(130,220,235,.4);background:rgba(15,48,66,.65);color:#aef2f8;font-size:.82rem;font-weight:800}
+      #toggle-quick-mode{min-height:34px;padding:.2rem .65rem;font-size:.78rem;border-radius:999px;border-color:rgba(130,205,220,.4);color:inherit}
+      #toggle-quick-mode[aria-pressed="true"]{background:var(--kr-accent,#8fe6ee);color:var(--kr-accent-ink,#0b2029);border-color:var(--kr-accent,#8fe6ee);font-weight:800}
+      .quick-bar{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
+      .quick-bar .qbtn{min-height:32px;padding:2px 0;font-size:.78rem;font-weight:800;border-radius:7px;background:rgba(18,52,70,.85);border-color:rgba(115,172,190,.42);color:#eef9fb}
+      .backup-bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:1rem;padding-top:.85rem;border-top:1px solid rgba(115,172,190,.25)}
+      .backup-bar button,.backup-import-btn{display:inline-flex;align-items:center;min-height:36px;padding:.3rem .7rem;font-size:.8rem;font-weight:700;border-radius:8px;border:1px solid rgba(115,172,190,.4);background:rgba(12,35,48,.6);color:inherit;cursor:pointer}
+      .warehouse-3d-bar select{min-height:34px;padding:2px 8px;border-radius:7px;border:1px solid rgba(112,174,194,.4);background:#0f2736;color:#dff5f8;font:inherit;font-size:.78rem}
       @media(max-width:650px){.quest-list{grid-template-columns:1fr}}
       .rank-badge{padding:.16rem .52rem;border-radius:6px;color:#111922;background:var(--rank-color);font-size:.84rem;font-weight:800}
       .stock-score{font-size:.84rem;font-variant-numeric:tabular-nums;color:var(--kr-muted,#cfe8ec)}
@@ -856,11 +979,11 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       :host([data-kr-themed]) .ready-item[data-complete="true"] .shelf-edit,:host([data-kr-themed]) .mission-item.done{border-color:var(--kr-accent)}
       :host([data-kr-themed]) .ready-art,:host([data-kr-themed]) .dialog-art{background:#122534;border-color:var(--kr-line)}
       :host([data-kr-themed]) #opt-search{background:var(--kr-bg);border-color:var(--kr-line)}
-    </style><ha-card>${edit ? `<dialog id="item-dialog" aria-labelledby="item-dialog-title">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit}</dialog>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨"><span id="local-clock">--:--</span><span id="local-weather" hidden></span><div class="view-switch" role="group" aria-label="창고 보기"><button type="button" data-view-mode="2d" aria-pressed="${this._viewMode === "2d"}">2D 선반</button><button type="button" data-view-mode="3d" aria-pressed="${this._viewMode === "3d"}">3D 창고</button></div><button type="button" id="refresh" aria-label="재고 새로고침" title="재고 새로고침">↻</button></div></div>` +
+    </style><ha-card>${edit ? `<dialog id="item-dialog" aria-labelledby="item-dialog-title">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit}</dialog>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨">${survChip}<span id="local-clock">--:--</span><span id="local-weather" hidden></span><div class="view-switch" role="group" aria-label="창고 보기"><button type="button" data-view-mode="2d" aria-pressed="${this._viewMode === "2d"}">2D 선반</button><button type="button" data-view-mode="3d" aria-pressed="${this._viewMode === "3d"}">3D 창고</button></div><button type="button" id="refresh" aria-label="재고 새로고침" title="재고 새로고침">↻</button></div></div>` +
       (!snapshot ? `<p class="hero-copy">${this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` : "") +
       `${signals}</div><div class="status-disclosures">${krStockRankView(snapshot, this._rankOpen)}${krMissionView(snapshot, escape, animateMission, this._missionOpen)}</div>` +
       (!edit && this._message ? `<p class="shelf-message" role="status">${escape(this._message)}</p>` : "") +
-      `${krExpiringStrip(snapshot, escape)}${stage3d}${this._viewMode === "3d" && snapshot ? "" : krStockShelves(snapshot, escape, this._optionalShelfOpen, Boolean(this._draft), this._statusFilter, this._optCategory, this._optSearch)}</section></ha-card>`;
+      `${krExpiringStrip(snapshot, escape)}${stage3d}${this._viewMode === "3d" && snapshot ? "" : krStockShelves(snapshot, escape, this._optionalShelfOpen, Boolean(this._draft), this._statusFilter, this._optCategory, this._optSearch, this._quickMode)}</section></ha-card>`;
     for (const [selector, state] of [[".stock-rank", "_rankOpen"], [".mission-panel", "_missionOpen"], ["#optional-shelf", "_optionalShelfOpen"]]) {
       this.shadowRoot.querySelector(selector)?.addEventListener("toggle", (event) => { this[state] = event.currentTarget.open; });
     }
@@ -937,6 +1060,18 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         input.setSelectionRange(pos, pos);
       }
     });
+    this.shadowRoot.querySelector("#toggle-quick-mode")?.addEventListener("click", () => {
+      this._quickMode = !this._quickMode;
+      this._render();
+    });
+    this.shadowRoot.querySelectorAll("[data-quick]").forEach((btn) => btn.addEventListener("click", () => {
+      const [id, d] = btn.dataset.quick.split(":");
+      this._quickAdjust(id, Number(d));
+    }));
+    this.shadowRoot.querySelector("#backup-export")?.addEventListener("click", () => this._exportBackup());
+    this.shadowRoot.querySelector("#backup-import")?.addEventListener("change", (e) => {
+      this._importBackup(e.target.files?.[0]);
+    });
     this.shadowRoot.querySelectorAll("[data-edit]").forEach((button) => button.addEventListener("click", () =>
       this._edit(snapshot.catalog.find((item) => item.id === button.dataset.edit), button.classList.contains("shelf-edit"))));
     this.shadowRoot.querySelector("#editor")?.addEventListener("submit", (event) => { event.preventDefault(); this._save(); });
@@ -955,7 +1090,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         try { return window.localStorage?.getItem("kr_survival_kit_theme") || "black"; } catch { return "black"; }
       };
       const base = this._config?.asset_path ? `${this._config.asset_path.replace(/\/$/, "")}/` : KR_SCRIPT_BASE;
-      import(`${base}kr-warehouse-3d.js?v=0.6.1`).then(({ KrWarehouseThreeEngine }) => {
+      import(`${base}kr-warehouse-3d.js?v=0.7.0`).then(({ KrWarehouseThreeEngine }) => {
         if (!this.shadowRoot.contains(canvas3d)) return;
         this._engine3d = new KrWarehouseThreeEngine(
           canvas3d, tooltip3d,
@@ -974,6 +1109,19 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         this._engine3d.rebuild();
         this.shadowRoot.querySelectorAll("[data-3d-zone]").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
       }));
+      this.shadowRoot.querySelector("[data-3d-cat]")?.addEventListener("change", (e) => {
+        if (!this._engine3d) return;
+        this._engine3d.optCategory = e.target.value;
+        this._engine3d.zone = "optional";
+        this._engine3d.rebuild();
+        this.shadowRoot.querySelectorAll("[data-3d-zone]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset["3dZone"] === "optional")));
+      });
+      this.shadowRoot.querySelector("#toggle-3d-active")?.addEventListener("click", (e) => {
+        if (!this._engine3d) return;
+        this._engine3d.onlyActive = !this._engine3d.onlyActive;
+        e.currentTarget.setAttribute("aria-pressed", String(this._engine3d.onlyActive));
+        this._engine3d.rebuild();
+      });
       this.shadowRoot.querySelector("#toggle-3d-spin")?.addEventListener("click", (e) => {
         if (!this._engine3d) return;
         this._engine3d.autoRotate = !this._engine3d.autoRotate;
@@ -1025,8 +1173,12 @@ class KrSurvivalKitGuideCard extends HTMLElement {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) return;
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      this._audioDevices = devices.filter((d) => d.kind === "audiooutput");
-      if (this._guide) this._render();
+      const outputs = devices.filter((d) => d.kind === "audiooutput");
+      const sig = outputs.map((d) => `${d.deviceId}:${d.label}`).join("|");
+      const prevSig = (this._audioDevices || []).map((d) => `${d.deviceId}:${d.label}`).join("|");
+      if (sig === prevSig) return;
+      this._audioDevices = outputs;
+      if (this._guide && !this.shadowRoot.activeElement) this._render();
     } catch { /* device enumeration optional */ }
   }
 
