@@ -49,6 +49,11 @@ DELETE_SCHEMA = vol.Schema({
     vol.Required("item_id"): str,
     vol.Required("revision"): _nonnegative_int,
 })
+HOUSEHOLD_SCHEMA = vol.Schema({
+    vol.Optional("entry_id"): str,
+    vol.Required("revision"): _nonnegative_int,
+    vol.Required("household_size"): vol.All(_nonnegative_int, vol.Range(min=1, max=99)),
+})
 GET_SCHEMA = vol.Schema({vol.Optional("entry_id"): str})
 
 
@@ -82,6 +87,10 @@ async def async_setup_entry(hass, entry):
             supports_response=SupportsResponse.OPTIONAL,
         )
         hass.services.async_register(
+            DOMAIN, "set_household_size", _set_household_size(hass), schema=HOUSEHOLD_SCHEMA,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
+        hass.services.async_register(
             DOMAIN, "get_inventory", _get_inventory(hass), schema=GET_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
@@ -95,7 +104,7 @@ async def async_unload_entry(hass, entry):
         await publisher.close()
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        for service in ("set_item", "delete_item", "get_inventory"):
+        for service in ("set_item", "delete_item", "set_household_size", "get_inventory"):
             hass.services.async_remove(DOMAIN, service)
     return unloaded
 
@@ -158,13 +167,26 @@ def _delete_item(hass):
     return handle
 
 
+def _set_household_size(hass):
+    async def handle(call):
+        inventory, _ = await _admin_inventory(hass, call)
+        try:
+            revision = await inventory.set_household_size(call.data["revision"], call.data["household_size"])
+        except InventoryError as error:
+            raise HomeAssistantError(str(error)) from error
+        except OSError as error:
+            raise HomeAssistantError("Inventory save failed; previous values are still active") from error
+        return {"revision": revision}
+    return handle
+
+
 def _get_inventory(hass):
     async def handle(call):
         inventory, inspection_days = await _admin_inventory(hass, call)
         snapshot = deepcopy(inventory.snapshot)
         snapshot["summary"] = summarize(
             inventory.catalog.values(), snapshot["items"],
-            dt_util.now().date(), inspection_days,
+            dt_util.now().date(), inspection_days, household_size=snapshot["household_size"],
         )
         snapshot["catalog"] = deepcopy(list(inventory.catalog.values()))
         snapshot["household"] = deepcopy(inventory.household)

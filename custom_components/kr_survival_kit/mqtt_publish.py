@@ -97,6 +97,7 @@ class MqttPublisher:
                 counts = summarize(
                     self.inventory.catalog.values(), self.inventory.snapshot["items"],
                     dt_util.now().date(), self.entry.data["inspection_days"],
+                    household_size=self.inventory.snapshot["household_size"],
                 )
                 if not self._discovery_sent:
                     for metric, (config_topic, state_topic) in topics.items():

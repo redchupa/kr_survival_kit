@@ -68,6 +68,7 @@ async def main():
             blocking=True, return_response=True, context=context,
         )
         assert before["revision"] == 0, before
+        assert before["household_size"] == 4
         assert before["default_review_interval_days"] == 30
         water_catalog = next(item for item in before["catalog"] if item["id"] == "drinking-water")
         assert (water_catalog["unit"], water_catalog["display_unit"], water_catalog["display_scale"]) == ("ml", "L", 1000)
@@ -268,9 +269,24 @@ async def main():
         )
         assert sum(isinstance(item, HomeAssistantError) for item in competing_results) == 1
         assert restarted.config_entries.async_get_entry(entry.entry_id).runtime_data.snapshot["revision"] == 6
+        household = await restarted.services.async_call(
+            DOMAIN, "set_household_size", {"revision": 6, "household_size": 5},
+            blocking=True, return_response=True, context=context,
+        )
+        assert household["revision"] == 7
+        household = await restarted.services.async_call(
+            DOMAIN, "get_inventory", {}, blocking=True, return_response=True, context=context,
+        )
+        assert household["household_size"] == 5
+        water = household["summary"]["items"]["drinking-water"]
+        assert (water["recommended_target"], water["target"]) == (30000, 3251)
         await restarted.async_stop()
+        final_ha = await start_ha(config_dir)
+        final_entry = final_ha.config_entries.async_get_entry(entry.entry_id)
+        assert final_entry.runtime_data.snapshot["household_size"] == 5
+        await final_ha.async_stop()
         print(json.dumps({"ha_core": version("homeassistant"), "entry": "created_and_restarted", "sensors": 3,
-                          "saved_revision": 6, "stale_revision": "rejected", "save_failure": "rejected",
+                          "saved_revision": 7, "household": "4_to_5_and_restored", "stale_revision": "rejected", "save_failure": "rejected",
                           "viewer": "read_write_rejected", "boolean_input": "rejected",
                           "ration": "added_edited_deleted", "water_litre_roundtrip": "3251ml_after_restart",
                           "concurrent_edit": "one_rejected", "received_on": "roundtrip",

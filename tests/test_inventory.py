@@ -272,7 +272,8 @@ async def test_legacy_v1_and_invalid_new_fields_preserve_store():
     }}}
     stock = Inventory(store, CATALOG)
     await stock.load()
-    assert stock.snapshot == store.saved
+    assert stock.snapshot == {**store.saved, "household_size": 4}
+    assert "household_size" not in store.saved
     assert summarize(CATALOG, stock.snapshot["items"], TODAY)["items"][WATER]["review_interval_days"] == 30
     for bad in (0, -1, True, 3651, "30"):
         with pytest.raises(InventoryError, match="review_interval_days"):
@@ -282,13 +283,15 @@ async def test_legacy_v1_and_invalid_new_fields_preserve_store():
             await stock.set_item(WATER, 7, True, 1000, [{
                 "lot_id": "new", "quantity": 1000, "expires_on": "2027-01-01", "received_on": bad,
             }], True, TODAY)
-    assert stock.snapshot == store.saved
+    assert stock.snapshot == {**store.saved, "household_size": 4}
+    assert "household_size" not in store.saved
     store.fail = True
     with pytest.raises(OSError):
         await stock.set_item(WATER, 7, True, 1000, [{
             "lot_id": "new", "quantity": 1000, "expires_on": "2027-01-01", "received_on": TODAY,
         }], True, TODAY, 7)
-    assert stock.snapshot == store.saved
+    assert stock.snapshot == {**store.saved, "household_size": 4}
+    assert "household_size" not in store.saved
 
 
 @pytest.mark.asyncio
@@ -303,3 +306,41 @@ async def test_concurrent_review_interval_update_keeps_winning_revision():
     assert sum(isinstance(value, RevisionConflict) for value in attempts) == 1
     assert stock.snapshot["revision"] == 1
     assert stock.snapshot["items"][WATER]["review_interval_days"] in (7, 90)
+
+
+@pytest.mark.asyncio
+async def test_household_and_bottle_inputs_survive_restart():
+    store = FakeStore()
+    stock = Inventory(store, CATALOG)
+    def targets():
+        return summarize(CATALOG, stock.snapshot["items"], TODAY,
+                         household_size=stock.snapshot["household_size"])["items"]
+
+    assert targets()[WATER]["target"] == 24000
+    store.fail = True
+    with pytest.raises(OSError):
+        await stock.set_household_size(0, 3)
+    assert stock.snapshot["household_size"] == 4
+    store.fail = False
+    lot = {"lot_id": "water", "quantity": 24000, "bottle_ml": 2000,
+           "bottle_count": 12, "expires_on": "2027-01-01"}
+    with pytest.raises(InventoryError, match="bottle"):
+        await stock.set_item(WATER, 0, True, None, [{**lot, "quantity": 12}], True, TODAY)
+    await stock.set_item(WATER, 0, True, None, [lot], True, TODAY)
+    assert targets()[WATER]["state"] == "sufficient"
+    with pytest.raises(RevisionConflict):
+        await stock.set_household_size(0, 5)
+    await stock.set_household_size(1, 5)
+    assert targets()[WATER]["target"] == 30000
+    assert targets()[WATER]["usable"] == 24000
+    assert targets()[WATER]["state"] == "shortage"
+    assert targets()["backpack"]["target"] == 5
+    assert targets()["flashlight"]["target"] == 2
+    stock = Inventory(store, CATALOG)
+    await stock.load()
+    assert stock.snapshot["household_size"] == 5
+    assert stock.snapshot["items"][WATER]["lots"] == [lot]
+    await stock.set_item(WATER, 2, True, 0, [{**lot, "quantity": 0, "bottle_count": 0,
+                                              "expires_on": None}], True, TODAY)
+    assert targets()[WATER]["target"] == 0
+    assert targets()[WATER]["recommended_target"] == 30000

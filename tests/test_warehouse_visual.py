@@ -192,6 +192,7 @@ def main():
         assert quantity.input_value() == "2"
         assert received_on.input_value() == "2026-11-01"
         assert review.input_value() == "45"
+        page.locator("kr-survival-kit-inventory-card #item-settings > summary").click()
         target.fill("24.001")
         quantity.fill("4.25")
         review.fill("60")
@@ -229,6 +230,37 @@ def main():
         assert saved["lots"][0]["quantity"] == 4250, saved
         assert saved["lots"][0]["received_on"] == "2026-11-01", saved
         assert saved["review_interval_days"] == 60, saved
+
+        render(make_snapshot(None))
+        page.evaluate("""() => {
+            window.demoCard._hass.connection = {sendMessagePromise: async message => {
+                const snapshot = window.demoCard._snapshot;
+                if (message.service === 'set_household_size') {
+                    snapshot.household_size = message.service_data.household_size;
+                }
+                if (message.service === 'set_item') window.savedBottle = message.service_data;
+                return {response: snapshot};
+            }};
+        }""")
+        card = page.locator("kr-survival-kit-inventory-card")
+        card.locator("#household-size").fill("5")
+        card.locator("#household-form button").click()
+        assert "생수 30 L · 식사 45인분" in card.locator(".household-strip").inner_text()
+        card.locator('[data-edit="drinking-water"]').click()
+        assert card.locator(".capacity").input_value() == "2"
+        card.locator(".bottle-count").fill("12")
+        assert "24 L" in card.locator(".lot-total").inner_text()
+        card.locator(".expiry").fill("2027-01-01")
+        page.set_viewport_size({"width": 375, "height": 812})
+        card.locator("#editor h3").scroll_into_view_if_needed()
+        assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth")
+        card.locator("#editor").screenshot(path=str(EVIDENCE / "water-editor-synthetic-mobile.jpg"), type="jpeg", quality=90)
+        page.evaluate("document.body.style.zoom = '2'")
+        assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth"), "water editor overflow"
+        page.evaluate("document.body.style.zoom = ''")
+        card.locator("#editor button.primary").click()
+        saved_bottle = page.evaluate("window.savedBottle")["lots"][0]
+        assert (saved_bottle["quantity"], saved_bottle["bottle_ml"], saved_bottle["bottle_count"]) == (24000, 2000, 12)
 
         browser.close()
     print("Synthetic complete-only 2D transitions, 10/2-column layouts, 200% zoom, L/ml edit/conflict, and screenshots passed")

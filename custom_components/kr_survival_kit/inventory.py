@@ -15,6 +15,7 @@ class RevisionConflict(InventoryError):
 
 MAX_AMOUNT = 1_000_000_000
 MAX_REVIEW_DAYS = 3650
+DEFAULT_HOUSEHOLD_SIZE = 4
 _UNSET = object()
 
 
@@ -44,7 +45,7 @@ def validate_item(catalog_item, applicable, target, lots):
         raise InventoryError("No more than 200 purchase lots per item")
     seen = set()
     for lot in lots:
-        if not isinstance(lot, dict) or not {"lot_id", "quantity", "expires_on"} <= set(lot) or set(lot) - {"lot_id", "quantity", "expires_on", "received_on"}:
+        if not isinstance(lot, dict) or not {"lot_id", "quantity", "expires_on"} <= set(lot) or set(lot) - {"lot_id", "quantity", "expires_on", "received_on", "bottle_ml", "bottle_count"}:
             raise InventoryError("Each lot needs lot_id, quantity, and expires_on; received_on is optional")
         lot_id = lot["lot_id"]
         if (not isinstance(lot_id, str) or not lot_id or len(lot_id) > 80
@@ -54,6 +55,12 @@ def validate_item(catalog_item, applicable, target, lots):
         seen.add(lot_id)
         if type(lot["quantity"]) is not int or not 0 <= lot["quantity"] <= MAX_AMOUNT:
             raise InventoryError("quantity must be an integer from 0 to 1000000000")
+        if {"bottle_ml", "bottle_count"} & lot.keys():
+            volume, count = lot.get("bottle_ml"), lot.get("bottle_count")
+            if (catalog_item["id"] != "drinking-water" or type(volume) is not int
+                    or type(count) is not int or not 1 <= volume <= MAX_AMOUNT
+                    or not 0 <= count <= MAX_AMOUNT or volume * count != lot["quantity"]):
+                raise InventoryError("Invalid water bottle capacity or count")
         if lot.get("received_on") is not None:
             _date(lot["received_on"])
         expiry = lot["expires_on"]
@@ -64,11 +71,17 @@ def validate_item(catalog_item, applicable, target, lots):
             raise InventoryError("Inspection items cannot have expiry dates")
 
 
-def summarize(catalog, records, today, inspection_days=30, expiry_days=30):
+def recommended_targets(people):
+    return {"drinking-water": people * 6000, "backpack": people, "blanket": people,
+            "flashlight": 2, "first-aid-kit": 1}
+
+
+def summarize(catalog, records, today, inspection_days=30, expiry_days=30, household_size=None):
     """Return per-item states and three independent counts."""
     today = _date(today) if isinstance(today, str) else today
     results = {}
     counts = {"shortage_count": 0, "needs_check_count": 0, "expiring_count": 0}
+    recommended = recommended_targets(household_size) if household_size is not None else {}
     for item in catalog:
         item_id = item["id"]
         record = records.get(item_id)
@@ -86,6 +99,9 @@ def summarize(catalog, records, today, inspection_days=30, expiry_days=30):
             confirmed = record.get("confirmed", verified_on is not None)
             lots = record["lots"]
             review_days = record.get("review_interval_days") or inspection_days
+        recommended_target = recommended.get(item_id)
+        if target is None:
+            target = recommended_target
         usable = 0
         unconfirmed = 0
         expiring = 0
@@ -140,6 +156,7 @@ def summarize(catalog, records, today, inspection_days=30, expiry_days=30):
             "next_review_on": next_review.isoformat() if next_review else None,
             "review_days_remaining": (next_review - today).days if next_review else None,
             "target": target,
+            "recommended_target": recommended_target,
             "verified_on": verified_on,
             "confirmed": confirmed,
             "stale": stale,
@@ -153,7 +170,7 @@ class Inventory:
     def __init__(self, store, catalog):
         self.store = store
         self.catalog = {item["id"]: item for item in catalog}
-        self.snapshot = {"schema_version": 1, "revision": 0, "items": {}}
+        self.snapshot = {"schema_version": 1, "revision": 0, "items": {}, "household_size": DEFAULT_HOUSEHOLD_SIZE}
         self.lock = asyncio.Lock()
         self.listeners = []
 
@@ -177,7 +194,29 @@ class Inventory:
                 _review_days(record.get("review_interval_days"))
                 if record["verified_on"] is not None:
                     _date(record["verified_on"])
-        self.snapshot = deepcopy(data)
+        people = data.get("household_size", DEFAULT_HOUSEHOLD_SIZE)
+        if type(people) is not int or not 1 <= people <= 99:
+            raise InventoryError("Invalid household size")
+        self.snapshot = {**deepcopy(data), "household_size": people}
+
+    async def set_household_size(self, revision, people):
+        if type(revision) is not int or revision < 0:
+            raise InventoryError("revision must be a nonnegative integer")
+        if type(people) is not int or not 1 <= people <= 99:
+            raise InventoryError("household_size must be an integer from 1 to 99")
+        async with self.lock:
+            if revision != self.snapshot["revision"]:
+                raise RevisionConflict("Inventory changed. Refresh and retry.")
+            if people == self.snapshot["household_size"]:
+                return revision
+            candidate = deepcopy(self.snapshot)
+            candidate["household_size"] = people
+            candidate["revision"] += 1
+            await self.store.async_save(candidate)
+            self.snapshot = candidate
+        for listener in tuple(self.listeners):
+            listener()
+        return candidate["revision"]
 
     async def set_item(self, item_id, revision, applicable, target, lots, confirm, today, review_interval_days=_UNSET):
         if item_id not in self.catalog:

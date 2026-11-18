@@ -43,3 +43,28 @@ delete_item:
       name: Current revision
       required: true
       example: 1
+
+set_household_size:
+  name: 가구 인원 저장
+  description: 3일 권장량을 계산할 가구 인원을 저장합니다.
+  fields:
+    household_size:
+      name: 가구 인원
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 99
+          mode: box
+    revision:
+      name: 재고 revision
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 1000000000
+          mode: box
+    entry_id:
+      name: 통합 항목 ID
+      selector:
+        text:

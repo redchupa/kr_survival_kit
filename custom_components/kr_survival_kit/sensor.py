@@ -41,6 +41,7 @@ class InventoryCountSensor(SensorEntity):
             self._inventory.snapshot["items"],
             dt_util.now().date(),
             self._entry.data["inspection_days"],
+            household_size=self._inventory.snapshot["household_size"],
         )[self._metric]
 
     async def async_added_to_hass(self):
