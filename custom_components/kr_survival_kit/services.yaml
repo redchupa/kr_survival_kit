@@ -31,6 +31,10 @@ set_item:
       description: Set true only after checking the actual item and quantity.
       required: true
       example: false
+    apply_date_defaults:
+      name: 입고일과 포장 기한 확인일 적용
+      description: 입고일이 비면 오늘로 저장합니다. 포장 기한이 비면 품목별 확인일을 저장합니다.
+      example: true
 delete_item:
   name: Delete inventory item
   description: Delete a household record using the current revision. Administrator only.

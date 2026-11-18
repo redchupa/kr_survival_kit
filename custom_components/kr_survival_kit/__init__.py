@@ -13,7 +13,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PLATFORMS
 from .dashboard import async_register_dashboard
-from .inventory import MAX_AMOUNT, MAX_REVIEW_DAYS, Inventory, InventoryError, RevisionConflict, summarize
+from .inventory import DEFAULT_HOUSEHOLD_SIZE, LABEL_CHECK_DAYS, MAX_AMOUNT, MAX_REVIEW_DAYS, Inventory, InventoryError, RevisionConflict, summarize
 from .mqtt_publish import MqttPublisher, async_remove_discovery
 
 
@@ -43,6 +43,7 @@ SET_SCHEMA = vol.Schema({
     vol.Required("target"): vol.Any(None, _nonnegative_int),
     vol.Required("lots"): [_lot],
     vol.Required("confirm"): bool,
+    vol.Optional("apply_date_defaults", default=False): bool,
     vol.Optional("review_interval_days"): _review_interval,
 })
 DELETE_SCHEMA = vol.Schema({
@@ -70,7 +71,7 @@ async def async_setup_entry(hass, entry):
     store = Store(
         hass, 1, f"{DOMAIN}_{entry.entry_id}", private=True, atomic_writes=True
     )
-    inventory = Inventory(store, catalog)
+    inventory = Inventory(store, catalog, entry.data.get("household_size", DEFAULT_HOUSEHOLD_SIZE))
     inventory.household = household
     await inventory.load()
     entry.runtime_data = inventory
@@ -146,6 +147,7 @@ def _set_item(hass):
             revision = await inventory.set_item(
                 data["item_id"], data["revision"], data["applicable"],
                 data["target"], data["lots"], data["confirm"], dt_util.now().date().isoformat(),
+                apply_date_defaults=data["apply_date_defaults"],
                 **({"review_interval_days": data["review_interval_days"]} if "review_interval_days" in data else {}),
             )
         except RevisionConflict as error:
@@ -188,9 +190,12 @@ def _get_inventory(hass):
     async def handle(call):
         inventory, inspection_days = await _admin_inventory(hass, call)
         snapshot = deepcopy(inventory.snapshot)
+        today = dt_util.now().date()
+        snapshot["today"] = today.isoformat()
+        snapshot["label_check_days"] = LABEL_CHECK_DAYS
         snapshot["summary"] = summarize(
             inventory.catalog.values(), snapshot["items"],
-            dt_util.now().date(), inspection_days, household_size=snapshot["household_size"],
+            today, inspection_days, household_size=snapshot["household_size"],
         )
         snapshot["catalog"] = deepcopy(list(inventory.catalog.values()))
         snapshot["household"] = deepcopy(inventory.household)

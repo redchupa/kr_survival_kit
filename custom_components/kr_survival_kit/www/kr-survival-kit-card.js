@@ -106,11 +106,11 @@ function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item)
     const quantity = `${krStockText(item, current)} / ${status.target == null ? "목표 미설정" : krStockText(item, status.target)}`;
     const label = inactive ? "미사용" : ready ? "완비" : !status.confirmed || status.stale ? "실사 필요" :
       status.expiring_quantity > 0 ? "기한 임박" : status.expired_quantity > 0 ? "기한 경과" :
-      status.unknown_date_quantity > 0 ? "기한 확인" : status.state === "shortage" ? "부족" : "";
+      status.unknown_date_quantity > 0 ? (status.next_label_check_on ? `기한 확인 ${status.next_label_check_on}` : "기한 확인") : status.state === "shortage" ? "부족" : "";
     const percent = status.target > 0 ? Math.floor(Math.min(1, current / status.target) * 100) : 0;
     const action = inactive ? "설정" : "수정";
     return `<div class="ready-item" data-item="${escape(item.id)}" data-complete="${ready}" role="listitem"><button type="button" class="shelf-edit" data-edit="${escape(item.id)}" aria-label="${escape([`${item.name} ${action}`, quantity, label].filter(Boolean).join(" · "))}" ${editing ? "disabled" : ""}><span class="shelf-action">${action}</span><span class="ready-art" aria-hidden="true">${pictogram}</span>` +
-      `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(quantity)}</span><span aria-hidden="true" class="stock-meter"><span style="width:${percent}%"></span></span>${label ? `<span class="stock-label">${label}</span>` : ""}</button></div>`;
+      `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(quantity)}</span><span aria-hidden="true" class="stock-meter"><span style="width:${percent}%"></span></span>${label ? `<span class="stock-label">${escape(label)}</span>` : ""}</button></div>`;
   }).join("")}</div>`;
 }
 
@@ -121,17 +121,25 @@ const KR_STOCK_RANKS = [
   ["챌린저", "#ffe39a"],
 ];
 
+const KR_STOCK_WEIGHTS = {
+  "drinking-water": 30, "shelf-stable-meal": 16, "canned-food": 12, hygiene: 7,
+  flashlight: 10, batteries: 5, backpack: 5, blanket: 5, "first-aid-kit": 10,
+};
+
 function krStockScore(snapshot) {
-  const base = snapshot.catalog.filter((item) => !krIsSelectable(item));
-  if (!base.length) return 0;
-  const total = base.reduce((sum, item) => {
+  let possible = 0;
+  let earned = 0;
+  for (const item of snapshot.catalog) {
+    const weight = KR_STOCK_WEIGHTS[item.id];
+    if (!weight) continue;
+    possible += weight;
     const status = snapshot.summary.items[item.id];
     if (snapshot.items[item.id]?.applicable === false || !status.confirmed ||
-        !status.verified_on || status.stale !== false || !(status.target > 0)) return sum;
+        !status.verified_on || status.stale !== false || !(status.target > 0)) continue;
     const usable = Math.max(0, status.usable - (status.expiring_quantity ?? 0));
-    return sum + Math.min(1, usable / status.target);
-  }, 0);
-  return Math.floor(total / base.length * 100);
+    earned += weight * Math.min(1, usable / status.target);
+  }
+  return possible ? Math.floor(earned * 100 / possible + 1e-9) : 0;
 }
 
 function krStockRankView(snapshot) {
@@ -145,7 +153,7 @@ function krStockRankView(snapshot) {
     <div class="stock-rank-head"><div><h3 id="stock-rank-title">비축 등급</h3><strong>${rank}</strong></div><div class="stock-score"><b>${score}</b><span> / 100점</span></div></div>
     <progress aria-label="비축 점수" value="${score}" max="100"></progress>
     <p>${message}</p>
-    <details><summary>점수 계산 기준</summary><p>기본품의 목표 달성률을 같은 비중으로 합산해 100점으로 환산합니다. 최근에 실사했고 기한이 충분한 재고만 점수에 반영합니다. 목표 미설정과 미확인은 0점입니다. 선택 물품과 퀴즈는 별도입니다. 이 점수는 재고 준비의 진도입니다.</p></details>
+    <details><summary>점수 계산 기준</summary><p>기본품마다 목표 달성률에 배점을 곱합니다. 생수 30점, 간편식 16점, 통조림 12점, 손전등과 구급함 각 10점, 위생용품 7점, 건전지·배낭·담요 각 5점입니다. 유효한 재고만 반영하며 목표 미설정과 미확인은 0점입니다. 선택 물품과 퀴즈는 별도입니다. 이 점수는 비축 준비의 진도입니다.</p></details>
     </section>`;
 }
 
@@ -300,36 +308,6 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     }
   }
 
-  async _saveHousehold(form) {
-    if (this._saving || this._loading) return;
-    const people = Number(form.querySelector("#household-size").value);
-    this._saving = true;
-    try {
-      await this._call("set_household_size", { revision: this._snapshot.revision, household_size: people });
-      await this._load();
-      this._householdMessage = this._loadError ? "저장했습니다. 새로고침해 권장량을 확인하세요." : "가구 인원과 권장량을 업데이트했습니다.";
-    } catch (error) {
-      if (/changed|revision/i.test(error.message || "")) {
-        await this._load();
-        this._householdMessage = "다른 변경을 불러왔습니다. 적용할 인원을 다시 선택하세요.";
-      } else {
-        this._householdMessage = "인원을 저장할 수 없습니다. 잠시 뒤 다시 시도하세요.";
-      }
-    } finally {
-      this._saving = false;
-      this._render();
-      this.shadowRoot.querySelector("#household-size")?.focus({ preventScroll: true });
-    }
-  }
-
-  _addLot(item) {
-    const lots = this._draft.lots;
-    let number = lots.length + 1;
-    while (lots.some((lot) => lot.lot_id === `lot-${number}`)) number += 1;
-    lots.push({ lot_id: `lot-${number}`, quantity: "0", expires_on: null, received_on: null,
-      ...(item.id === "drinking-water" ? { capacity: "2", count: "0" } : {}) });
-  }
-
   _edit(item, fromShelf) {
     if (this._draft || this._saving) return;
     this._shelfEditId = fromShelf ? item.id : null;
@@ -344,9 +322,11 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         ...(lot.bottle_ml ? { capacity: krStockFormat(item, lot.bottle_ml), count: String(lot.bottle_count) } : {}),
       })),
       review_interval_days: saved?.review_interval_days ?? "",
-      confirm: false,
     };
-    if (!this._draft.lots.length) this._addLot(item);
+    if (!this._draft.lots.length) {
+      this._draft.lots.push({ lot_id: "lot-1", quantity: "0", expires_on: null, received_on: null,
+        ...(item.id === "drinking-water" ? { capacity: "2", count: "0" } : {}) });
+    }
     this._message = "";
     this._render();
     const editor = this.shadowRoot.querySelector("#editor");
@@ -375,7 +355,6 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._draft.applicable = root.querySelector("#applicable").checked;
     this._draft.target = root.querySelector("#target").value;
     this._draft.review_interval_days = root.querySelector("#review-interval").value;
-    this._draft.confirm = root.querySelector("#confirm").checked;
     this._draft.settingsOpen = root.querySelector("#item-settings").open;
     this._draft.lots = [...root.querySelectorAll(".lot-edit")].map((row, index) => ({
       lot_id: this._draft.lots[index].lot_id,
@@ -425,7 +404,8 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         target,
         lots,
         review_interval_days: reviewInterval,
-        confirm: this._draft.confirm,
+        confirm: true,
+        apply_date_defaults: true,
       });
       this._draft = null;
       await this._load();
@@ -511,7 +491,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       const lotText = lots.length ? lots.map((lot, index) =>
         `<li>묶음 ${index + 1} · ${lot.bottle_ml ? `${escape(krStockText(item, lot.bottle_ml))} × ${escape(lot.bottle_count)}병 = ` : ""}${escape(krStockText(item, lot.quantity))}` +
         ` · 입고일 ${escape(lot.received_on || "미상")}` +
-        (item.date_kind === "expiry" ? ` · ${escape(dateLabel)} ${escape(lot.expires_on || "미확인")}` : "") + "</li>"
+        (item.date_kind === "expiry" ? ` · ${escape(dateLabel)} ${escape(lot.expires_on || "미확인")}${lot.label_check_on ? ` · 포장 기한 확인일 ${escape(lot.label_check_on)}` : ""}` : "") + "</li>"
       ).join("") : "<li>기록된 묶음 없음</li>";
       return `<article class="item" data-name="${escape(item.name)}"><div class="item-head"><div class="item-title"><h3>${escape(item.name)}</h3>` +
         `<span class="state ${escape(status.state)}">${states[status.state]}</span>` +
@@ -547,28 +527,30 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const draftItem = items.find((item) => item.id === this._draft?.id);
     const draftRecommendation = recommendations.get(this._draft?.id);
     const noteCoveredByBasis = draftItem?.note && draftRecommendation?.basis?.includes(draftItem.note);
+    const labelCheckDays = snapshot?.label_check_days?.[draftItem?.id] ?? 7;
     const edit = this._draft && draftItem ? `<form id="editor"><h3 tabindex="-1">${escape(draftItem.name)} 수정</h3>` +
       (draftItem.examples ? `<p class="item-note">${escape(draftItem.examples)}</p>` : "") +
       (draftItem.note && !noteCoveredByBasis ? `<p class="item-note">${escape(draftItem.note)}</p>` : "") +
       `<p>현재 기록 ${escape(krStockText(draftItem, draftItem.status.usable))} · ${states[draftItem.status.state]} · 마지막 실사 ${escape(draftItem.status.verified_on || "기록 없음")}</p>` +
       (draftItem.status.target != null ? `<p class="recommendation">${people}인 가구 목표 <strong>${escape(krStockText(draftItem, draftItem.status.target))}</strong></p>` : "") +
       (draftItem.id === "drinking-water" ? `<p class="item-note">2 L 생수 12병이면 병 용량에 2, 병 수에 12를 입력하세요.</p>` : "") +
+      (this._draft.lots.length > 1 ? `<p class="item-note">이전에 저장한 날짜별 기록입니다. 기존 날짜를 확인하며 각 수량을 수정할 수 있습니다.</p>` : "") +
       this._draft.lots.map((lot, index) =>
-        `<fieldset class="lot-edit"><legend>묶음 ${index + 1}</legend>` +
+        `<fieldset class="lot-edit"><legend>${this._draft.lots.length > 1 ? `기존 재고 ${index + 1}` : "수량과 날짜"}</legend>` +
         (lot.capacity !== undefined
           ? `<label>병 하나의 용량 (L)<input class="capacity" type="number" min="0.001" max="1000000" step="0.001" value="${escape(lot.capacity)}" required></label>` +
             `<label>병 수 (병)<input class="bottle-count" type="number" min="0" max="1000000000" step="1" value="${escape(lot.count)}" required></label>` +
             `<output class="lot-total" aria-live="polite"></output>`
-          : `<label>${draftItem.id === "drinking-water" ? "기존 기록의 총량 (L)" : `보유 수량 (${escape(krStockUnit(draftItem))})`}<input class="quantity" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(lot.quantity)}" required></label>`) +
-        (draftItem.date_kind === "expiry" ? `<label>${escape(krDateLabel(draftItem))} (포장 기준)<input class="expiry" type="date" value="${escape(lot.expires_on || "")}"></label>` : "") +
-        `<details><summary>입고일 ${lot.received_on ? escape(lot.received_on) : "(선택)"}</summary><label>입고일<input class="received-on" type="date" value="${escape(lot.received_on || "")}"></label></details>` +
-        `<button type="button" data-remove="${index}" aria-label="묶음 ${index + 1} 빼기">묶음 빼기</button></fieldset>`
-      ).join("") + `<button type="button" id="add-lot">다른 묶음 추가</button>` +
-      `<details id="item-settings" ${this._draft.settingsOpen ? "open" : ""}><summary>목표와 점검 설정</summary>` +
+          : `<label>${draftItem.id === "drinking-water" ? "보유량 합계 (L)" : `보유 수량 (${escape(krStockUnit(draftItem))})`}<input class="quantity" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(lot.quantity)}" required></label>`) +
+        `<label>입고일<input class="received-on" type="date" value="${escape(lot.received_on || snapshot.today || "")}"></label>` +
+        (draftItem.date_kind === "expiry" ? `<label>${escape(krDateLabel(draftItem))} (포장 기준)<input class="expiry" type="date" value="${escape(lot.expires_on || "")}" aria-describedby="expiry-help"></label>` : "") +
+        `</fieldset>`
+      ).join("") + `<p class="item-note">입고일을 비우면 오늘로 저장합니다. 저장한 날을 마지막 실사일로 기록합니다.</p>` +
+      (draftItem.date_kind === "expiry" ? `<p id="expiry-help" class="item-note">포장 날짜가 여러 개면 가장 빠른 날짜를 입력하세요. 비워 두면 입고 후 ${labelCheckDays}일을 포장 기한 확인일로 등록합니다. 확인 전에는 준비 완료 수량에 포함하지 않습니다.</p>` : "") +
+      `<label for="target">목표량 (${escape(krStockUnit(draftItem))})</label><input id="target" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(this._draft.target)}" placeholder="${draftItem.status.recommended_target == null ? "미설정" : escape(krStockText(draftItem, draftItem.status.recommended_target)) + " 자동"}">` +
+      `<details id="item-settings" ${this._draft.settingsOpen ? "open" : ""}><summary>점검 및 관리 설정</summary>` +
       `<label><input id="applicable" type="checkbox" ${this._draft.applicable ? "checked" : ""}> 우리 집에서 관리</label>` +
-      `<label for="target">목표량 직접 설정 (${escape(krStockUnit(draftItem))})</label><input id="target" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(this._draft.target)}" placeholder="${draftItem.status.recommended_target == null ? "미설정" : escape(krStockText(draftItem, draftItem.status.recommended_target)) + " 자동"}">` +
-      `<label for="review-interval">재고 점검 주기 (일)</label><input id="review-interval" type="number" min="1" max="3650" step="1" value="${escape(this._draft.review_interval_days)}" placeholder="기본 ${escape(snapshot.default_review_interval_days ?? 30)}일"></details>` +
-      `<label class="confirm"><input id="confirm" type="checkbox" ${this._draft.confirm ? "checked" : ""}> 실제 재고를 확인했고 오늘 실사했습니다</label>` +
+      `<label for="review-interval">재고 점검 주기 (일)</label><input id="review-interval" type="number" min="1" max="3650" step="1" value="${escape(this._draft.review_interval_days)}" placeholder="기본 ${escape(snapshot.default_review_interval_days ?? 30)}일"><p class="item-note">마지막으로 저장한 날부터 이 기간이 지나면 수량과 상태를 다시 확인하라는 표시가 뜹니다. 자주 쓰는 물품은 짧게 정하세요. 예를 들어 7일은 매주 재고를 확인한다는 뜻입니다.</p></details>` +
       `<div class="actions"><button type="submit" class="primary">저장</button><button type="button" id="cancel">취소</button>` +
       `<button type="button" id="delete">기록 삭제</button></div></form>` : "";
     const categoryLabels = { water: "물", food: "식품·조리", power: "전원·통신", living: "생활·보호" };
@@ -603,7 +585,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       button:hover{background:rgba(25,127,131,.1)}button:focus-visible,input:focus-visible{outline:3px solid #d28b24;outline-offset:2px}
       .primary{background:#156d73;color:#fff}.message{padding:.7rem;border-radius:8px;background:rgba(210,139,36,.16);line-height:1.5}
       form{border-top:3px solid #197f83;padding-top:1rem}label{display:block;margin:.7rem 0 .3rem;font-weight:600}input:not([type=checkbox]){box-sizing:border-box;width:100%;min-height:42px;padding:.5rem;font:inherit;color:var(--primary-text-color,#173048);background:var(--card-background-color,#fff);border:1px solid #718893;border-radius:7px}
-      .lot-edit{border:1px solid var(--divider-color,#d7e1e7);border-radius:8px;padding:.75rem;margin:.6rem 0}.confirm{margin:1.2rem 0}.actions{display:flex;gap:.5rem;flex-wrap:wrap}
+      .lot-edit{border:1px solid var(--divider-color,#d7e1e7);border-radius:8px;padding:.75rem;margin:.6rem 0}.actions{display:flex;gap:.5rem;flex-wrap:wrap}
       details{border-top:1px solid var(--divider-color,#d7e1e7);margin-top:.5rem}summary{min-height:44px;padding:.75rem .25rem;cursor:pointer;font-weight:700}summary:focus-visible{outline:3px solid #d28b24;outline-offset:2px}
       ha-card{padding:0;max-width:1480px;margin:0 auto;overflow:hidden;box-shadow:0 22px 60px rgba(8,24,34,.17)}
       .hero{background:linear-gradient(125deg,#111d28 0%,#1b3445 58%,#294858 100%);color:#edf7f8;padding:clamp(1.1rem,3vw,2.5rem);display:grid;grid-template-columns:minmax(16rem,.82fr) minmax(0,1.18fr);gap:clamp(1rem,3vw,2.5rem);align-items:center}
@@ -622,7 +604,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       @media(max-width:620px){.items{grid-template-columns:1fr}.hero{padding:1.15rem}.inventory-panel{padding:1rem}}
       @media(prefers-color-scheme:dark){.shortage{color:#ff9d94}.needs_check{color:#f0b76d}.sufficient{color:#78d8d2}}
       @media(max-width:400px){.item-head{flex-wrap:wrap}}
-      .household-strip{display:grid;grid-template-columns:1fr auto;gap:.65rem 1rem;align-items:center;padding:1rem;border:1px solid #78aebe;border-radius:14px;background:#0b2636;margin-block:1rem}.household-strip strong{color:#a4fff0}.household-strip form{display:flex;align-items:end;flex-wrap:wrap;gap:.45rem}.household-strip label{display:grid;gap:.2rem;font-size:.85rem}.household-strip input{width:5rem;color:#e9fbff;background:#163c4e;border:1px solid #85c9d0}.household-strip p{margin:0;grid-column:1/-1}.household-strip button{background:#a4fff0;color:#123544;font-weight:750}.lot-edit{min-inline-size:0}.lot-edit legend{font-weight:750}.lot-total{font-weight:750;align-self:center}.lot-edit summary,#item-settings summary{cursor:pointer;padding:.5rem 0}.lot-edit input{box-sizing:border-box;max-width:100%}@media(max-width:530px){.household-strip{grid-template-columns:1fr}.household-strip form{justify-content:flex-start}}
+      .household-strip{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem 1rem;padding:.75rem 1rem;border:1px solid #78aebe;border-radius:14px;background:#0b2636;margin-block:1rem}.household-strip strong{color:#a4fff0}.household-strip p{margin:0}.lot-edit{min-inline-size:0}.lot-edit legend,.lot-total{font-weight:750}.lot-total{align-self:center}#item-settings summary{cursor:pointer;padding:.5rem 0}.lot-edit input{box-sizing:border-box;max-width:100%}
       .hero{position:relative;display:block;background:linear-gradient(135deg,#1b3a4c,#102432 65%,#0d1c2a);transition:background .5s ease}
       .hero[data-daypart="day"]{background:linear-gradient(135deg,#27566a,#173b4e 55%,#132b3a)}
       .hero[data-daypart="night"]{background:linear-gradient(135deg,#172e42,#0b1c2d 62%,#0b1724)}
@@ -659,13 +641,13 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       @media(max-width:400px){.mission-item{grid-template-columns:1fr;text-align:center}.mission-art{grid-row:auto}}
     </style><ha-card>${edit ? `<section class="inventory-panel editing-panel" aria-label="품목 수정">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit}</section>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨"><span id="local-clock">--:--</span><span id="local-weather">날씨 연동 안 됨</span></div></div><p class="atmosphere-note" id="time-source">HA 시간대 · 시각 기준 주야 테마</p>` +
       `<p class="hero-copy">${snapshot ? Object.keys(snapshot.items).length ? "품목 그림을 누르면 수량과 기한을 바로 수정할 수 있습니다." : "품목 그림을 눌러 실제 수량과 목표를 기록하세요." : this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` +
-      (snapshot ? `<div class="household-strip"><div><strong>${people}인 가구 · 3일</strong><p>생수 ${people * 6} L · 식사 ${people * 9}인분</p></div><form id="household-form"><label>가구 인원 (명)<input id="household-size" type="number" required min="1" max="99" value="${escape(people)}" ${this._draft ? "disabled" : ""}></label><button type="submit" ${this._draft || this._saving ? "disabled" : ""}>인원 적용</button></form>${this._householdMessage ? `<p role="status">${escape(this._householdMessage)}</p>` : ""}</div>` : "") +
+      (snapshot ? `<div class="household-strip"><strong>${people}인 가구 · 3일</strong><p>생수 ${people * 6} L · 식사 ${people * 9}인분</p></div>` : "") +
       `${signals}` +
       (counts ? `<p class="filter-note">부족·확인 필요·기한 임박 수치는 서로 겹칠 수 있습니다. 부족 0건이 준비 완료를 뜻하지 않습니다.</p>` : "") +
       `</div>${krStockRankView(snapshot)}${krMissionView(snapshot, escape, animateMission)}${krStockShelves(snapshot, escape, this._optionalShelfOpen, Boolean(this._draft))}</section>` +
       (edit ? "" : `<section class="inventory-panel" id="inventory-list"><div class="inventory-heading"><h2 tabindex="-1">${listTitle} <span>${filteredItems.length}개</span></h2><button type="button" id="refresh">새로고침</button></div>` +
       `<div class="filter-bar" aria-label="품목 분류 필터">${categoryButtons}</div><div class="filter-bar" aria-label="품목 상태 필터">${statusButtons}</div>` +
-      `<p class="filter-note">인원을 바꾸면 기본 목표가 갱신됩니다. 직접 저장한 목표는 품목의 목표 설정에서 비우면 기본값을 다시 따릅니다.</p>` +
+      `<p class="filter-note">인원을 바꾸면 기본 목표가 갱신됩니다. 품목의 목표량 입력을 비우면 기본 목표를 적용합니다.</p>` +
       (this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : "") +
       `<div class="items">${snapshot ? ((filteredItems.length ? rows : `<p class="empty">조건에 맞는 품목이 없습니다. 다른 필터를 선택하세요.</p>`) + optionalRows) : `<p class="empty">${this._loading ? "재고를 불러오는 중입니다." : "재고를 표시할 수 없습니다."}</p>`}</div></section>`) + `</ha-card>`;
     this.shadowRoot.querySelector("#optional-items")?.addEventListener("toggle", (event) => {
@@ -684,10 +666,6 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         search.scrollIntoView({ block: "nearest" });
         this._focusOptionalSearch = false;
       }
-    });
-    this.shadowRoot.querySelector("#household-form")?.addEventListener("submit", (event) => {
-      event.preventDefault();
-      this._saveHousehold(event.currentTarget);
     });
     this.shadowRoot.querySelectorAll(".lot-edit").forEach((row) => {
       const output = row.querySelector(".lot-total");
@@ -747,13 +725,6 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       this._returnToShelf();
     });
     this.shadowRoot.querySelector("#delete")?.addEventListener("click", () => this._delete());
-    this.shadowRoot.querySelector("#add-lot")?.addEventListener("click", () => {
-      this._captureDraft(); this._addLot(draftItem); this._render();
-      this.shadowRoot.querySelector(".lot-edit:last-of-type input")?.focus();
-    });
-    this.shadowRoot.querySelectorAll("[data-remove]").forEach((button) => button.addEventListener("click", () => {
-      this._captureDraft(); this._draft.lots.splice(Number(button.dataset.remove), 1); this._render();
-    }));
     this._updateAtmosphere();
   }
 }

@@ -64,7 +64,7 @@ def make_snapshot(water_litres=None, expired=False, demo_full=False):
                 "expiring_quantity": 0, "expired_quantity": 0, "unknown_date_quantity": 0, "next_expiry_on": None,
             }
     return {
-        "catalog": ITEMS, "items": records, "revision": 1,
+        "catalog": ITEMS, "items": records, "revision": 1, "today": "2026-11-18",
         "summary": {
             "items": details,
             "shortage_count": sum(value["state"] == "shortage" for value in details.values()),
@@ -125,7 +125,7 @@ def main():
         inactive.locator("summary").click()
         assert inactive.locator('[data-item="self-heating-ration"] .stock-label').inner_text() == "미사용"
         assert shelf.locator('[data-item="radio"] .ready-art').is_visible()
-        assert page.locator("kr-survival-kit-inventory-card .stock-rank").get_by_role("progressbar").get_attribute("value") == "22"
+        assert page.locator("kr-survival-kit-inventory-card .stock-rank").get_by_role("progressbar").get_attribute("value") == "16"
         render(make_snapshot(24, demo_full=True))
         assert inactive.get_attribute("open") is not None
         assert "챌린저" in page.locator("kr-survival-kit-inventory-card .stock-rank").inner_text()
@@ -260,23 +260,21 @@ def main():
         assert saved["lots"][0]["received_on"] == "2026-11-01", saved
         assert saved["review_interval_days"] == 60, saved
 
-        render(make_snapshot(None))
+        render({**make_snapshot(None), "household_size": 5})
         page.evaluate("""() => {
             window.demoCard._hass.connection = {sendMessagePromise: async message => {
                 const snapshot = window.demoCard._snapshot;
-                if (message.service === 'set_household_size') {
-                    snapshot.household_size = message.service_data.household_size;
-                }
                 if (message.service === 'set_item') window.savedBottle = message.service_data;
                 return {response: snapshot};
             }};
         }""")
         card = page.locator("kr-survival-kit-inventory-card")
-        card.locator("#household-size").fill("5")
-        card.locator("#household-form button").click()
+        assert card.locator("#household-size").count() == 0
         assert "생수 30 L · 식사 45인분" in card.locator(".household-strip").inner_text()
         card.locator('.shelf-edit[data-edit="drinking-water"]').click()
         assert card.locator(".capacity").input_value() == "2"
+        assert card.locator(".received-on").input_value() == "2026-11-18"
+        assert card.locator("#confirm, #add-lot").count() == 0
         card.locator(".bottle-count").fill("12")
         assert "24 L" in card.locator(".lot-total").inner_text()
         card.locator(".expiry").fill("2027-01-01")
@@ -288,7 +286,9 @@ def main():
         assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth"), "water editor overflow"
         page.evaluate("document.body.style.zoom = ''")
         card.locator("#editor button.primary").click()
-        saved_bottle = page.evaluate("window.savedBottle")["lots"][0]
+        saved_payload = page.evaluate("window.savedBottle")
+        assert saved_payload["confirm"] and saved_payload["apply_date_defaults"]
+        saved_bottle = saved_payload["lots"][0]
         assert (saved_bottle["quantity"], saved_bottle["bottle_ml"], saved_bottle["bottle_count"]) == (24000, 2000, 12)
         water_button = card.locator('.shelf-edit[data-edit="drinking-water"]')
         assert_focused(water_button)
@@ -316,6 +316,49 @@ def main():
         assert panel.get_by_role("link", name="오프라인 안내 열기").get_attribute("href") == "/kr_survival_kit_assets/kr-survival-kit-offline.html"
         assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth")
 
+        # Exercise the same fields and save button a new household sees for every catalog item.
+        blank = {"catalog": CATALOG, "items": {}, "revision": 0, "today": "2026-11-18",
+                 "summary": {"items": {item["id"]: {"usable": 0, "target": None, "state": "needs_check"}
+                                       for item in CATALOG}}}
+        page.set_viewport_size({"width": 1280, "height": 900})
+        page.evaluate("""snapshot => {
+            document.body.replaceChildren(window.demoCard);
+            window.demoCard._snapshot = snapshot;
+            window.demoCard._hass.connection = {sendMessagePromise: async message => {
+                if (message.service === 'set_item') {
+                    const data = message.service_data;
+                    const item = snapshot.catalog.find(entry => entry.id === data.item_id);
+                    snapshot.items[item.id] = {...data, verified_on: snapshot.today};
+                    const status = snapshot.summary.items[item.id];
+                    Object.assign(status, {confirmed: data.confirm, verified_on: snapshot.today, stale: false,
+                        usable: data.lots[0].quantity, target: data.target, state: 'sufficient'});
+                    snapshot.revision++;
+                }
+                return {response: snapshot};
+            }};
+            window.demoCard._render();
+        }""", blank)
+        optional_summary = card.locator("#optional-shelf > summary")
+        if card.locator("#optional-shelf").get_attribute("open") is None:
+            optional_summary.click()
+        for item in CATALOG:
+            item_id = item["id"]
+            card.locator(f'.shelf-edit[data-edit="{item_id}"]').click()
+            editor = card.locator("#editor")
+            assert editor.locator(".lot-edit").count() == 1, item_id
+            assert editor.locator(".received-on").input_value() == "2026-11-18", item_id
+            if item_id == "drinking-water":
+                editor.locator(".bottle-count").fill("12")
+            else:
+                editor.locator(".quantity").fill("1")
+            if item["date_kind"] == "expiry":
+                editor.locator(".expiry").fill("2027-06-01")
+            editor.locator("#target").fill("24" if item_id == "drinking-water" else "1")
+            editor.get_by_role("button", name="저장", exact=True).click()
+            assert card.locator(f'.ready-item[data-item="{item_id}"]').get_attribute("data-complete") == "true", item_id
+        assert card.locator('.ready-item[data-complete="true"]').count() == 56
+        assert card.locator(".stock-rank progress").get_attribute("value") == "100"
+        assert "챌린저" in card.locator(".stock-rank").inner_text()
         browser.close()
     print("Synthetic inventory and quiz transitions, 10/2-column layouts, 200% zoom, L/ml edit/conflict, and screenshots passed")
 

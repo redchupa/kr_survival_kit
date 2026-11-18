@@ -60,7 +60,7 @@ async def main():
         finally:
             hidden_catalog.rename(catalog)
         flow = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": "user"}, data={"inspection_days": 30}
+            DOMAIN, context={"source": "user"}, data={"inspection_days": 30, "household_size": 4}
         )
         assert flow["type"] == "create_entry", flow
         entry = flow["result"]
@@ -299,10 +299,47 @@ async def main():
         assert household["household_size"] == 5
         water = household["summary"]["items"]["drinking-water"]
         assert (water["recommended_target"], water["target"]) == (30000, 3251)
+        today = dt_util.now().date()
+        reminder = await restarted.services.async_call(
+            DOMAIN, "set_item", {"item_id": "drinking-water", "revision": 7, "applicable": True,
+                "target": 30000, "lots": [{"lot_id": "lot-1", "quantity": 30000, "expires_on": None}],
+                "confirm": True, "apply_date_defaults": True}, blocking=True, return_response=True, context=context,
+        )
+        household = await restarted.services.async_call(
+            DOMAIN, "get_inventory", {}, blocking=True, return_response=True, context=context,
+        )
+        assert household["revision"] == reminder["revision"]
+        water_lot = household["items"]["drinking-water"]["lots"][0]
+        assert water_lot["received_on"] == today.isoformat()
+        assert water_lot["expires_on"] is None
+        assert water_lot["label_check_on"] == (today + timedelta(days=7)).isoformat()
+        assert household["summary"]["items"]["drinking-water"]["usable"] == 0
+        future = (today + timedelta(days=90)).isoformat()
+        revision = household["revision"]
+        for item in household["catalog"]:
+            item_id = item["id"]
+            target = 30000 if item_id == "drinking-water" else 1
+            lot = {"lot_id": "lot-1", "quantity": target, "expires_on": future if item["date_kind"] == "expiry" else None}
+            if item_id == "drinking-water":
+                lot.update(bottle_ml=2000, bottle_count=15)
+            result = await restarted.services.async_call(
+                DOMAIN, "set_item", {"item_id": item_id, "revision": revision, "applicable": True,
+                    "target": target, "lots": [lot], "confirm": True, "apply_date_defaults": True},
+                blocking=True, return_response=True, context=context,
+            )
+            revision = result["revision"]
+        stocked = await restarted.services.async_call(
+            DOMAIN, "get_inventory", {}, blocking=True, return_response=True, context=context,
+        )
+        assert len(stocked["items"]) == len(stocked["catalog"]) == 56
+        assert all(status["state"] == "sufficient" for status in stocked["summary"]["items"].values())
+        assert all(record["verified_on"] == today.isoformat() and record["lots"][0]["received_on"] == today.isoformat()
+                   for record in stocked["items"].values())
         await restarted.async_stop()
         final_ha = await start_ha(config_dir)
         final_entry = final_ha.config_entries.async_get_entry(entry.entry_id)
         assert final_entry.runtime_data.snapshot["household_size"] == 5
+        assert final_entry.runtime_data.snapshot["items"] == stocked["items"]
         assert await final_ha.config_entries.async_unload(entry.entry_id)
         assert "kr-survival-kit" not in final_ha.data[frontend.DATA_PANELS]
         frontend.async_register_built_in_panel(final_ha, "lovelace", frontend_url_path="kr-survival-kit")
@@ -312,7 +349,7 @@ async def main():
         assert final_ha.data[frontend.DATA_PANELS]["kr-survival-kit"] is existing_panel
         await final_ha.async_stop()
         print(json.dumps({"ha_core": version("homeassistant"), "entry": "created_and_restarted", "sensors": 3,
-                          "saved_revision": 7, "household": "4_to_5_and_restored", "stale_revision": "rejected", "save_failure": "rejected",
+                          "saved_revision": revision, "fully_stocked_items": len(stocked["items"]), "household": "4_to_5_and_restored", "stale_revision": "rejected", "save_failure": "rejected",
                           "viewer": "read_write_rejected", "boolean_input": "rejected",
                           "ration": "added_edited_deleted", "water_litre_roundtrip": "3251ml_after_restart",
                           "concurrent_edit": "one_rejected", "received_on": "roundtrip",

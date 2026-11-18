@@ -19,6 +19,15 @@ DEFAULT_HOUSEHOLD_SIZE = 4
 _UNSET = object()
 
 
+# Housekeeping reminders to read the package, never estimated expiration dates.
+LABEL_CHECK_DAYS = {
+    "drinking-water": 7, "shelf-stable-meal": 3, "canned-food": 7,
+    "butane-canister": 7, "self-heating-ration": 3, "hand-warmers": 14,
+    "solid-fuel": 7, "long-storage-snacks": 3, "infant-formula": 1,
+    "ready-to-feed-formula": 1, "masks": 14,
+}
+
+
 def _date(value):
     try:
         parsed = date.fromisoformat(value)
@@ -45,7 +54,7 @@ def validate_item(catalog_item, applicable, target, lots):
         raise InventoryError("No more than 200 purchase lots per item")
     seen = set()
     for lot in lots:
-        if not isinstance(lot, dict) or not {"lot_id", "quantity", "expires_on"} <= set(lot) or set(lot) - {"lot_id", "quantity", "expires_on", "received_on", "bottle_ml", "bottle_count"}:
+        if not isinstance(lot, dict) or not {"lot_id", "quantity", "expires_on"} <= set(lot) or set(lot) - {"lot_id", "quantity", "expires_on", "received_on", "bottle_ml", "bottle_count", "label_check_on"}:
             raise InventoryError("Each lot needs lot_id, quantity, and expires_on; received_on is optional")
         lot_id = lot["lot_id"]
         if (not isinstance(lot_id, str) or not lot_id or len(lot_id) > 80
@@ -64,6 +73,10 @@ def validate_item(catalog_item, applicable, target, lots):
         if lot.get("received_on") is not None:
             _date(lot["received_on"])
         expiry = lot["expires_on"]
+        if "label_check_on" in lot:
+            if expiry is not None or catalog_item["date_kind"] != "expiry":
+                raise InventoryError("A label check date requires an unknown package date")
+            _date(lot["label_check_on"])
         if catalog_item["date_kind"] == "expiry":
             if expiry is not None:
                 _date(expiry)
@@ -107,11 +120,14 @@ def summarize(catalog, records, today, inspection_days=30, expiry_days=30, house
         expiring = 0
         expired = 0
         next_expiry = None
+        label_checks = []
         for lot in lots:
             quantity = lot["quantity"]
             expiry = lot["expires_on"]
             if item["date_kind"] == "expiry":
                 if expiry is None:
+                    if quantity and lot.get("label_check_on"):
+                        label_checks.append(lot["label_check_on"])
                     unconfirmed += quantity
                     continue
                 expiry_date = _date(expiry)
@@ -150,6 +166,7 @@ def summarize(catalog, records, today, inspection_days=30, expiry_days=30, house
             "expiring_quantity": expiring,
             "expired_quantity": expired,
             "unknown_date_quantity": unconfirmed,
+            "next_label_check_on": min(label_checks, default=None),
             "next_expiry_on": next_expiry.isoformat() if next_expiry else None,
             "expiry_days_remaining": (next_expiry - today).days if next_expiry else None,
             "review_interval_days": review_days,
@@ -167,10 +184,10 @@ def summarize(catalog, records, today, inspection_days=30, expiry_days=30, house
 class Inventory:
     """One persisted snapshot per HA config entry."""
 
-    def __init__(self, store, catalog):
+    def __init__(self, store, catalog, household_size=DEFAULT_HOUSEHOLD_SIZE):
         self.store = store
         self.catalog = {item["id"]: item for item in catalog}
-        self.snapshot = {"schema_version": 1, "revision": 0, "items": {}, "household_size": DEFAULT_HOUSEHOLD_SIZE}
+        self.snapshot = {"schema_version": 1, "revision": 0, "items": {}, "household_size": household_size}
         self.lock = asyncio.Lock()
         self.listeners = []
 
@@ -194,7 +211,7 @@ class Inventory:
                 _review_days(record.get("review_interval_days"))
                 if record["verified_on"] is not None:
                     _date(record["verified_on"])
-        people = data.get("household_size", DEFAULT_HOUSEHOLD_SIZE)
+        people = data.get("household_size", self.snapshot["household_size"])
         if type(people) is not int or not 1 <= people <= 99:
             raise InventoryError("Invalid household size")
         self.snapshot = {**deepcopy(data), "household_size": people}
@@ -218,7 +235,7 @@ class Inventory:
             listener()
         return candidate["revision"]
 
-    async def set_item(self, item_id, revision, applicable, target, lots, confirm, today, review_interval_days=_UNSET):
+    async def set_item(self, item_id, revision, applicable, target, lots, confirm, today, review_interval_days=_UNSET, *, apply_date_defaults=False):
         if item_id not in self.catalog:
             raise InventoryError("Unknown item")
         if type(confirm) is not bool:
@@ -229,6 +246,15 @@ class Inventory:
         if review_interval_days is not _UNSET:
             _review_days(review_interval_days)
         today = _date(today).isoformat()
+        if apply_date_defaults:
+            lots = deepcopy(lots)
+            for lot in lots:
+                received_on = lot.get("received_on") or today
+                lot["received_on"] = received_on
+                if self.catalog[item_id]["date_kind"] == "expiry" and lot["expires_on"] is None:
+                    days = LABEL_CHECK_DAYS.get(item_id, 7)
+                    anchor = min(_date(received_on), _date(today))
+                    lot["label_check_on"] = (anchor + timedelta(days=days)).isoformat()
         async with self.lock:
             if revision != self.snapshot["revision"]:
                 raise RevisionConflict("Inventory changed. Refresh and retry.")

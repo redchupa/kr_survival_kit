@@ -6,6 +6,7 @@ from homeassistant import config_entries
 
 from . import _load_content
 from .const import DOMAIN
+from .inventory import DEFAULT_HOUSEHOLD_SIZE
 
 
 class KrSurvivalKitConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -29,7 +30,10 @@ class KrSurvivalKitConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
-                {vol.Required("inspection_days", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=365))}
+                {
+                    vol.Required("household_size", default=DEFAULT_HOUSEHOLD_SIZE): vol.All(vol.Coerce(int), vol.Range(min=1, max=99)),
+                    vol.Required("inspection_days", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
+                }
             ),
         )
 
