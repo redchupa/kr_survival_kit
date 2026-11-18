@@ -1,6 +1,6 @@
 /**
  * KR Survival Kit — Pure Domain Core Engine
- * Zero Home Assistant / DOM dependencies; reusable for standalone Web, PWA, or Mobile apps.
+ * Zero Home Assistant / DOM dependencies, so the scoring logic can be unit-tested in plain Node.
  */
 
 export const STOCK_WEIGHTS = {
