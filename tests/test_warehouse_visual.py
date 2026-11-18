@@ -137,6 +137,12 @@ def main():
         assert ready.locator(".ready-art").count() == 14
         page.wait_for_timeout(600)
         page.screenshot(path=str(EVIDENCE / "warehouse-synthetic-desktop.jpg"), type="jpeg", quality=88)
+        page.locator('kr-survival-kit-inventory-card [data-view-mode="3d"]').click()
+        assert page.locator("kr-survival-kit-inventory-card #warehouse-3d-canvas").is_visible()
+        page.wait_for_timeout(450)
+        page.screenshot(path=str(EVIDENCE / "warehouse-3d-desktop.jpg"), type="jpeg", quality=90)
+        page.locator('kr-survival-kit-inventory-card [data-view-mode="2d"]').click()
+        assert page.locator("kr-survival-kit-inventory-card .ready-grid").first.is_visible()
         page.set_viewport_size({"width": 375, "height": 812})
         assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth")
         assert page.locator("kr-survival-kit-inventory-card [aria-labelledby=\"essentials-shelf\"] .ready-grid").evaluate("el => getComputedStyle(el).gridTemplateColumns.split(' ').length") == 2
