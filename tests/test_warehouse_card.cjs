@@ -11,7 +11,7 @@ class MockElement {
   attachShadow() { this.shadowRoot = { querySelector: (selector) => elements[selector] }; }
 }
 const context = { HTMLElement: MockElement, customElements: { define() {}, get() {} }, window: { customCards: [], requestAnimationFrame: (callback) => callback() }, Intl, Date };
-vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse;", context);
+vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse; globalThis.daysUntil = krDaysUntil; globalThis.addMonths = krAddMonths;", context);
 
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -23,6 +23,9 @@ const base = { target: 24000, usable: 24000, confirmed: true, verified_on: "2026
 const catalog = JSON.parse(fs.readFileSync(path.join(__dirname, "../custom_components/kr_survival_kit/content/catalog.ko.json"), "utf8")).items;
 assert.equal(catalog.filter((entry) => !context.pictograms[entry.id]).length, 0, "every item has its own pictogram");
 assert.equal(new Set(Object.values(context.pictograms)).size, catalog.length, "pictograms are unique");
+assert.equal(catalog.filter((entry) => !String(context.pictograms[entry.id]).includes("<svg")).length, 0, "every pictogram is custom SVG");
+assert.equal(context.daysUntil("2026-11-28", "2026-11-18"), 10);
+assert.equal(context.addMonths("2026-11-18", 6), "2027-05-18");
 
 const complete = context.testGrid(snapshot(base), escape);
 assert.equal((complete.match(/class="ready-item"/g) || []).length, 1);
@@ -96,5 +99,6 @@ assert.equal(card._statusFilter, "shortage");
 assert.equal(focused, true);
 assert.doesNotMatch(card.shadowRoot.innerHTML, /data-item="drinking-water"/);
 assert.doesNotMatch(card.shadowRoot.innerHTML, /id="inventory-list"/);
+assert.match(card.shadowRoot.innerHTML, /data-view-mode="3d"/);
 
 console.log("Inventory grid, catalog pictograms, L units, escaping, weather freshness, and keyboard focus passed");
