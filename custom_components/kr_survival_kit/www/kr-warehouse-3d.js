@@ -1,9 +1,12 @@
 import * as THREE from "./three.module.min.js";
 
 const SHORT_NAMES = {
-  "drinking-water": "생수", "shelf-stable-meal": "상온 간편식", "canned-food": "통조림", hygiene: "위생용품",
-  flashlight: "손전등", batteries: "건전지", backpack: "대피 가방", blanket: "담요",
-  "first-aid-kit": "구급 세트", "infant-supplies": "영유아 용품", "prescription-preparedness": "상비약", radio: "자가발전 라디오",
+  "drinking-water": "생수", "instant-rice": "즉석밥", "cup-noodles": "컵라면", "shelf-stable-meal": "레토르트 간편식",
+  "spam-canned-ham": "스팸", "canned-tuna": "참치캔", "canned-pupa": "번데기캔", "canned-whelk": "골뱅이캔", "canned-fruit": "과일캔",
+  "canned-food": "기타 통조림", hygiene: "두루마리 휴지", "wet-wipes": "물티슈",
+  flashlight: "손전등", batteries: "AA 건전지", "batteries-aaa": "AAA 건전지", "batteries-special": "특수 건전지",
+  backpack: "대피 가방", blanket: "담요", "first-aid-kit": "응급 처치", "otc-medicine": "상비약",
+  "infant-supplies": "영유아 용품", "prescription-preparedness": "처방약", radio: "자가발전 라디오",
   "water-container": "20L 말통", "faucet-water-tank": "수도꼭지 물통", "water-purification-tablets": "아쿠아탭스",
   "metal-fuel-can": "철제 기름통", "fuel-siphon-nozzle": "자바라 노즐",
   "portable-stove": "휴대 버너", "butane-canister": "부탄가스", "butane-torch": "부탄 토치",
@@ -86,8 +89,8 @@ function buildItemMesh(item, ratio, toneColor, isReady) {
       b.position.set((col - 1) * 0.2, 0, (row - 0.5) * 0.22);
       group.add(b);
     }
-  } else if (["canned-food", "butane-canister", "insulated-bottle", "infant-formula", "candles", "spam-canned-ham", "canned-tuna", "salt-jar", "honey-gift-set", "gas-mask-filter"].includes(id)) {
-    const color = id === "butane-canister" ? 0xff9f68 : id === "infant-formula" || id === "honey-gift-set" ? 0xffd166 : id === "gas-mask-filter" ? 0x495057 : id === "canned-tuna" ? 0x4ea8de : 0xe06f6c;
+  } else if (["canned-food", "butane-canister", "insulated-bottle", "infant-formula", "candles", "spam-canned-ham", "canned-tuna", "canned-pupa", "canned-whelk", "canned-fruit", "salt-jar", "honey-gift-set", "gas-mask-filter"].includes(id)) {
+    const color = id === "butane-canister" ? 0xff9f68 : id === "infant-formula" || id === "honey-gift-set" || id === "canned-fruit" ? 0xffd166 : id === "gas-mask-filter" ? 0x495057 : id === "canned-tuna" ? 0x4ea8de : id === "canned-whelk" ? 0x2ec4b6 : id === "canned-pupa" ? 0xb5838d : 0xe06f6c;
     const canMat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.55 });
     const rimMat = new THREE.MeshStandardMaterial({ color: 0xd8e2dc, roughness: 0.25, metalness: 0.8 });
     const geo = new THREE.CylinderGeometry(0.11, 0.11, 0.24, 16);
@@ -102,7 +105,7 @@ function buildItemMesh(item, ratio, toneColor, isReady) {
       c.position.set((idx - 1) * 0.23, 0.12 + layer * 0.25, layer > 0 ? 0 : 0.04);
       group.add(c);
     }
-  } else if (id === "first-aid-kit") {
+  } else if (id === "first-aid-kit" || id === "otc-medicine") {
     const caseMat = new THREE.MeshStandardMaterial({ color: 0xf8f9fa, roughness: 0.35, metalness: 0.1 });
     const crossMat = new THREE.MeshStandardMaterial({ color: 0xe63946, roughness: 0.3, emissive: 0x3a080c });
     const box = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.24, 0.44), caseMat);
@@ -125,7 +128,7 @@ function buildItemMesh(item, ratio, toneColor, isReady) {
       f.position.set(-0.08, 0.1, (i - 0.5) * 0.24);
       group.add(f);
     }
-  } else if (["batteries", "power-bank", "portable-power-station", "radio"].includes(id)) {
+  } else if (["batteries", "batteries-aaa", "batteries-special", "power-bank", "portable-power-station", "radio"].includes(id)) {
     const color = id === "batteries" ? 0x52b788 : id === "radio" ? 0x4ea8de : 0x2ec4b6;
     const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.45 });
     const ledMat = new THREE.MeshStandardMaterial({ color: 0x80ffdb, emissive: 0x56cfe1, emissiveIntensity: 0.7 });

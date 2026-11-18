@@ -130,7 +130,7 @@ def main():
         inactive.locator("summary").click()
         assert inactive.locator('[data-item="self-heating-ration"] .stock-label').inner_text() == "미사용"
         assert shelf.locator('[data-item="radio"] .ready-art').is_visible()
-        assert page.locator("kr-survival-kit-inventory-card .stock-rank").locator("progress").get_attribute("value") == "16"
+        assert page.locator("kr-survival-kit-inventory-card .stock-rank").locator("progress").get_attribute("value") == "12"
         render(make_snapshot(24, demo_full=True))
         assert inactive.get_attribute("open") is not None
         assert "챌린저" in page.locator("kr-survival-kit-inventory-card .stock-rank").inner_text()

@@ -22,7 +22,8 @@ _UNSET = object()
 # Housekeeping reminders to read the package, never estimated expiration dates.
 LABEL_CHECK_DAYS = {
     "drinking-water": 7, "shelf-stable-meal": 3, "canned-food": 7,
-    "butane-canister": 7, "self-heating-ration": 3, "hand-warmers": 14,
+    "instant-rice": 7, "cup-noodles": 7, "canned-pupa": 14, "canned-whelk": 14, "canned-fruit": 14,
+    "otc-medicine": 7, "butane-canister": 7, "self-heating-ration": 3, "hand-warmers": 14,
     "solid-fuel": 7, "long-storage-snacks": 3, "infant-formula": 1,
     "ready-to-feed-formula": 1, "masks": 14, "rice": 7,
     "spam-canned-ham": 14, "canned-tuna": 14, "honey-gift-set": 14,

@@ -10,7 +10,7 @@ const KR_SURVIVAL_GROUPS = {
 
 const KR_OPTIONAL_CATEGORIES = [
   { id: "all", label: "전체" },
-  { id: "water_cook", label: "식수·식량·취사", ids: new Set(["water-container", "faucet-water-tank", "water-purification-tablets", "portable-stove", "butane-canister", "butane-torch", "self-heating-ration", "rice", "spam-canned-ham", "canned-tuna", "salt-jar", "honey-gift-set", "lighter", "solid-fuel", "manual-can-opener", "insulated-bottle", "cooler-ice-pack", "portable-water-filter", "long-storage-snacks", "water-sanitation-kit"]) },
+  { id: "water_cook", label: "식수·식량·취사", ids: new Set(["water-container", "faucet-water-tank", "water-purification-tablets", "portable-stove", "butane-canister", "butane-torch", "self-heating-ration", "rice", "canned-food", "salt-jar", "honey-gift-set", "lighter", "solid-fuel", "manual-can-opener", "insulated-bottle", "cooler-ice-pack", "portable-water-filter", "long-storage-snacks", "water-sanitation-kit"]) },
   { id: "power_light", label: "전원·연료·통신", ids: new Set(["radio", "candles", "home-solar-panel", "portable-solar-panel", "power-bank", "portable-power-station", "charging-cables", "portable-radio-communication", "door-alarm", "metal-fuel-can", "fuel-siphon-nozzle"]) },
   { id: "care_infant", label: "의료·유아", ids: new Set(["infant-supplies", "prescription-preparedness", "infant-formula", "ready-to-feed-formula", "infant-feeding-supplies", "child-id-card", "child-comfort-kit", "child-carrier"]) },
   { id: "gear_protect", label: "방호·위생·침구", ids: new Set(["hand-warmers", "sleeping-bag", "large-plastic-bags", "warm-clothes", "raincoat", "masks", "gas-mask", "gas-mask-filter", "earplugs", "compressed-towel", "rubber-gloves", "rubber-boots", "sealing-tape", "portable-toilet", "toilet-coagulant", "cat-litter", "sanitation-bags", "thermal-mat", "hot-water-bag", "protective-goggles"]) },
@@ -133,6 +133,15 @@ const KR_READY_PICTOGRAMS = {
   "cash-krw": krSvg(`<rect x="8" y="14" width="32" height="20" rx="3" fill="#52b788" fill-opacity=".3" stroke="#9ef0be" stroke-width="1.8"/><path d="M17 20l2.5 8 2.5-6 2.5 6 2.5-8M15 24h18" fill="none" stroke="#d8f3dc" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`, "krw"),
   "cash-usd": krSvg(`<rect x="8" y="14" width="32" height="20" rx="3" fill="#40916c" fill-opacity=".32" stroke="#8cf2ad" stroke-width="1.8"/><path d="M24 18v12m3-9.5c0-1.5-6-1.5-6 0s6 2 6 4.5-6 2-6 0" fill="none" stroke="#d8f3dc" stroke-width="1.8" stroke-linecap="round"/>`, "usd"),
   "crypto-cold-wallet": krSvg(`<rect x="13" y="10" width="22" height="28" rx="4" fill="#f7931a" fill-opacity=".26" stroke="#ffb74d" stroke-width="1.8"/><circle cx="24" cy="22" r="5" fill="none" stroke="#ffe082" stroke-width="1.8"/><path d="M24 19v6m-2-3h4M20 33h8" stroke="#ffe082" stroke-width="1.6" stroke-linecap="round"/>`, "crypto"),
+  "instant-rice": krSvg(`<ellipse cx="24" cy="24" rx="14" ry="11" fill="#fff3d6" fill-opacity=".26" stroke="#fff8e8" stroke-width="1.8"/><ellipse cx="24" cy="23" rx="9" ry="6" fill="#ffffff" fill-opacity=".4"/><path d="M16 18h16" stroke="#ffd166" stroke-width="1.5" stroke-dasharray="2 2"/>`, "instantrice"),
+  "cup-noodles": krSvg(`<path d="M13 15h22l-3 24H16z" fill="#ff9f68" fill-opacity=".28" stroke="#ffc299" stroke-width="1.8"/><path d="M11 15h26" stroke="#ffe0b2" stroke-width="2.2" stroke-linecap="round"/><path d="M18 24c2-2 4 2 6 0s4 2 6 0" fill="none" stroke="#ffe0b2" stroke-width="1.6"/>`, "cupnoodles"),
+  "canned-pupa": krSvg(`<ellipse cx="24" cy="14" rx="11" ry="4" fill="#b5838d" fill-opacity=".35" stroke="#e5b3bd" stroke-width="1.8"/><path d="M13 14v21c0 2.2 4.9 4 11 4s11-1.8 11-4V14" fill="#9d6b75" fill-opacity=".28" stroke="#e5b3bd" stroke-width="1.8"/><circle cx="24" cy="26" r="3.5" fill="#ffd6de" fill-opacity=".6"/>`, "pupa"),
+  "canned-whelk": krSvg(`<ellipse cx="24" cy="14" rx="12" ry="4" fill="#2ec4b6" fill-opacity=".32" stroke="#80ffdb" stroke-width="1.8"/><path d="M12 14v21c0 2.2 5.4 4 12 4s12-1.8 12-4V14" fill="#208b81" fill-opacity=".28" stroke="#80ffdb" stroke-width="1.8"/><path d="M20 26a4 4 0 1 1 8 0c0 2-2 3-4 3" fill="none" stroke="#c7fff0" stroke-width="1.6" stroke-linecap="round"/>`, "whelk"),
+  "canned-fruit": krSvg(`<ellipse cx="24" cy="14" rx="11" ry="4" fill="#ffb703" fill-opacity=".35" stroke="#ffe066" stroke-width="1.8"/><path d="M13 14v21c0 2.2 4.9 4 11 4s11-1.8 11-4V14" fill="#fb8500" fill-opacity=".25" stroke="#ffe066" stroke-width="1.8"/><path d="M19 26a5 5 0 0 1 10 0z" fill="#ffe066" fill-opacity=".75"/>`, "fruitcan"),
+  "wet-wipes": krSvg(`<rect x="9" y="16" width="30" height="18" rx="4" fill="#80ed99" fill-opacity=".24" stroke="#b7f7c6" stroke-width="1.8"/><ellipse cx="24" cy="21" rx="7" ry="2.5" fill="#ffffff" fill-opacity=".55"/><path d="M21 15c1-3 5-3 6 0" fill="none" stroke="#ffffff" stroke-width="1.6"/>`, "wetwipes"),
+  "batteries-aaa": krSvg(`<rect x="17" y="12" width="14" height="28" rx="2.5" fill="#72efdd" fill-opacity=".25" stroke="#a6fff2" stroke-width="1.8"/><rect x="21" y="8" width="6" height="4" rx="1" fill="#a6fff2"/><path d="M24 20v6m-3-3h6" stroke="#a6fff2" stroke-width="1.8" stroke-linecap="round"/>`, "battaaa"),
+  "batteries-special": krSvg(`<circle cx="24" cy="24" r="12" fill="#90e0ef" fill-opacity=".25" stroke="#caf0f8" stroke-width="1.8"/><circle cx="24" cy="24" r="6" fill="none" stroke="#caf0f8" stroke-width="1.4" stroke-dasharray="2 2"/><path d="M24 20v8m-4-4h8" stroke="#caf0f8" stroke-width="1.6" stroke-linecap="round"/>`, "battspecial"),
+  "otc-medicine": krSvg(`<rect x="10" y="15" width="28" height="18" rx="4" fill="#ff9ebb" fill-opacity=".26" stroke="#ffc2d4" stroke-width="1.8"/><path d="M17 24h14M24 19v10" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/><circle cx="33" cy="20" r="2" fill="#ffe066"/>`, "otc"),
 };
 
 function krReadyItems(snapshot) {
@@ -184,9 +193,12 @@ function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item)
 }
 
 const KR_READY_SHORT_NAMES = {
-  "drinking-water": "생수", "shelf-stable-meal": "상온 간편식", "canned-food": "통조림", hygiene: "위생용품",
-  flashlight: "손전등", batteries: "건전지", backpack: "대피 가방", blanket: "담요",
-  "first-aid-kit": "구급 세트", "infant-supplies": "영유아 용품", "prescription-preparedness": "상비약", radio: "라디오",
+  "drinking-water": "생수", "instant-rice": "즉석밥", "cup-noodles": "컵라면", "shelf-stable-meal": "레토르트 간편식",
+  "spam-canned-ham": "스팸", "canned-tuna": "참치캔", "canned-pupa": "번데기캔", "canned-whelk": "골뱅이캔", "canned-fruit": "과일캔",
+  "canned-food": "기타 통조림", hygiene: "두루마리 휴지", "wet-wipes": "물티슈",
+  flashlight: "손전등", batteries: "AA 건전지", "batteries-aaa": "AAA 건전지", "batteries-special": "특수 건전지",
+  backpack: "대피 가방", blanket: "담요", "first-aid-kit": "응급 처치", "otc-medicine": "상비약",
+  "infant-supplies": "영유아 용품", "prescription-preparedness": "처방약", radio: "자가발전 라디오",
   "water-container": "급수 용기", "portable-stove": "휴대 버너", "butane-canister": "부탄가스", "self-heating-ration": "발열식 비상식량",
   candles: "양초", "hand-warmers": "손난로", "large-plastic-bags": "대형 비닐", lighter: "라이터",
   "solid-fuel": "고체 연료", "child-id-card": "아이 인식표", "portable-solar-panel": "태양광 패널", "manual-can-opener": "캔 따개",
@@ -219,8 +231,12 @@ const KR_STOCK_RANKS = [
 ];
 
 const KR_STOCK_WEIGHTS = {
-  "drinking-water": 30, "shelf-stable-meal": 16, "canned-food": 12, hygiene: 7,
-  flashlight: 10, batteries: 5, backpack: 5, blanket: 5, "first-aid-kit": 10,
+  "drinking-water": 28,
+  "instant-rice": 5, "cup-noodles": 5, "shelf-stable-meal": 5,
+  "spam-canned-ham": 3, "canned-tuna": 3, "canned-pupa": 3, "canned-whelk": 3, "canned-fruit": 3,
+  hygiene: 4, "wet-wipes": 4,
+  flashlight: 6, batteries: 4, "batteries-aaa": 2, "batteries-special": 2,
+  backpack: 5, blanket: 5, "first-aid-kit": 5, "otc-medicine": 5,
 };
 
 function krStockScore(snapshot) {
@@ -249,7 +265,7 @@ function krStockRankView(snapshot, open = false) {
   return `<details class="stock-rank compact-detail" ${open ? "open" : ""}>
     <summary><span>비축 등급</span><strong class="rank-badge" style="--rank-color:${color}">${rank}</strong><span class="stock-score">${score} / 100점</span></summary>
     <div class="rank-detail"><progress aria-label="비축 점수" value="${score}" max="100"></progress>
-    <p>${message}</p><p>배점은 생수 30점, 간편식 16점, 통조림 12점, 손전등과 구급함 각 10점, 위생용품 7점, 건전지·배낭·담요 각 5점입니다. 유효한 보유량이 목표에 가까울수록 점수가 올라갑니다. 선택 물품과 퀴즈 점수는 별도입니다.</p></div>
+    <p>${message}</p><p>배점은 생수 28점, 간편식 3종(즉석밥·컵라면·레토르트) 각 5점(15점), 통조림 5종(스팸·참치·번데기·골뱅이·과일) 각 3점(15점), 휴지·물티슈 각 4점(8점), 손전등 6점, 건전지 3종(AA 4·AAA 2·특수 2, 총 8점), 배낭·담요 각 5점(10점), 응급처치·상비약 각 5점(10점)으로 총 100점입니다. 선택 물품과 퀴즈 점수는 별도입니다.</p></div>
     </details>`;
 }
 
@@ -926,10 +942,26 @@ class KrSurvivalKitGuideCard extends HTMLElement {
     this._activeSiren = null;
     this._audioCtx = null;
     this._sirenTimer = null;
+    this._audioDevices = [];
+    this._selectedOutput = "browser:default";
+    this._sirenStatus = "";
+  }
+
+  connectedCallback() {
+    this._refreshAudioDevices();
   }
 
   disconnectedCallback() {
     this._stopSiren();
+  }
+
+  async _refreshAudioDevices() {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) return;
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      this._audioDevices = devices.filter((d) => d.kind === "audiooutput");
+      if (this._guide) this._render();
+    } catch { /* device enumeration optional */ }
   }
 
   _stopSiren() {
@@ -941,21 +973,65 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       try { this._audioCtx.close(); } catch { /* ignore */ }
       this._audioCtx = null;
     }
+    if (this._haPlayingEntity && this._hass) {
+      this._hass.callService?.("media_player", "media_stop", { entity_id: this._haPlayingEntity }).catch?.(() => {});
+      this._haPlayingEntity = null;
+    }
     this._activeSiren = null;
+    this._sirenStatus = "";
   }
 
-  _playSiren(kind) {
+  async _playSiren(kind) {
     if (this._activeSiren === kind) {
       this._stopSiren();
       this._render();
       return;
     }
     this._stopSiren();
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    this._audioCtx = ctx;
     this._activeSiren = kind;
+
+    if (this._selectedOutput.startsWith("ha:")) {
+      const entityId = this._selectedOutput.slice(3);
+      if (this._hass?.callService) {
+        const base = this._assetPath === "/local" ? "/local" : this._assetPath;
+        const url = `${window.location.origin}${base}/sirens/${kind}.wav`;
+        try {
+          this._haPlayingEntity = entityId;
+          this._sirenStatus = `${entityId} 장치로 전송 중...`;
+          this._render();
+          await this._hass.callService("media_player", "play_media", {
+            entity_id: entityId,
+            media_content_id: url,
+            media_content_type: "music",
+          });
+          this._sirenStatus = `${entityId} 장치에서 재생 중`;
+        } catch (err) {
+          this._sirenStatus = `장치 재생 실패: ${err.message || "연결 확인 필요"}`;
+          this._activeSiren = null;
+          this._haPlayingEntity = null;
+        }
+        this._render();
+        return;
+      }
+    }
+
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) {
+      this._activeSiren = null;
+      this._sirenStatus = "이 브라우저는 오디오 재생을 지원하지 않습니다.";
+      this._render();
+      return;
+    }
+    const ctx = new AudioCtx();
+    const deviceId = this._selectedOutput.startsWith("browser:") ? this._selectedOutput.slice(8) : "default";
+    if (deviceId !== "default" && typeof ctx.setSinkId === "function") {
+      try {
+        await ctx.setSinkId(deviceId);
+      } catch {
+        this._sirenStatus = "선택한 출력 장치 전환이 지원되지 않아 기본 장치로 재생합니다.";
+      }
+    }
+    this._audioCtx = ctx;
 
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -1096,6 +1172,20 @@ class KrSurvivalKitGuideCard extends HTMLElement {
     const sources = Object.values(guide.sources).filter((source) => source.url);
     const uniqueSources = [...new Map(sources.map((source) => [source.url.replace("https://www.", "https://"), source])).values()];
     const alertTone = scenario.kind === "민방공 경보" ? "danger" : scenario.kind === "생활 기반 장애" ? "warn" : "info";
+    const haPlayers = Object.entries(this._hass?.states || {})
+      .filter(([id, st]) => id.startsWith("media_player.") && st?.state !== "unavailable")
+      .map(([id, st]) => ({ value: `ha:${id}`, label: `🏠 [HA 스피커] ${st?.attributes?.friendly_name || id}` }));
+    const browserOutputs = [
+      { value: "browser:default", label: "🔊 현재 브라우저 기본 출력 장치" },
+      ...this._audioDevices
+        .filter((d) => d.deviceId && d.deviceId !== "default")
+        .map((d, i) => ({ value: `browser:${d.deviceId}`, label: `🔈 ${d.label || `브라우저 출력 장치 ${i + 1}`}` })),
+    ];
+    const allOutputs = [...browserOutputs, ...haPlayers];
+    const outputOptions = allOutputs.map((opt) =>
+      `<option value="${esc(opt.value)}" ${this._selectedOutput === opt.value ? "selected" : ""}>${esc(opt.label)}</option>`
+    ).join("");
+    const sirenHtml = `<div class="siren-box"><h4>🔊 민방공 경보음 직접 들어보기 (체험용)</h4><p>실제 경보와 혼동되지 않도록 볼륨을 낮춰 테스트하세요. 브라우저 스피커나 집에 연결된 HA 스마트 스피커를 선택할 수 있습니다.</p><div class="siren-output"><label for="siren-output-select">출력 장치</label><select id="siren-output-select" data-siren-output>${outputOptions}</select><button type="button" data-siren-refresh title="장치 목록 새로고침">↻ 장치 찾기</button></div><div class="siren-row"><button type="button" data-siren="air-raid" aria-pressed="${this._activeSiren === "air-raid"}">공습경보 (파상음)</button><button type="button" data-siren="civil-warning" aria-pressed="${this._activeSiren === "civil-warning"}">경계경보 (연속음)</button><button type="button" data-siren="cbrn-alert" aria-pressed="${this._activeSiren === "cbrn-alert"}">화생방경보 (2단음)</button><button type="button" data-siren="nuclear-alert" aria-pressed="${this._activeSiren === "nuclear-alert"}">핵경보 (긴급 펄스)</button>${this._activeSiren ? `<button type="button" class="stop" data-siren-stop>■ 정지</button>` : ""}</div>${this._sirenStatus ? `<p class="siren-status" role="status">${esc(this._sirenStatus)}</p>` : ""}</div>`;
     this.shadowRoot.innerHTML = `<style>
       :host{display:block;color:#e7f3f6;font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;--cyan:#91d9e5;--line:#345064;--muted:#b5c9d1}
       *{box-sizing:border-box}ha-card{display:block;overflow:hidden;background:#101c28;color:inherit;border:0;border-radius:0;min-height:100vh}
@@ -1115,10 +1205,15 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       .siren-box{margin-top:18px;padding:14px 16px;border:1px solid rgba(130,205,220,.38);border-radius:12px;background:rgba(12,30,44,.55)}
       .siren-box h4{margin:0 0 6px;font-size:.94rem;color:#9ee9ea}
       .siren-box p{margin:0 0 10px;font-size:.82rem;color:#c3dce2}
+      .siren-output{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}
+      .siren-output label{font-size:.82rem;font-weight:700;color:#cde8ee}
+      .siren-output select{flex:1;min-width:180px;min-height:38px;padding:5px 10px;border-radius:8px;border:1px solid #568599;background:#102230;color:#eef8fa;font:inherit;font-size:.84rem}
+      .siren-output button{min-height:38px;padding:5px 10px;font-size:.8rem;border-radius:8px;border:1px solid #568599;background:#193547;color:#eef8fa;cursor:pointer}
       .siren-row{display:flex;flex-wrap:wrap;gap:7px}
       .siren-row button{min-height:40px;padding:7px 12px;font-size:.84rem;font-weight:700;border-radius:8px;border:1px solid #568599;background:#193547;color:#eef8fa;cursor:pointer}
       .siren-row button[aria-pressed="true"]{background:#d94848;border-color:#ff9494;color:#fff}
       .siren-row button.stop{background:#2d3b45;border-color:#748b99}
+      .siren-status{margin:8px 0 0;font-size:.8rem;color:#ffd08a}
       .quiz-head{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem .75rem}.quiz-head span{margin-inline-start:auto}.quiz-head::after{content:"＋"}.quiz-panel[open] .quiz-head::after{content:"−"}.quiz-panel[open] .quiz-head{margin-bottom:.6rem}
       :host([data-kr-themed]){color:var(--kr-text);--cyan:var(--kr-accent);--line:var(--kr-line);--muted:var(--kr-muted)}:host([data-kr-themed]) ha-card{background:var(--kr-bg)}
       :host([data-kr-themed]) .hero{background:radial-gradient(ellipse at 78% 38%,var(--kr-glow),transparent 60%),var(--kr-surface);border-color:var(--kr-line)}
@@ -1130,7 +1225,7 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       :host([data-kr-themed]) .hero-actions a,:host([data-kr-themed]) .quiz-panel button,:host([data-kr-themed]) .nav-items button.active,:host([data-kr-themed]) .sheet-tabs button[aria-selected="true"]{border-color:var(--kr-line);background:var(--kr-glow);color:var(--kr-text)}
       :host([data-kr-themed]) .nav-items button:hover,:host([data-kr-themed]) .sheet-tabs button:hover{background:var(--kr-glow)}
     </style><ha-card><main class="shell"><header class="hero"><div class="hero-content"><h2>상황 안내</h2><p><strong>${esc(guide.official_first)}</strong> 받은 경보를 선택하면 첫 행동을 바로 확인할 수 있습니다.</p><div class="hero-actions"><a href="${esc(this._assetPath)}/kr-survival-kit-a4.pdf" target="_blank" rel="noopener">A4 행동 카드 열기</a><a class="secondary" href="${esc(this._assetPath)}/kr-survival-kit-offline.html" target="_blank" rel="noopener">오프라인 안내 열기</a>${this._showInventoryLink ? `<a class="secondary" href="/kr-survival-kit/home">비축 관리로</a>` : ""}</div></div><div class="orb" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 8 82 21v25c0 23-13 36-32 47C31 82 18 69 18 46V21z" fill="#7bc8d9" stroke="#dafaff" stroke-width="2"/><path d="M50 18 73 27v19c0 17-8 28-23 37-15-9-23-20-23-37V27z" fill="#22506a"/><path d="M50 30v34M33 47h34" stroke="#bbf1f3" stroke-width="7" stroke-linecap="round"/></svg></div></header>
-    <div class="layout"><nav class="rail" aria-label="상황 선택"><h2>상황별 첫 행동</h2>${scenarioNav}</nav><section class="action" data-tone="${alertTone}" aria-live="polite"><div class="action-top"><p class="kind">${esc(scenario.kind)}</p><h2>${esc(scenario.title)}</h2><h3>먼저 할 일</h3><p class="first-action">${esc(scenario.first_action)}</p></div><div class="action-body"><h3>이어 확인할 일</h3>${detail}${household}<div class="siren-box"><h4>🔊 민방공 경보음 직접 들어보기 (체험용)</h4><p>실제 경보와 혼동되지 않도록 볼륨을 낮춰 테스트하세요. 버튼을 다시 누르면 소리가 멈춥니다.</p><div class="siren-row"><button type="button" data-siren="air-raid" aria-pressed="${this._activeSiren === "air-raid"}">공습경보 (파상음)</button><button type="button" data-siren="civil-warning" aria-pressed="${this._activeSiren === "civil-warning"}">경계경보 (연속음)</button><button type="button" data-siren="cbrn-alert" aria-pressed="${this._activeSiren === "cbrn-alert"}">화생방경보 (2단음)</button><button type="button" data-siren="nuclear-alert" aria-pressed="${this._activeSiren === "nuclear-alert"}">핵경보 (긴급 펄스)</button>${this._activeSiren ? `<button type="button" class="stop" data-siren-stop>■ 정지</button>` : ""}</div></div><div class="comms"><strong>전화·인터넷이 끊기면</strong>${esc(guide.communication_loss.first_action)} ${esc(guide.communication_loss.paper_note)}</div></div></section></div>
+    <div class="layout"><nav class="rail" aria-label="상황 선택"><h2>상황별 첫 행동</h2>${scenarioNav}</nav><section class="action" data-tone="${alertTone}" aria-live="polite"><div class="action-top"><p class="kind">${esc(scenario.kind)}</p><h2>${esc(scenario.title)}</h2><h3>먼저 할 일</h3><p class="first-action">${esc(scenario.first_action)}</p></div><div class="action-body"><h3>이어 확인할 일</h3>${detail}${household}${sirenHtml}<div class="comms"><strong>전화·인터넷이 끊기면</strong>${esc(guide.communication_loss.first_action)} ${esc(guide.communication_loss.paper_note)}</div></div></section></div>
     <section class="timeline" aria-labelledby="timeline-title"><div class="section-head"><h2 id="timeline-title">${sheetHeading}</h2><p>${sheetSummary}</p></div><div class="sheet-tabs" role="tablist" aria-label="상세 행동 안내">${sheetNav}</div><div id="sheet-panel" role="tabpanel" aria-labelledby="tab-${esc(sheet.id)}" tabindex="0"><h3>${esc(sheet.title)}</h3><p class="sheet-intro">${esc(sheet.intro)}</p>${sheet.layout === "reference" ? `<div class="reference-grid">${rows}</div>` : `<ol class="time-list">${rows}</ol>`}</div></section>
     ${this._quizView(esc)}
     <details class="references"><summary>공식 참고 자료와 파일 보관 방법</summary><p>외부 출처는 인터넷 연결이 필요합니다. PDF는 열린 화면에서 인쇄·다운로드하고, HTML은 브라우저의 ‘다른 이름으로 저장’으로 미리 보관하세요.</p><ul>${uniqueSources.map((source) => `<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.publisher)} · ${esc(source.title)}</a></li>`).join("")}</ul></details></main></ha-card>`;
@@ -1156,6 +1251,12 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       this._saveQuizAnswers();
       this._render();
       this.shadowRoot.querySelector("[data-quiz-choice]")?.focus({ preventScroll: true });
+    });
+    this.shadowRoot.querySelector("[data-siren-output]")?.addEventListener("change", (event) => {
+      this._selectedOutput = event.target.value;
+    });
+    this.shadowRoot.querySelector("[data-siren-refresh]")?.addEventListener("click", () => {
+      this._refreshAudioDevices();
     });
     this.shadowRoot.querySelectorAll("[data-siren]").forEach((button) => button.addEventListener("click", () => {
       this._playSiren(button.dataset.siren);
