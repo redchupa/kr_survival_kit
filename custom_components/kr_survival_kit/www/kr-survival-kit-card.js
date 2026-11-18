@@ -691,7 +691,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const missionSignature = krMissionState(snapshot).map((mission) => mission.complete).join("");
     const animateMission = Boolean(snapshot && missionSignature !== this._missionSignature);
     this._missionSignature = missionSignature;
-    const stage3d = this._viewMode === "3d" && snapshot ? `<section class="warehouse-3d-stage" aria-label="3D 입체 창고 뷰"><div class="warehouse-3d-bar"><div class="controls" role="group" aria-label="창고 구역"><button type="button" data-3d-zone="all" aria-pressed="true">전체 창고</button><button type="button" data-3d-zone="essentials" aria-pressed="false">기본 비축 랙</button><button type="button" data-3d-zone="optional" aria-pressed="false">선택 물품 랙</button></div><div class="controls"><button type="button" id="toggle-3d-spin" aria-pressed="true">자동 회전</button><button type="button" id="reset-3d-cam">시점 초기화</button></div></div><canvas id="warehouse-3d-canvas"></canvas><div id="warehouse-3d-tooltip" role="status" hidden></div></section>` : "";
+    const stage3d = this._viewMode === "3d" && snapshot ? `<section class="warehouse-3d-stage" aria-label="3D 입체 창고 뷰"><div class="warehouse-3d-bar"><div class="controls" role="group" aria-label="창고 구역"><button type="button" data-3d-zone="essentials" aria-pressed="true">기본 비축 랙</button><button type="button" data-3d-zone="optional" aria-pressed="false">선택 물품 랙</button></div><div class="controls"><button type="button" id="toggle-3d-spin" aria-pressed="true">자동 회전</button><button type="button" id="reset-3d-cam">시점 초기화</button></div></div><canvas id="warehouse-3d-canvas"></canvas><div id="warehouse-3d-tooltip" role="status" hidden></div></section>` : "";
     this._stop3D();
     this.toggleAttribute?.("data-view", this._viewMode === "3d");
     if (this._viewMode === "3d") this.setAttribute?.("data-view", "3d");
@@ -955,7 +955,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         try { return window.localStorage?.getItem("kr_survival_kit_theme") || "black"; } catch { return "black"; }
       };
       const base = this._config?.asset_path ? `${this._config.asset_path.replace(/\/$/, "")}/` : KR_SCRIPT_BASE;
-      import(`${base}kr-warehouse-3d.js?v=0.6.0`).then(({ KrWarehouseThreeEngine }) => {
+      import(`${base}kr-warehouse-3d.js?v=0.6.1`).then(({ KrWarehouseThreeEngine }) => {
         if (!this.shadowRoot.contains(canvas3d)) return;
         this._engine3d = new KrWarehouseThreeEngine(
           canvas3d, tooltip3d,

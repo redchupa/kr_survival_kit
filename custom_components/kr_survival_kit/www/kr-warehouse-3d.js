@@ -171,7 +171,7 @@ export class KrWarehouseThreeEngine {
     this.pitch = 0.48;
     this.distance = 8.4;
     this.autoRotate = true;
-    this.zone = "all";
+    this.zone = "essentials";
     this.dragging = false;
     this.dragMoved = false;
     this.lastX = 0;
@@ -260,12 +260,7 @@ export class KrWarehouseThreeEngine {
 
     const essentials = snapshot.catalog.filter((i) => !["household", "optional"].includes(i.tier));
     const allOptional = snapshot.catalog.filter((i) => ["household", "optional"].includes(i.tier));
-    const activeOpt = allOptional.filter((i) => snapshot.items[i.id]?.applicable);
-    const itemsToShow = this.zone === "essentials"
-      ? essentials
-      : this.zone === "optional"
-        ? allOptional
-        : [...essentials, ...activeOpt];
+    const itemsToShow = this.zone === "optional" ? allOptional : essentials;
 
     const cols = itemsToShow.length > 35 ? 8 : 6;
     const rows = Math.max(1, Math.ceil(itemsToShow.length / cols));
