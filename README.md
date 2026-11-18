@@ -2,6 +2,8 @@
 
 생수·식품·생활용품의 비축량과 기한을 Home Assistant에서 관리하고, 상황별 첫 행동과 인쇄용 안내를 열 수 있습니다.
 
+[프로젝트 후원하기](#후원)
+
 ## 설치
 
 Home Assistant 2026.11 이상에서 관리자 계정으로 설치합니다.
@@ -41,3 +43,13 @@ HA 없이 쓸 때는 GitHub에서 파일을 내려받을 수 있습니다. [A4 P
 - **설치 파일 누락** 오류가 나면 `content/`를 포함한 통합 폴더 전체를 다시 복사하고 재시작하세요.
 - **사이드바에 메뉴가 없다면** 관리자 계정인지, 통합이 정상 로드됐는지 확인하세요. `kr-survival-kit` 주소에 직접 만든 대시보드가 있다면 그 대시보드가 우선합니다. 자동 화면을 쓰려면 기존 대시보드 주소를 바꾸고 통합을 다시 로드하세요.
 - 설치·사용 문제나 안내 문구 정정은 [GitHub 이슈](https://github.com/redchupa/kr_survival_kit/issues)에 남길 수 있습니다. 주소, 연락처, 실제 재고는 올리지 마세요.
+
+## 후원
+
+KR Survival Kit가 도움이 되셨다면 후원으로 개발과 유지보수를 응원해 주세요.
+
+- [GitHub Sponsors](https://github.com/sponsors/redchupa)
+- [PayPal](https://www.paypal.com/ncp/payment/HG9KNC262PLAC)
+- 토스 앱에서 아래 QR을 스캔해 후원할 수 있습니다.
+
+<img src="https://raw.githubusercontent.com/redchupa/kr_ledger_kit/main/images/toss-donation.png" alt="토스 후원 QR 코드" width="160">
