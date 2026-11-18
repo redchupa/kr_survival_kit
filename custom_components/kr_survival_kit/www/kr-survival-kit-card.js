@@ -205,7 +205,10 @@ function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item)
     const badgeTone = inactive ? "muted" : ready ? "ok" : status.expired_quantity > 0 || status.state === "shortage" ? "warn" : "alert";
     const percent = status.target > 0 ? Math.floor(Math.min(1, current / status.target) * 100) : 0;
     const action = inactive ? "설정" : "수정";
-    const quickBtns = quickMode && !inactive ? `<div class="quick-bar"><button type="button" class="qbtn" data-quick="${escape(item.id)}:-1" aria-label="${escape(item.name)} 1 줄이기" ${editing ? "disabled" : ""}>−1</button><button type="button" class="qbtn" data-quick="${escape(item.id)}:1" aria-label="${escape(item.name)} 1 늘리기" ${editing ? "disabled" : ""}>+1</button></div>` : "";
+    // Water steps in litres (1000 ml per tap); everything else steps by one unit.
+    const stepText = item.id === "drinking-water" ? "1L" : `1${item.display_unit || item.unit || ""}`;
+    const stepShort = item.id === "drinking-water" ? "1L" : "1";
+    const quickBtns = quickMode && !inactive ? `<div class="quick-bar" role="group" aria-label="${escape(item.name)} 빠른 수량 조절"><button type="button" class="qbtn" data-dir="down" data-quick="${escape(item.id)}:-1" aria-label="${escape(item.name)} ${escape(stepText)} 줄이기" ${editing || current <= 0 ? "disabled" : ""}>−${stepShort}</button><button type="button" class="qbtn" data-dir="up" data-quick="${escape(item.id)}:1" aria-label="${escape(item.name)} ${escape(stepText)} 늘리기" ${editing ? "disabled" : ""}>+${stepShort}</button></div>` : "";
     return `<div class="ready-item" data-item="${escape(item.id)}" data-complete="${ready}" data-tone="${badgeTone}" role="listitem"><button type="button" class="shelf-edit" data-edit="${escape(item.id)}" aria-label="${escape([`${item.name} ${action}`, quantity, label].filter(Boolean).join(" · "))}" ${editing ? "disabled" : ""}><span class="tile-top"><span class="tile-led" aria-hidden="true"></span>${dDay !== null && dDay <= 90 ? `<span class="dday-tag">D${dDay >= 0 ? `-${dDay}` : `+${Math.abs(dDay)}`}</span>` : ""}<span class="shelf-action">${action}</span></span><span class="ready-art" aria-hidden="true">${pictogram}</span>` +
       `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(quantity)}</span><span aria-hidden="true" class="stock-meter"><span style="width:${percent}%"></span></span>${label ? `<span class="stock-label">${escape(label)}</span>` : ""}</button>${quickBtns}</div>`;
   }).join("")}</div>`;
@@ -668,6 +671,10 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     } finally {
       this._saving = false;
       this._render();
+      // Re-render replaces the buttons; return focus so keyboard users can tap again. Fall back to "+" when "−" became disabled at 0.
+      const sel = (d) => `[data-quick="${itemId}:${d}"]`; // catalog ids are kebab-case, safe inside a quoted attribute
+      const again = this.shadowRoot.querySelector(sel(delta));
+      (again && !again.disabled ? again : this.shadowRoot.querySelector(sel(1)))?.focus({ preventScroll: true });
     }
   }
 
@@ -804,10 +811,12 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const animateMission = Boolean(snapshot && missionSignature !== this._missionSignature);
     this._missionSignature = missionSignature;
     const optCatSelect = `<select id="zone-3d-cat" data-3d-cat aria-label="3D 선택 물품 분류">${KR_OPTIONAL_CATEGORIES.map((c) => `<option value="${c.id}">${c.label}</option>`).join("")}</select>`;
-    const stage3d = this._viewMode === "3d" && snapshot ? `<section class="warehouse-3d-stage" aria-label="3D 입체 창고 뷰"><div class="warehouse-3d-bar"><div class="controls" role="group" aria-label="창고 구역"><button type="button" data-3d-zone="essentials" aria-pressed="true">기본 비축 랙</button><button type="button" data-3d-zone="optional" aria-pressed="false">선택 물품 랙</button>${optCatSelect}<button type="button" id="toggle-3d-active" aria-pressed="false">사용 중만</button></div><div class="controls"><button type="button" id="toggle-3d-spin" aria-pressed="true">자동 회전</button><button type="button" id="reset-3d-cam">시점 초기화</button></div></div><canvas id="warehouse-3d-canvas"></canvas><div id="warehouse-3d-tooltip" role="status" hidden></div></section>` : "";
+    const stage3d = this._viewMode === "3d" && snapshot ? `<section class="warehouse-3d-stage" aria-label="3D 입체 창고 뷰"><div class="warehouse-3d-bar"><div class="controls" role="group" aria-label="창고 구역"><button type="button" data-3d-zone="essentials" aria-pressed="true">기본 비축 랙</button><button type="button" data-3d-zone="optional" aria-pressed="false">선택 물품 랙</button>${optCatSelect}<button type="button" id="toggle-3d-active" aria-pressed="false">사용 중만</button></div><div class="controls" role="group" aria-label="창고 환경"><select data-3d-time aria-label="시간대"><option value="auto">시간 자동</option><option value="day">낮</option><option value="night">밤</option></select><select data-3d-weather aria-label="날씨"><option value="auto">날씨 자동</option><option value="clear">맑음</option><option value="rain">비</option><option value="snow">눈</option><option value="storm">뇌우</option></select><span class="env-chip" id="env-3d-chip" role="status"></span></div><div class="controls"><button type="button" id="toggle-3d-spin" aria-pressed="true">자동 회전</button><button type="button" id="reset-3d-cam">시점 초기화</button></div></div><canvas id="warehouse-3d-canvas"></canvas><div id="warehouse-3d-tooltip" role="status" hidden></div></section>` : "";
     const surv = krSurvivalDays(snapshot);
     const survChip = snapshot ? `<span class="survival-chip" title="${people}인 가구 기준 예상 생존 가능 일수">💧 생수 ${surv.waterDays}일분 · 🍱 식량 ${surv.foodDays}일분</span>` : "";
-    this._stop3D();
+    // Keep the live 3D stage (WebGL context, camera, weather particles) across re-renders such as the 30s inventory poll.
+    const keptStage = this._viewMode === "3d" && snapshot && this._engine3d ? this.shadowRoot.querySelector(".warehouse-3d-stage") : null;
+    if (!keptStage) this._stop3D();
     this.toggleAttribute?.("data-view", this._viewMode === "3d");
     if (this._viewMode === "3d") this.setAttribute?.("data-view", "3d");
     this.shadowRoot.innerHTML = `<style>
@@ -874,8 +883,12 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .survival-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px;border:1px solid rgba(130,220,235,.4);background:rgba(15,48,66,.65);color:#aef2f8;font-size:.82rem;font-weight:800}
       #toggle-quick-mode{min-height:34px;padding:.2rem .65rem;font-size:.78rem;border-radius:999px;border-color:rgba(130,205,220,.4);color:inherit}
       #toggle-quick-mode[aria-pressed="true"]{background:var(--kr-accent,#8fe6ee);color:var(--kr-accent-ink,#0b2029);border-color:var(--kr-accent,#8fe6ee);font-weight:800}
-      .quick-bar{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
-      .quick-bar .qbtn{min-height:32px;padding:2px 0;font-size:.78rem;font-weight:800;border-radius:7px;background:rgba(18,52,70,.85);border-color:rgba(115,172,190,.42);color:#eef9fb}
+      .quick-bar{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
+      .quick-bar .qbtn{min-width:0;min-height:36px;padding:2px 0;font-size:.8rem;font-weight:800;border-radius:8px;background:rgba(18,52,70,.85);border:1px solid rgba(115,172,190,.42);color:#eef9fb;font-variant-numeric:tabular-nums;cursor:pointer}
+      .quick-bar .qbtn:hover:not(:disabled){border-color:#9fe8f2;background:rgba(36,82,104,.95)}
+      .quick-bar .qbtn[data-dir="up"]{color:#9ff2cc}
+      .quick-bar .qbtn:disabled{opacity:.4;cursor:not-allowed}
+      .quick-bar .qbtn:focus-visible{outline:3px solid #ffd899;outline-offset:1px}
       .backup-bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:1rem;padding-top:.85rem;border-top:1px solid rgba(115,172,190,.25)}
       .backup-bar button,.backup-import-btn{display:inline-flex;align-items:center;min-height:36px;padding:.3rem .7rem;font-size:.8rem;font-weight:700;border-radius:8px;border:1px solid rgba(115,172,190,.4);background:rgba(12,35,48,.6);color:inherit;cursor:pointer}
       .warehouse-3d-bar select{min-height:34px;padding:2px 8px;border-radius:7px;border:1px solid rgba(112,174,194,.4);background:#0f2736;color:#dff5f8;font:inherit;font-size:.78rem}
@@ -890,8 +903,8 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .shelf-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.75rem;flex-wrap:wrap}
       .ready-panel h3{margin:0;color:#ecf8f9;font-size:1.02rem;letter-spacing:-.02em}.ready-panel h3 span{color:#91e0ea;font-size:.88rem;font-weight:700;margin-left:.35rem;font-variant-numeric:tabular-nums}
       .ready-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:.52rem}
-      .ready-item{min-width:0}
-      .ready-item .shelf-edit{position:relative;display:flex;flex-direction:column;align-items:center;gap:.3rem;width:100%;height:100%;min-width:0;padding:.45rem .38rem .6rem;border:1px solid rgba(115,172,190,.36);border-radius:12px;background:linear-gradient(180deg,rgba(32,67,86,.86) 0%,rgba(20,45,60,.92) 100%);color:#f4fafa;text-align:center}
+      .ready-item{min-width:0;display:flex;flex-direction:column}
+      .ready-item .shelf-edit{position:relative;display:flex;flex-direction:column;align-items:center;gap:.3rem;width:100%;flex:1 1 auto;min-width:0;padding:.45rem .38rem .6rem;border:1px solid rgba(115,172,190,.36);border-radius:12px;background:linear-gradient(180deg,rgba(32,67,86,.86) 0%,rgba(20,45,60,.92) 100%);color:#f4fafa;text-align:center}
       .ready-item .shelf-edit:hover:not(:disabled){border-color:#9fe8f2;transform:translateY(-2px);background:linear-gradient(180deg,rgba(44,88,110,.95) 0%,rgba(26,56,74,.95) 100%)}
       .ready-item .shelf-edit:focus-visible{outline:3px solid #ffd899;outline-offset:2px}
       .shelf-edit:disabled{cursor:default}
@@ -923,6 +936,8 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       #warehouse-3d-canvas{display:block;width:100%;height:clamp(380px,56vh,560px);touch-action:none}
       #warehouse-3d-tooltip{position:absolute;z-index:5;pointer-events:none;padding:.45rem .65rem;border-radius:8px;background:rgba(8,22,34,.92);border:1px solid #8fe6ee;color:#eef9fb;font-size:.78rem;box-shadow:0 8px 24px rgba(0,0,0,.45);display:grid;gap:2px}
       #warehouse-3d-tooltip[hidden]{display:none}
+    .warehouse-3d-bar .env-chip{display:inline-flex;align-items:center;min-height:34px;padding:0 .6rem;border-radius:999px;border:1px solid rgba(112,174,194,.4);background:rgba(15,39,54,.75);color:#dff5f8;font-size:.76rem;white-space:nowrap}
+    .warehouse-3d-bar .env-chip:empty{display:none}
       #warehouse-3d-tooltip small{color:#91e0ea;font-size:.7rem}
 
       .opt-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin:.6rem 0 .75rem}
@@ -979,6 +994,9 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       :host([data-kr-themed]) .ready-item[data-complete="true"] .shelf-edit,:host([data-kr-themed]) .mission-item.done{border-color:var(--kr-accent)}
       :host([data-kr-themed]) .ready-art,:host([data-kr-themed]) .dialog-art{background:#122534;border-color:var(--kr-line)}
       :host([data-kr-themed]) #opt-search{background:var(--kr-bg);border-color:var(--kr-line)}
+    :host([data-kr-themed]) .quick-bar .qbtn{background:var(--kr-surface,var(--kr-bg));border-color:var(--kr-line);color:var(--kr-text)}
+    :host([data-kr-themed]) .quick-bar .qbtn[data-dir="up"]{color:var(--kr-accent)}
+    :host([data-kr-themed]) .quick-bar .qbtn:hover:not(:disabled){background:var(--kr-glow);border-color:var(--kr-accent)}
     </style><ha-card>${edit ? `<dialog id="item-dialog" aria-labelledby="item-dialog-title">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit}</dialog>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨">${survChip}<span id="local-clock">--:--</span><span id="local-weather" hidden></span><div class="view-switch" role="group" aria-label="창고 보기"><button type="button" data-view-mode="2d" aria-pressed="${this._viewMode === "2d"}">2D 선반</button><button type="button" data-view-mode="3d" aria-pressed="${this._viewMode === "3d"}">3D 창고</button></div><button type="button" id="refresh" aria-label="재고 새로고침" title="재고 새로고침">↻</button></div></div>` +
       (!snapshot ? `<p class="hero-copy">${this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` : "") +
       `${signals}</div><div class="status-disclosures">${krStockRankView(snapshot, this._rankOpen)}${krMissionView(snapshot, escape, animateMission, this._missionOpen)}</div>` +
@@ -1083,20 +1101,44 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       this._returnToShelf();
     });
     this.shadowRoot.querySelector("#delete")?.addEventListener("click", () => this._delete());
-    const canvas3d = this.shadowRoot.querySelector("#warehouse-3d-canvas");
+    if (keptStage) {
+      this.shadowRoot.querySelector(".warehouse-3d-stage")?.replaceWith(keptStage);
+      this._engine3d.rebuild();
+    }
+    const canvas3d = keptStage ? null : this.shadowRoot.querySelector("#warehouse-3d-canvas");
     if (canvas3d && typeof window !== "undefined") {
       const tooltip3d = this.shadowRoot.querySelector("#warehouse-3d-tooltip");
       const getTheme = () => {
         try { return window.localStorage?.getItem("kr_survival_kit_theme") || "black"; } catch { return "black"; }
       };
       const base = this._config?.asset_path ? `${this._config.asset_path.replace(/\/$/, "")}/` : KR_SCRIPT_BASE;
-      import(`${base}kr-warehouse-3d.js?v=0.7.0`).then(({ KrWarehouseThreeEngine }) => {
+      // Live HA sun/weather drive the 3D warehouse sky; `weather_entity` in card config overrides auto-detection.
+      const getEnv = () => {
+        const states = this._hass?.states || {};
+        const weatherId = this._config?.weather_entity || Object.keys(states).find((id) => id.startsWith("weather."));
+        return { sun: states["sun.sun"]?.state, weather: weatherId ? states[weatherId]?.state : undefined };
+      };
+      let envPrefs = { time: "auto", weather: "auto" };
+      try { envPrefs = { ...envPrefs, ...JSON.parse(window.localStorage?.getItem("kr_survival_kit_3d_env") || "{}") }; } catch { /* private mode */ }
+      const timeSel = this.shadowRoot.querySelector("[data-3d-time]");
+      const weatherSel = this.shadowRoot.querySelector("[data-3d-weather]");
+      const envChip = this.shadowRoot.querySelector("#env-3d-chip");
+      if (timeSel) timeSel.value = envPrefs.time;
+      if (weatherSel) weatherSel.value = envPrefs.weather;
+      const saveEnv = () => {
+        try { window.localStorage?.setItem("kr_survival_kit_3d_env", JSON.stringify(envPrefs)); } catch { /* private mode */ }
+      };
+      import(`${base}kr-warehouse-3d.js?v=0.8.0`).then(({ KrWarehouseThreeEngine }) => {
         if (!this.shadowRoot.contains(canvas3d)) return;
         this._engine3d = new KrWarehouseThreeEngine(
           canvas3d, tooltip3d,
           () => this._snapshot, () => this._statusFilter,
-          (item) => this._edit(item, false), getTheme,
+          (item) => this._edit(item, false), getTheme, getEnv,
         );
+        this._engine3d.timeMode = envPrefs.time;
+        this._engine3d.weatherMode = envPrefs.weather;
+        this._engine3d.onEnvChange = (label) => { if (envChip) envChip.textContent = label; };
+        if (envChip) envChip.textContent = this._engine3d.envLabel || "";
       }).catch((err) => {
         if (tooltip3d) {
           tooltip3d.hidden = false;
@@ -1115,6 +1157,16 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         this._engine3d.zone = "optional";
         this._engine3d.rebuild();
         this.shadowRoot.querySelectorAll("[data-3d-zone]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset["3dZone"] === "optional")));
+      });
+      timeSel?.addEventListener("change", (e) => {
+        envPrefs.time = e.target.value;
+        saveEnv();
+        if (this._engine3d) this._engine3d.timeMode = envPrefs.time;
+      });
+      weatherSel?.addEventListener("change", (e) => {
+        envPrefs.weather = e.target.value;
+        saveEnv();
+        if (this._engine3d) this._engine3d.weatherMode = envPrefs.weather;
       });
       this.shadowRoot.querySelector("#toggle-3d-active")?.addEventListener("click", (e) => {
         if (!this._engine3d) return;

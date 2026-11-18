@@ -97,6 +97,8 @@ def main():
             window.demoCard.setConfig({});
             document.body.append(window.demoCard);
             window.demoCard._hass = {config: {time_zone: 'Asia/Seoul'}, states: {}};
+            // The 30s inventory poll would re-render mid-assertion on slow machines; synthetic data never reloads.
+            window.clearInterval(window.demoCard._timer);
         }""")
 
         def assert_focused(locator):
