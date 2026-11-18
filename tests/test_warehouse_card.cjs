@@ -6,7 +6,7 @@ const vm = require("node:vm");
 const path = require("node:path");
 
 const source = fs.readFileSync(path.join(__dirname, "../custom_components/kr_survival_kit/www/kr-survival-kit-card.js"), "utf8");
-const elements = Object.fromEntries([".hero", "#local-clock", "#local-weather", "#time-source"].map((key) => [key, { dataset: {}, textContent: "" }]));
+const elements = Object.fromEntries([".hero", "#local-clock", "#local-weather"].map((key) => [key, { dataset: {}, textContent: "" }]));
 class MockElement {
   attachShadow() { this.shadowRoot = { querySelector: (selector) => elements[selector] }; }
 }
@@ -47,6 +47,8 @@ assert.equal(context.stockScore(withOptional), 100);
 for (const [index, rank] of ["아이언", "브론즈", "실버", "골드", "플레티넘", "에메랄드", "다이아", "마스터", "그랜드마스터", "챌린저"].entries()) {
   assert.match(context.stockRank(snapshot({ ...base, target: 100, usable: index * 10 })), new RegExp(`<strong class="rank-badge"[^>]*>${rank}</strong>`));
 }
+const disabled = { ...snapshot(base), items: { [item.id]: { applicable: false } } };
+assert.match(context.testGrid(disabled, escape), /생수 설정.*미사용/);
 assert.equal(context.stockFormat(item, 1001), "1.001");
 assert.equal(context.stockParse(item, "1.001"), 1001);
 assert.equal(context.stockFormat(item, 1), "0.001");
@@ -69,7 +71,6 @@ card._hass = { config: { time_zone: "Asia/Seoul", unit_system: { temperature: "�
 card._updateAtmosphere();
 assert.match(elements["#local-weather"].textContent, /비 · 12°C/);
 assert.equal(elements[".hero"].dataset.weather, "rain");
-assert.match(elements["#time-source"].textContent, /HA 시간대/);
 
 card._hass.states["weather.known"].last_updated = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
 card._updateAtmosphere();
@@ -77,7 +78,7 @@ assert.match(elements["#local-weather"].textContent, /날씨 갱신 지연/);
 assert.equal(elements[".hero"].dataset.weather, "normal");
 card._config.weather_entity = undefined;
 card._updateAtmosphere();
-assert.equal(elements["#local-weather"].textContent, "날씨 연동 안 됨");
+assert.equal(elements["#local-weather"].hidden, true);
 
 let changeStatus;
 let focused = false;

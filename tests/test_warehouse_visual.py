@@ -279,7 +279,9 @@ def main():
         }""")
         card = page.locator("kr-survival-kit-inventory-card")
         assert card.locator("#household-size").count() == 0
-        assert "생수 30 L · 식사 45인분" in card.locator(".household-strip").inner_text()
+        assert card.locator("#time-source, .household-strip").count() == 0
+        assert card.locator("#local-clock").is_visible()
+        assert not card.locator("#local-weather").is_visible()
         card.locator('.shelf-edit[data-edit="drinking-water"]').click()
         assert card.locator(".capacity").input_value() == "2"
         assert card.locator(".received-on").input_value() == "2026-11-18"
@@ -337,10 +339,23 @@ def main():
         panel.evaluate("element => element.route = {path: '/guide'}")
         assert panel.locator("a[aria-current='page']").inner_text() == "상황 안내"
         assert panel.locator(".quiz-panel").get_attribute("open") is None
+        assert panel.get_by_role("link", name="비축 관리로").count() == 0
         assert panel.get_by_role("button", name="아이보리").get_attribute("aria-pressed") == "true"
         assert panel.get_by_role("link", name="A4 행동 카드 열기").get_attribute("href") == "/kr_survival_kit_assets/kr-survival-kit-a4.pdf"
         assert panel.get_by_role("link", name="오프라인 안내 열기").get_attribute("href") == "/kr_survival_kit_assets/kr-survival-kit-offline.html"
         assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth")
+
+        disabled = make_snapshot(24)
+        disabled["items"]["drinking-water"]["applicable"] = False
+        disabled["summary"]["items"]["drinking-water"]["state"] = "not_applicable"
+        page.evaluate("() => document.body.replaceChildren(window.demoCard)")
+        render(disabled)
+        page.get_by_role("button", name=r"생수 설정", exact=False).click()
+        card.locator("#item-settings > summary").click()
+        assert not card.locator("#applicable").is_checked()
+        card.locator("#applicable").check()
+        card.locator("#editor button.primary").click()
+        assert page.evaluate("window.savedBottle.applicable") is True
 
         # Exercise the same fields and save button a new household sees for every catalog item.
         blank = {"catalog": CATALOG, "items": {}, "revision": 0, "today": "2026-11-18",

@@ -90,14 +90,14 @@ function krIsSelectable(item) {
 }
 
 function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item) =>
-  !krIsSelectable(item) && snapshot.items[item.id]?.applicable !== false), editing = false) {
+  !krIsSelectable(item)), editing = false) {
   if (!snapshot) return `<p class="ready-empty">재고를 불러오는 중입니다.</p>`;
   if (!visible.length) return `<p class="ready-empty">이 조건에 맞는 물품이 없습니다.</p>`;
   const readyIds = new Set(krReadyItems(snapshot).map((item) => item.id));
   return `<div class="ready-grid" role="list">${visible.map((item) => {
     const status = snapshot.summary.items[item.id];
     const ready = readyIds.has(item.id);
-    const inactive = krIsSelectable(item) && !snapshot.items[item.id]?.applicable;
+    const inactive = !(snapshot.items[item.id]?.applicable ?? !krIsSelectable(item));
     const pictogram = item.id === "drinking-water" ? KR_WATER_BOTTLE_ART : KR_READY_PICTOGRAMS[item.id] || "◈";
     const current = status.usable ?? 0;
     const quantity = `${krStockText(item, current)} / ${status.target == null ? "목표 미설정" : krStockText(item, status.target)}`;
@@ -160,8 +160,7 @@ function krStockShelves(snapshot, escape, showInactive, editing, filter) {
     const status = snapshot.summary.items[item.id];
     return filter === "expiring" ? status.expiring_quantity > 0 : status.state === filter;
   };
-  const essentials = snapshot?.catalog.filter((item) => !krIsSelectable(item) &&
-    snapshot.items[item.id]?.applicable !== false && matches(item));
+  const essentials = snapshot?.catalog.filter((item) => !krIsSelectable(item) && matches(item));
   const active = optional.filter((item) => snapshot.items[item.id]?.applicable && matches(item));
   const inactive = optional.filter((item) => !snapshot.items[item.id]?.applicable);
   const ready = krReadyItems(snapshot);
@@ -252,11 +251,10 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     hero.dataset.daypart = hour >= 7 && hour < 19 ? "day" : "night";
     const clock = this.shadowRoot.querySelector("#local-clock");
     if (clock) clock.textContent = `${String(hour).padStart(2, "0")}:${minute}`;
-    const source = this.shadowRoot.querySelector("#time-source");
-    if (source) source.textContent = zone ? "HA 시간대 · 시각 기준 주야 테마" : "기기 시각 · 시각 기준 주야 테마";
     const weather = this.shadowRoot.querySelector("#local-weather");
     const entityId = this._config?.weather_entity;
     const validEntity = typeof entityId === "string" && /^weather\.[a-z0-9_]+$/.test(entityId);
+    if (weather) weather.hidden = !validEntity;
     const state = validEntity ? this._hass?.states?.[entityId] : undefined;
     const updated = state?.last_updated ? new Date(state.last_updated) : null;
     const age = updated && Number.isFinite(updated.getTime()) ? Date.now() - updated.getTime() : Infinity;
@@ -514,9 +512,10 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .hero p{color:#c6d9df;max-width:35rem}.hero .hero-copy{font-size:1rem;line-height:1.6}
       .signals{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.25rem}.signals button{display:flex;gap:.7rem;align-items:baseline;background:rgba(7,19,29,.42);color:#eef7f8;border:1px solid #668b9c;min-width:6.5rem;justify-content:space-between}.signals strong{font-size:1.3rem;font-variant-numeric:tabular-nums}.signals button:hover{background:#2a5369}
       button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #e0a950;outline-offset:2px}
+      .atmosphere span[hidden]{display:none}
       #refresh{min-width:44px;padding:0 .4rem;font-size:1.15rem;color:inherit;border-color:var(--kr-line,#79b3c0)}
       @media(max-width:560px){.signals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.3rem;margin-top:.7rem}.signals button{min-width:0;display:grid;justify-items:center;justify-content:center;align-content:center;gap:.12rem;padding:.32rem .16rem;font-size:.76rem;text-align:center}.signals strong{font-size:1rem}.hero h2{margin-bottom:.25rem}.hero-head{gap:8px}}
-      .household-strip{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem 1rem;padding:.75rem 1rem;border:1px solid #78aebe;border-radius:14px;background:#0b2636;margin-block:1rem}.household-strip strong{color:#a4fff0}.household-strip p{margin:0}.lot-edit{min-inline-size:0}.lot-edit legend,.lot-total{font-weight:750}.lot-total{align-self:center}#item-settings summary{cursor:pointer;padding:.5rem 0}.lot-edit input{box-sizing:border-box;max-width:100%}
+      .lot-edit{min-inline-size:0}.lot-edit legend,.lot-total{font-weight:750}.lot-total{align-self:center}#item-settings summary{cursor:pointer;padding:.5rem 0}.lot-edit input{box-sizing:border-box;max-width:100%}
       .hero{position:relative;display:block;background:linear-gradient(135deg,#1b3a4c,#102432 65%,#0d1c2a);transition:background .5s ease}
       .hero[data-daypart="day"]{background:linear-gradient(135deg,#27566a,#173b4e 55%,#132b3a)}
       .hero[data-daypart="night"]{background:linear-gradient(135deg,#172e42,#0b1c2d 62%,#0b1724)}
@@ -525,7 +524,6 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .hero[data-weather="snow"]::after{opacity:.17;background:radial-gradient(circle at 15% 22%,#fff 0 2px,transparent 3px),radial-gradient(circle at 78% 55%,#fff 0 2px,transparent 3px),radial-gradient(circle at 46% 81%,#fff 0 2px,transparent 3px);background-size:110px 100px;animation:krSkyDrift 28s linear infinite}
       .hero>*{position:relative;z-index:1}.hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
       .atmosphere{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.atmosphere span{display:inline-flex;min-height:35px;align-items:center;padding:5px 10px;border:1px solid #79b3c082;border-radius:8px;background:#07192768;color:#d9f1f4;font-size:.84rem;font-variant-numeric:tabular-nums}
-      .atmosphere-note{font-size:.76rem!important;color:var(--kr-muted,#accbd5)!important;margin-top:0!important}
       .status-disclosures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-top:.9rem;align-items:start}.compact-detail{min-width:0;border:1px solid var(--kr-line,#476c80);border-radius:10px;background:var(--kr-surface,#122e40)}.compact-detail summary,.quiz-head{min-height:44px;cursor:pointer;list-style:none}.compact-detail summary::-webkit-details-marker,.quiz-head::-webkit-details-marker{display:none}.compact-detail summary{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem .65rem;padding:.55rem .7rem}.compact-detail summary::after,.quiz-head::after{content:"＋";margin-inline-start:auto;color:var(--kr-accent,#a9dce2);font-weight:700}.compact-detail[open] summary::after,.quiz-panel[open] .quiz-head::after{content:"−"}.rank-badge{padding:.14rem .45rem;border-radius:6px;color:#141d28;background:var(--rank-color);font-size:.86rem}.stock-score{font-size:.83rem;font-variant-numeric:tabular-nums;color:var(--kr-muted,#dceff1)}.rank-detail,.mission-detail{padding:.15rem .7rem .7rem}.rank-detail progress{display:block;width:100%;height:.55rem;accent-color:var(--kr-accent,#a9dce2)}.rank-detail p,.mission-detail p{font-size:.83rem;color:var(--kr-muted,#dceff1)}#optional-shelf summary{cursor:pointer;padding:.4rem 0}.ready-panel details .ready-grid{margin-top:.65rem}@media(max-width:560px){.status-disclosures{grid-template-columns:1fr}}
       #item-dialog{box-sizing:border-box;width:min(42rem,calc(100% - 24px));max-height:min(88dvh,54rem);margin:auto;padding:clamp(.9rem,3vw,1.55rem);overflow:auto;overscroll-behavior:contain;border:1px solid var(--kr-line,#547a8b);border-radius:16px;background:var(--kr-surface,#fff);color:var(--kr-text,#173048);color-scheme:var(--kr-scheme,light);box-shadow:0 24px 60px #0007}#item-dialog::backdrop{background:#08121cc4}#item-dialog h3{font-size:1.25rem;margin:0 0 .5rem}#item-dialog .actions{margin-top:.7rem}#item-dialog input{background:var(--kr-bg,#fff);color:inherit}#item-dialog button{color:inherit}#item-dialog button.primary{background:var(--kr-accent,#197f83);color:var(--kr-accent-ink,#fff)}.shelf-message{font-size:.85rem}#item-dialog .item-note{max-width:64ch}.item-reference{margin:.5rem 0}
 
@@ -553,16 +551,15 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       @media(max-width:400px){.mission-item{grid-template-columns:1fr;text-align:center}.mission-art{grid-row:auto}}
       :host([data-kr-themed]){color:var(--kr-text);--primary-text-color:var(--kr-text);--secondary-text-color:var(--kr-muted);--divider-color:var(--kr-line)}
       :host([data-kr-themed]) ha-card{background:var(--kr-bg)}:host([data-kr-themed]) .hero{color:var(--kr-text);background:radial-gradient(ellipse at top right,var(--kr-glow),transparent 58%),var(--kr-bg)}
-      :host([data-kr-themed]) .hero h2,:host([data-kr-themed]) .hero p,:host([data-kr-themed]) .atmosphere,:host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) .household-strip strong,:host([data-kr-themed]) .ready-panel h3,:host([data-kr-themed]) .ready-name{color:var(--kr-text)}
-      :host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) .household-strip,:host([data-kr-themed]) .ready-panel,:host([data-kr-themed]) .signals button,:host([data-kr-themed]) .ready-item .shelf-edit,:host([data-kr-themed]) .mission-item{background:var(--kr-surface);border-color:var(--kr-line);color:var(--kr-text)}
+      :host([data-kr-themed]) .hero h2,:host([data-kr-themed]) .hero p,:host([data-kr-themed]) .atmosphere,:host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) .ready-panel h3,:host([data-kr-themed]) .ready-name{color:var(--kr-text)}
+      :host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) .ready-panel,:host([data-kr-themed]) .signals button,:host([data-kr-themed]) .ready-item .shelf-edit,:host([data-kr-themed]) .mission-item{background:var(--kr-surface);border-color:var(--kr-line);color:var(--kr-text)}
       :host([data-kr-themed]) .signals button[aria-pressed="true"],:host([data-kr-themed]) .ready-item .shelf-edit:hover:not(:disabled){background:var(--kr-glow);border-color:var(--kr-accent)}
       :host([data-kr-themed]) .ready-panel h3 span,:host([data-kr-themed]) .signals button strong,:host([data-kr-themed]) .mission-head strong,:host([data-kr-themed]) .mission-art,:host([data-kr-themed]) .shelf-action{color:var(--kr-accent)}
       :host([data-kr-themed]) .ready-number,:host([data-kr-themed]) .stock-label,:host([data-kr-themed]) .mission-state,:host([data-kr-themed]) .ready-empty{color:var(--kr-muted)!important}
       :host([data-kr-themed]) .stock-meter,:host([data-kr-themed]) .mission-progress{background:var(--kr-line)}:host([data-kr-themed]) .stock-meter span,:host([data-kr-themed]) .mission-progress span{background:var(--kr-accent)}
       :host([data-kr-themed]) .ready-item[data-complete="true"] .shelf-edit,:host([data-kr-themed]) .mission-item.done{border-color:var(--kr-accent)}
-    </style><ha-card>${edit ? `<dialog id="item-dialog" aria-labelledby="item-dialog-title">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit}</dialog>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨"><span id="local-clock">--:--</span><span id="local-weather">날씨 연동 안 됨</span><button type="button" id="refresh" aria-label="재고 새로고침" title="재고 새로고침">↻</button></div></div><p class="atmosphere-note" id="time-source">HA 시간대 · 시각 기준 주야 테마</p>` +
+    </style><ha-card>${edit ? `<dialog id="item-dialog" aria-labelledby="item-dialog-title">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit}</dialog>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨"><span id="local-clock">--:--</span><span id="local-weather" hidden></span><button type="button" id="refresh" aria-label="재고 새로고침" title="재고 새로고침">↻</button></div></div>` +
       (!snapshot ? `<p class="hero-copy">${this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` : "") +
-      (snapshot ? `<div class="household-strip"><strong>${people}인 가구 · 3일</strong><p>생수 ${people * 6} L · 식사 ${people * 9}인분</p></div>` : "") +
       `${signals}</div><div class="status-disclosures">${krStockRankView(snapshot, this._rankOpen)}${krMissionView(snapshot, escape, animateMission, this._missionOpen)}</div>` +
       (!edit && this._message ? `<p class="shelf-message" role="status">${escape(this._message)}</p>` : "") +
       `${krStockShelves(snapshot, escape, this._optionalShelfOpen, Boolean(this._draft), this._statusFilter)}</section></ha-card>`;
@@ -635,6 +632,7 @@ class KrSurvivalKitGuideCard extends HTMLElement {
 
   setConfig(config) {
     this._assetPath = config.asset_path || "/local";
+    this._showInventoryLink = config.show_inventory_link !== false;
     this._guide = typeof config.guide_data === "string" ? JSON.parse(config.guide_data) : config.guide_data;
     if (!this._guide?.scenarios?.length || !this._guide?.playbook?.length) throw new Error("상황 안내 자료가 없습니다.");
     this._loadQuiz(config.quiz_data);
@@ -751,7 +749,7 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       :host([data-kr-themed]) .kind,:host([data-kr-themed]) .action-top h3,:host([data-kr-themed]) .references a,:host([data-kr-themed]) .comms strong,:host([data-kr-themed]) .time-when,:host([data-kr-themed]) .reference-item span{color:var(--kr-accent)}
       :host([data-kr-themed]) .hero-actions a,:host([data-kr-themed]) .quiz-panel button,:host([data-kr-themed]) .nav-items button.active,:host([data-kr-themed]) .sheet-tabs button[aria-selected="true"]{border-color:var(--kr-line);background:var(--kr-glow);color:var(--kr-text)}
       :host([data-kr-themed]) .nav-items button:hover,:host([data-kr-themed]) .sheet-tabs button:hover{background:var(--kr-glow)}
-    </style><ha-card><main class="shell"><header class="hero"><div class="hero-content"><h2>상황 안내</h2><p><strong>${esc(guide.official_first)}</strong> 받은 경보를 선택하면 첫 행동을 바로 확인할 수 있습니다.</p><div class="hero-actions"><a href="${esc(this._assetPath)}/kr-survival-kit-a4.pdf" target="_blank" rel="noopener">A4 행동 카드 열기</a><a class="secondary" href="${esc(this._assetPath)}/kr-survival-kit-offline.html" target="_blank" rel="noopener">오프라인 안내 열기</a><a class="secondary" href="/kr-survival-kit/home">비축 관리로</a></div></div><div class="orb" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 8 82 21v25c0 23-13 36-32 47C31 82 18 69 18 46V21z" fill="#7bc8d9" stroke="#dafaff" stroke-width="2"/><path d="M50 18 73 27v19c0 17-8 28-23 37-15-9-23-20-23-37V27z" fill="#22506a"/><path d="M50 30v34M33 47h34" stroke="#bbf1f3" stroke-width="7" stroke-linecap="round"/></svg></div></header>
+    </style><ha-card><main class="shell"><header class="hero"><div class="hero-content"><h2>상황 안내</h2><p><strong>${esc(guide.official_first)}</strong> 받은 경보를 선택하면 첫 행동을 바로 확인할 수 있습니다.</p><div class="hero-actions"><a href="${esc(this._assetPath)}/kr-survival-kit-a4.pdf" target="_blank" rel="noopener">A4 행동 카드 열기</a><a class="secondary" href="${esc(this._assetPath)}/kr-survival-kit-offline.html" target="_blank" rel="noopener">오프라인 안내 열기</a>${this._showInventoryLink ? `<a class="secondary" href="/kr-survival-kit/home">비축 관리로</a>` : ""}</div></div><div class="orb" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 8 82 21v25c0 23-13 36-32 47C31 82 18 69 18 46V21z" fill="#7bc8d9" stroke="#dafaff" stroke-width="2"/><path d="M50 18 73 27v19c0 17-8 28-23 37-15-9-23-20-23-37V27z" fill="#22506a"/><path d="M50 30v34M33 47h34" stroke="#bbf1f3" stroke-width="7" stroke-linecap="round"/></svg></div></header>
     <div class="layout"><nav class="rail" aria-label="상황 선택"><h2>상황별 첫 행동</h2>${scenarioNav}</nav><section class="action" aria-live="polite"><div class="action-top"><p class="kind">${esc(scenario.kind)}</p><h2>${esc(scenario.title)}</h2><h3>먼저 할 일</h3><p class="first-action">${esc(scenario.first_action)}</p></div><div class="action-body"><h3>이어 확인할 일</h3>${detail}${household}<div class="comms"><strong>전화·인터넷이 끊기면</strong>${esc(guide.communication_loss.first_action)} ${esc(guide.communication_loss.paper_note)}</div></div></section></div>
     <section class="timeline" aria-labelledby="timeline-title"><div class="section-head"><h2 id="timeline-title">${sheetHeading}</h2><p>${sheetSummary}</p></div><div class="sheet-tabs" role="tablist" aria-label="상세 행동 안내">${sheetNav}</div><div id="sheet-panel" role="tabpanel" aria-labelledby="tab-${esc(sheet.id)}" tabindex="0"><h3>${esc(sheet.title)}</h3><p class="sheet-intro">${esc(sheet.intro)}</p>${sheet.layout === "reference" ? `<div class="reference-grid">${rows}</div>` : `<ol class="time-list">${rows}</ol>`}</div></section>
     ${this._quizView(esc)}
@@ -888,7 +886,7 @@ class KrSurvivalKitPanel extends HTMLElement {
     const card = document.createElement(isGuide ? "kr-survival-kit-panel-guide" : "kr-survival-kit-panel-inventory");
     card.toggleAttribute("data-kr-themed", true);
     card.setConfig(isGuide
-      ? { guide_data: guide, asset_path, quiz_data: quiz }
+      ? { guide_data: guide, asset_path, quiz_data: quiz, show_inventory_link: false }
       : {});
     this.shadowRoot.querySelector("main").replaceChildren(card);
     this._card = card;

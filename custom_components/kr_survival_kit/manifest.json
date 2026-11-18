@@ -1,7 +1,7 @@
 {
   "domain": "kr_survival_kit",
   "name": "KR Survival Kit",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "documentation": "https://github.com/redchupa/kr_survival_kit",
   "issue_tracker": "https://github.com/redchupa/kr_survival_kit/issues",
   "codeowners": [],
