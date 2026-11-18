@@ -16,6 +16,14 @@ class RevisionConflict(InventoryError):
 MAX_AMOUNT = 1_000_000_000
 MAX_REVIEW_DAYS = 3650
 MAX_LOCATION_LENGTH = 60
+MAX_CUSTOM_ITEMS = 100
+MAX_CUSTOM_NAME_LENGTH = 40
+# Free text is shown inside HTML; markup and quoting characters are refused at the source
+# (the card escapes on output as well, so this is defence in depth).
+FORBIDDEN_TEXT_CHARS = frozenset("<>\"'`&\\")
+CUSTOM_UNITS = ("개", "병", "팩", "통", "박스", "세트", "켤레", "장", "롤", "kg")
+DATE_LABELS = ("유통기한", "소비기한", "사용기한", "사용 권장기한")
+CUSTOM_ID_PREFIX = "custom-"
 LOT_KEYS = {"lot_id", "quantity", "expires_on", "received_on", "bottle_ml", "bottle_count", "label_check_on", "location"}
 DEFAULT_HOUSEHOLD_SIZE = 4
 _UNSET = object()
@@ -32,6 +40,9 @@ LABEL_CHECK_DAYS = {
     "water-purification-tablets": 7, "toilet-coagulant": 14, "gas-mask-filter": 3,
     "batteries": 14, "batteries-aaa": 14, "batteries-special": 14, "first-aid-kit": 14,
     "wet-wipes": 14, "water-sanitation-kit": 14, "prescription-preparedness": 7, "infant-supplies": 3,
+    "portable-water-filter": 14, "digestive-medicine": 7, "cold-medicine": 7, "antidiarrheal": 7,
+    "wound-ointment": 7, "sterile-gauze": 14, "adhesive-bandages": 14, "batteries-c": 14, "batteries-d": 14,
+    "mouthwash": 14, "infant-medicine": 3,
 }
 
 
@@ -43,6 +54,43 @@ def _date(value):
         return parsed
     except (TypeError, ValueError) as error:
         raise InventoryError("Invalid ISO date") from error
+
+
+def clean_text(value):
+    """Best-effort repair for stored text written before character filtering existed."""
+    text = "".join(" " if ord(char) < 32 or ord(char) == 127 else char for char in str(value))
+    text = "".join(char for char in text if char not in FORBIDDEN_TEXT_CHARS)
+    return " ".join(text.split())
+
+
+def safe_text(value, max_length):
+    """True for trimmed single-line text without markup characters."""
+    return (isinstance(value, str) and 0 < len(value) <= max_length and value == value.strip()
+            and not any(ord(char) < 32 or ord(char) == 127 or char in FORBIDDEN_TEXT_CHARS for char in value))
+
+
+def custom_catalog_item(item_id, definition):
+    """Catalog entry for a user-added item; it behaves like an optional item."""
+    entry = {
+        "id": item_id, "name": definition["name"], "tier": "optional", "unit": definition["unit"],
+        "date_kind": definition["date_kind"], "source_ids": [], "note": "직접 추가한 물품입니다.", "custom": True,
+    }
+    if definition.get("date_label"):
+        entry["date_label"] = definition["date_label"]
+    return entry
+
+
+def validate_custom(item_id, definition, builtin_ids=()):
+    suffix = item_id[len(CUSTOM_ID_PREFIX):] if isinstance(item_id, str) and item_id.startswith(CUSTOM_ID_PREFIX) else ""
+    if not suffix.isdigit() or suffix.startswith("0") or len(suffix) > 6 or item_id in builtin_ids:
+        raise InventoryError("Invalid custom item id")
+    if (not isinstance(definition, dict) or set(definition) - {"name", "unit", "date_kind", "date_label"}
+            or not safe_text(definition.get("name"), MAX_CUSTOM_NAME_LENGTH)
+            or definition.get("unit") not in CUSTOM_UNITS
+            or definition.get("date_kind") not in ("expiry", "inspection")
+            or (definition.get("date_label") is not None
+                and (definition["date_kind"] != "expiry" or definition["date_label"] not in DATE_LABELS))):
+        raise InventoryError("Custom item needs a 1-40 character name without < > \" ' ` & \\, a known unit and date kind")
 
 
 def _review_days(value):
@@ -73,11 +121,8 @@ def validate_item(catalog_item, applicable, target, lots):
             raise InventoryError("quantity must be an integer from 0 to 1000000000")
         # Free-text storage place such as "현관 팬트리" or "주방 팬트리 3층 선반".
         location = lot.get("location")
-        if location is not None and (
-                not isinstance(location, str) or not location or location != location.strip()
-                or len(location) > MAX_LOCATION_LENGTH
-                or any(ord(char) < 32 or ord(char) == 127 for char in location)):
-            raise InventoryError("location must be trimmed text of 1 to 60 printable characters or null")
+        if location is not None and not safe_text(location, MAX_LOCATION_LENGTH):
+            raise InventoryError("location must be trimmed text of 1 to 60 characters without < > \" ' ` & \\ or null")
         if {"bottle_ml", "bottle_count"} & lot.keys():
             volume, count = lot.get("bottle_ml"), lot.get("bottle_count")
             if (catalog_item["id"] != "drinking-water" or type(volume) is not int
@@ -200,7 +245,8 @@ class Inventory:
 
     def __init__(self, store, catalog, household_size=DEFAULT_HOUSEHOLD_SIZE):
         self.store = store
-        self.catalog = {item["id"]: item for item in catalog}
+        self.builtin = {item["id"]: item for item in catalog}
+        self.catalog = dict(self.builtin)
         self.snapshot = {"schema_version": 1, "revision": 0, "items": {}, "household_size": household_size}
         self.lock = asyncio.Lock()
         self.listeners = []
@@ -215,20 +261,37 @@ class Inventory:
             raise InventoryError("Unsupported inventory schema")
         if type(data.get("revision")) is not int or data["revision"] < 0:
             raise InventoryError("Invalid inventory revision")
+        data = deepcopy(data)
+        customs = data.get("custom_items", {})
+        if not isinstance(customs, dict) or len(customs) > MAX_CUSTOM_ITEMS:
+            raise InventoryError("Invalid custom items")
+        for item_id, definition in customs.items():
+            if isinstance(definition, dict) and isinstance(definition.get("name"), str):
+                definition["name"] = clean_text(definition["name"])[:MAX_CUSTOM_NAME_LENGTH].strip()
+            validate_custom(item_id, definition, self.builtin)
+        catalog = {**self.builtin, **{item_id: custom_catalog_item(item_id, d) for item_id, d in customs.items()}}
+        for record in data["items"].values():
+            # Locations saved before markup characters were refused are repaired, never rejected.
+            lots = record.get("lots") if isinstance(record, dict) else None
+            for lot in lots if isinstance(lots, list) else []:
+                if isinstance(lot, dict) and isinstance(lot.get("location"), str):
+                    cleaned = clean_text(lot["location"])[:MAX_LOCATION_LENGTH].strip()
+                    lot["location"] = cleaned or None
         for item_id, record in data["items"].items():
-            if item_id in self.catalog:
+            if item_id in catalog:
                 if (not isinstance(record, dict)
                         or not {"applicable", "target", "lots", "verified_on"} <= record.keys()
                         or type(record.get("confirmed", False)) is not bool):
                     raise InventoryError("Invalid inventory record")
-                validate_item(self.catalog[item_id], record["applicable"], record["target"], record["lots"])
+                validate_item(catalog[item_id], record["applicable"], record["target"], record["lots"])
                 _review_days(record.get("review_interval_days"))
                 if record["verified_on"] is not None:
                     _date(record["verified_on"])
         people = data.get("household_size", self.snapshot["household_size"])
         if type(people) is not int or not 1 <= people <= 99:
             raise InventoryError("Invalid household size")
-        self.snapshot = {**deepcopy(data), "household_size": people}
+        self.snapshot = {**data, "household_size": people}
+        self.catalog = catalog
 
     async def set_household_size(self, revision, people):
         if type(revision) is not int or revision < 0:
@@ -309,6 +372,57 @@ class Inventory:
             candidate["items"].pop(item_id, None)
             await self.store.async_save(candidate)
             self.snapshot = candidate
+        for listener in tuple(self.listeners):
+            listener()
+        return candidate["revision"]
+
+    async def add_custom_item(self, revision, name, unit, date_kind, date_label=None):
+        """Create a user-defined item; returns (revision, item_id)."""
+        if type(revision) is not int or revision < 0:
+            raise InventoryError("revision must be a nonnegative integer")
+        definition = {"name": name, "unit": unit, "date_kind": date_kind}
+        if date_label:
+            definition["date_label"] = date_label
+        async with self.lock:
+            if revision != self.snapshot["revision"]:
+                raise RevisionConflict("Inventory changed. Refresh and retry.")
+            customs = self.snapshot.get("custom_items", {})
+            if len(customs) >= MAX_CUSTOM_ITEMS:
+                raise InventoryError("No more than 100 custom items")
+            number = max([int(key[len(CUSTOM_ID_PREFIX):]) for key in customs] or [0]) + 1
+            item_id = f"{CUSTOM_ID_PREFIX}{number}"
+            validate_custom(item_id, definition, self.builtin)
+            if any(item["name"].casefold() == name.casefold() for item in self.catalog.values()):
+                raise InventoryError("An item with this name already exists")
+            candidate = deepcopy(self.snapshot)
+            candidate["revision"] += 1
+            candidate.setdefault("custom_items", {})[item_id] = definition
+            # A new item is something the household keeps, so it starts active and unchecked.
+            candidate["items"][item_id] = {"applicable": True, "target": None, "verified_on": None,
+                                           "confirmed": False, "lots": []}
+            await self.store.async_save(candidate)
+            self.snapshot = candidate
+            self.catalog = {**self.catalog, item_id: custom_catalog_item(item_id, definition)}
+        for listener in tuple(self.listeners):
+            listener()
+        return candidate["revision"], item_id
+
+    async def remove_custom_item(self, revision, item_id):
+        """Delete a user-defined item together with its stock record."""
+        if type(revision) is not int or revision < 0:
+            raise InventoryError("revision must be a nonnegative integer")
+        async with self.lock:
+            if revision != self.snapshot["revision"]:
+                raise RevisionConflict("Inventory changed. Refresh and retry.")
+            if item_id not in self.snapshot.get("custom_items", {}):
+                raise InventoryError("Unknown custom item")
+            candidate = deepcopy(self.snapshot)
+            candidate["revision"] += 1
+            del candidate["custom_items"][item_id]
+            candidate["items"].pop(item_id, None)
+            await self.store.async_save(candidate)
+            self.snapshot = candidate
+            self.catalog = {key: value for key, value in self.catalog.items() if key != item_id}
         for listener in tuple(self.listeners):
             listener()
         return candidate["revision"]

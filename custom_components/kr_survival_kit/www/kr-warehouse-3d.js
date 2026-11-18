@@ -4,40 +4,63 @@ const SHORT_NAMES = {
   "drinking-water": "생수", "instant-rice": "즉석밥", "cup-noodles": "컵라면", "shelf-stable-meal": "레토르트 간편식",
   "spam-canned-ham": "스팸", "canned-tuna": "참치캔", "canned-pupa": "번데기캔", "canned-whelk": "골뱅이캔", "canned-fruit": "과일캔",
   "canned-food": "기타 통조림", hygiene: "두루마리 휴지", "wet-wipes": "물티슈",
-  flashlight: "손전등", batteries: "AA 건전지", "batteries-aaa": "AAA 건전지", "batteries-special": "특수 건전지",
-  backpack: "대피 가방", blanket: "담요", "first-aid-kit": "응급 처치", "otc-medicine": "상비약",
-  "infant-supplies": "영유아 용품", "prescription-preparedness": "처방약", radio: "자가발전 라디오",
+  flashlight: "손전등", batteries: "AA 건전지", "batteries-aaa": "AAA 건전지", "batteries-special": "버튼셀 건전지",
+  backpack: "대피 가방", blanket: "담요", "first-aid-kit": "소독약", "otc-medicine": "해열진통제",
+  "infant-supplies": "기저귀", "prescription-preparedness": "처방약", radio: "자가발전 라디오",
   "water-container": "20L 말통", "faucet-water-tank": "수도꼭지 물통", "water-purification-tablets": "아쿠아탭스",
-  "metal-fuel-can": "철제 기름통", "fuel-siphon-nozzle": "자바라 노즐",
+  "metal-fuel-can": "철제 기름통", "fuel-siphon-nozzle": "주유 펌프",
   "portable-stove": "휴대 버너", "butane-canister": "부탄가스", "butane-torch": "부탄 토치",
   "self-heating-ration": "발열식량", rice: "쌀", "salt-jar": "소금(병)", "honey-gift-set": "벌꿀",
   candles: "양초", "hand-warmers": "손난로", "sleeping-bag": "캠핑 침낭",
-  "large-plastic-bags": "특대 김장비닐", lighter: "라이터", "solid-fuel": "고체 연료",
+  "large-plastic-bags": "대형 비닐", lighter: "라이터", "solid-fuel": "고체 연료",
   "child-id-card": "인식표", "home-solar-panel": "가정용 태양광200W", "portable-solar-panel": "휴대용 태양광60W",
   "manual-can-opener": "캔 따개", "insulated-bottle": "보온병", "cooler-ice-pack": "아이스박스",
   "portable-water-filter": "정수 필터", "storage-bin": "보관함", "long-storage-snacks": "간식",
-  "infant-formula": "조제분유", "ready-to-feed-formula": "액상분유", "infant-feeding-supplies": "수유 용품",
-  "power-bank": "휴대 보조배터리", "portable-power-station": "가정용 파워뱅크", "charging-cables": "충전선",
-  "warm-clothes": "방한복", raincoat: "우비", masks: "마스크", "gas-mask": "방독면",
+  "infant-formula": "조제분유", "ready-to-feed-formula": "액상분유", "infant-feeding-supplies": "일회용 젖병",
+  "power-bank": "휴대 보조배터리", "portable-power-station": "가정용 파워뱅크", "charging-cables": "휴대폰 충전기",
+  "warm-clothes": "여벌 옷", raincoat: "우비", masks: "마스크", "gas-mask": "방독면",
   "gas-mask-filter": "방독면 필터", earplugs: "이어플러그", "compressed-towel": "압축 수건",
-  "rubber-gloves": "고무장갑", "rubber-boots": "장화", "sealing-tape": "밀봉 테이프",
+  "rubber-gloves": "고무장갑", "rubber-boots": "장화", "sealing-tape": "투명 테이프",
   "emergency-contact-card": "연락 카드", "family-photo": "가족 사진",
   "portable-toilet": "휴대용 변기", "toilet-coagulant": "변기 응고제", "cat-litter": "고양이 모래",
   "sanitation-bags": "위생 봉투", "thermal-mat": "단열 매트", "child-comfort-kit": "안심 꾸러미",
-  "basic-documents": "서류 사본", "door-window-locks": "문·창 잠금", "door-alarm": "문 알림",
+  "basic-documents": "신분증 사본", "door-window-locks": "현관 보조 잠금", "door-alarm": "문 알림",
   "lock-tools": "자물쇠 공구", "child-carrier": "산악 아기캐리어", "transport-cart": "웨건 수레",
-  "water-sanitation-kit": "물 위생 도구", "hot-water-bag": "온수 주머니",
+  "water-sanitation-kit": "손 소독제", "hot-water-bag": "온수 주머니",
   "portable-radio-communication": "무전기", "emergency-payment-check": "비상 결제",
   "cash-krw": "원화 현금", "cash-usd": "달러 외화", "crypto-cold-wallet": "코인·지갑",
   "protective-goggles": "보호 안경",
+  "digestive-medicine": "소화제",
+  "cold-medicine": "감기약",
+  antidiarrheal: "지사제",
+  "wound-ointment": "상처 연고",
+  "sterile-gauze": "멸균 거즈",
+  "elastic-bandage": "압박 붕대",
+  "adhesive-bandages": "일회용 밴드",
+  "medical-tape": "의료용 테이프",
+  "batteries-c": "C형 건전지",
+  "batteries-d": "D형 건전지",
+  headlamp: "헤드랜턴",
+  "emergency-blanket": "은박 보온포",
+  mouthwash: "가글액",
+  "disposable-tableware": "일회용 식기",
+  "plastic-wrap": "위생 랩",
+  "infant-medicine": "영유아 상비약",
+  "ice-packs": "아이스팩",
+  "charging-cable": "충전 케이블",
+  "spare-shoes": "여벌 신발",
+  "aluminum-tape": "알루미늄 테이프",
+  "cable-ties": "케이블타이",
+  "important-documents": "중요 서류 사본",
+  "window-locks": "창문 잠금",
 };
 
 const OPT_CAT_MAP = {
-  water_cook: new Set(["water-container", "faucet-water-tank", "water-purification-tablets", "portable-stove", "butane-canister", "butane-torch", "self-heating-ration", "rice", "canned-food", "salt-jar", "honey-gift-set", "lighter", "solid-fuel", "manual-can-opener", "insulated-bottle", "cooler-ice-pack", "portable-water-filter", "long-storage-snacks", "water-sanitation-kit"]),
-  power_light: new Set(["radio", "candles", "home-solar-panel", "portable-solar-panel", "power-bank", "portable-power-station", "charging-cables", "portable-radio-communication", "door-alarm", "metal-fuel-can", "fuel-siphon-nozzle"]),
-  care_infant: new Set(["infant-supplies", "prescription-preparedness", "infant-formula", "ready-to-feed-formula", "infant-feeding-supplies", "child-id-card", "child-comfort-kit", "child-carrier"]),
-  gear_protect: new Set(["hand-warmers", "sleeping-bag", "large-plastic-bags", "warm-clothes", "raincoat", "masks", "gas-mask", "gas-mask-filter", "earplugs", "compressed-towel", "rubber-gloves", "rubber-boots", "sealing-tape", "portable-toilet", "toilet-coagulant", "cat-litter", "sanitation-bags", "thermal-mat", "hot-water-bag", "protective-goggles"]),
-  doc_move: new Set(["storage-bin", "emergency-contact-card", "family-photo", "basic-documents", "door-window-locks", "lock-tools", "transport-cart", "emergency-payment-check", "cash-krw", "cash-usd", "crypto-cold-wallet"]),
+  water_cook: new Set(["mouthwash", "disposable-tableware", "plastic-wrap", "ice-packs", "water-container", "faucet-water-tank", "water-purification-tablets", "portable-stove", "butane-canister", "butane-torch", "self-heating-ration", "rice", "canned-food", "salt-jar", "honey-gift-set", "lighter", "solid-fuel", "manual-can-opener", "insulated-bottle", "cooler-ice-pack", "portable-water-filter", "long-storage-snacks", "water-sanitation-kit"]),
+  power_light: new Set(["headlamp", "charging-cable", "radio", "candles", "home-solar-panel", "portable-solar-panel", "power-bank", "portable-power-station", "charging-cables", "portable-radio-communication", "door-alarm", "metal-fuel-can", "fuel-siphon-nozzle"]),
+  care_infant: new Set(["infant-medicine", "infant-supplies", "prescription-preparedness", "infant-formula", "ready-to-feed-formula", "infant-feeding-supplies", "child-id-card", "child-comfort-kit", "child-carrier"]),
+  gear_protect: new Set(["emergency-blanket", "spare-shoes", "aluminum-tape", "cable-ties", "hand-warmers", "sleeping-bag", "large-plastic-bags", "warm-clothes", "raincoat", "masks", "gas-mask", "gas-mask-filter", "earplugs", "compressed-towel", "rubber-gloves", "rubber-boots", "sealing-tape", "portable-toilet", "toilet-coagulant", "cat-litter", "sanitation-bags", "thermal-mat", "hot-water-bag", "protective-goggles"]),
+  doc_move: new Set(["important-documents", "window-locks", "storage-bin", "emergency-contact-card", "family-photo", "basic-documents", "door-window-locks", "lock-tools", "transport-cart", "emergency-payment-check", "cash-krw", "cash-usd", "crypto-cold-wallet"]),
 };
 
 const ROW_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -1241,7 +1264,9 @@ export class KrWarehouseThreeEngine {
     const essentials = snapshot.catalog.filter((i) => !["household", "optional"].includes(i.tier));
     let allOptional = snapshot.catalog.filter((i) => ["household", "optional"].includes(i.tier));
     if (this.onlyActive) allOptional = allOptional.filter((i) => snapshot.items[i.id]?.applicable);
-    if (this.optCategory !== "all" && OPT_CAT_MAP[this.optCategory]) {
+    if (this.optCategory === "custom") {
+      allOptional = allOptional.filter((i) => i.custom === true);
+    } else if (this.optCategory !== "all" && OPT_CAT_MAP[this.optCategory]) {
       allOptional = allOptional.filter((i) => OPT_CAT_MAP[this.optCategory].has(i.id));
     }
     const itemsToShow = this.zone === "optional" ? allOptional : essentials;

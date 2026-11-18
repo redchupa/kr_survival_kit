@@ -5,16 +5,17 @@ const KR_SCRIPT_BASE = (typeof document !== "undefined" && document.currentScrip
 const KR_SURVIVAL_GROUPS = {
   water: new Set(["drinking-water", "water-container", "insulated-bottle", "portable-water-filter", "water-sanitation-kit"]),
   food: new Set(["shelf-stable-meal", "canned-food", "self-heating-ration", "portable-stove", "butane-canister", "lighter", "solid-fuel", "manual-can-opener", "cooler-ice-pack", "long-storage-snacks", "infant-formula", "ready-to-feed-formula", "infant-feeding-supplies"]),
-  power: new Set(["flashlight", "batteries", "radio", "candles", "portable-solar-panel", "power-bank", "portable-power-station", "charging-cables", "door-alarm", "portable-radio-communication"]),
+  power: new Set(["flashlight", "headlamp", "charging-cable", "batteries", "radio", "candles", "portable-solar-panel", "power-bank", "portable-power-station", "charging-cables", "door-alarm", "portable-radio-communication"]),
 };
 
 const KR_OPTIONAL_CATEGORIES = [
   { id: "all", label: "전체" },
-  { id: "water_cook", label: "식수·식량·취사", ids: new Set(["water-container", "faucet-water-tank", "water-purification-tablets", "portable-stove", "butane-canister", "butane-torch", "self-heating-ration", "rice", "canned-food", "salt-jar", "honey-gift-set", "lighter", "solid-fuel", "manual-can-opener", "insulated-bottle", "cooler-ice-pack", "portable-water-filter", "long-storage-snacks", "water-sanitation-kit"]) },
-  { id: "power_light", label: "전원·연료·통신", ids: new Set(["radio", "candles", "home-solar-panel", "portable-solar-panel", "power-bank", "portable-power-station", "charging-cables", "portable-radio-communication", "door-alarm", "metal-fuel-can", "fuel-siphon-nozzle"]) },
-  { id: "care_infant", label: "의료·유아", ids: new Set(["infant-supplies", "prescription-preparedness", "infant-formula", "ready-to-feed-formula", "infant-feeding-supplies", "child-id-card", "child-comfort-kit", "child-carrier"]) },
-  { id: "gear_protect", label: "방호·위생·침구", ids: new Set(["hand-warmers", "sleeping-bag", "large-plastic-bags", "warm-clothes", "raincoat", "masks", "gas-mask", "gas-mask-filter", "earplugs", "compressed-towel", "rubber-gloves", "rubber-boots", "sealing-tape", "portable-toilet", "toilet-coagulant", "cat-litter", "sanitation-bags", "thermal-mat", "hot-water-bag", "protective-goggles"]) },
-  { id: "doc_move", label: "자산·서류·이동", ids: new Set(["storage-bin", "emergency-contact-card", "family-photo", "basic-documents", "door-window-locks", "lock-tools", "transport-cart", "emergency-payment-check", "cash-krw", "cash-usd", "crypto-cold-wallet"]) },
+  { id: "custom", label: "직접 추가", match: (item) => item.custom === true },
+  { id: "water_cook", label: "식수·식량·취사", ids: new Set(["mouthwash", "disposable-tableware", "plastic-wrap", "ice-packs", "water-container", "faucet-water-tank", "water-purification-tablets", "portable-stove", "butane-canister", "butane-torch", "self-heating-ration", "rice", "canned-food", "salt-jar", "honey-gift-set", "lighter", "solid-fuel", "manual-can-opener", "insulated-bottle", "cooler-ice-pack", "portable-water-filter", "long-storage-snacks", "water-sanitation-kit"]) },
+  { id: "power_light", label: "전원·연료·통신", ids: new Set(["headlamp", "charging-cable", "radio", "candles", "home-solar-panel", "portable-solar-panel", "power-bank", "portable-power-station", "charging-cables", "portable-radio-communication", "door-alarm", "metal-fuel-can", "fuel-siphon-nozzle"]) },
+  { id: "care_infant", label: "의료·유아", ids: new Set(["infant-medicine", "infant-supplies", "prescription-preparedness", "infant-formula", "ready-to-feed-formula", "infant-feeding-supplies", "child-id-card", "child-comfort-kit", "child-carrier"]) },
+  { id: "gear_protect", label: "방호·위생·침구", ids: new Set(["emergency-blanket", "spare-shoes", "aluminum-tape", "cable-ties", "hand-warmers", "sleeping-bag", "large-plastic-bags", "warm-clothes", "raincoat", "masks", "gas-mask", "gas-mask-filter", "earplugs", "compressed-towel", "rubber-gloves", "rubber-boots", "sealing-tape", "portable-toilet", "toilet-coagulant", "cat-litter", "sanitation-bags", "thermal-mat", "hot-water-bag", "protective-goggles"]) },
+  { id: "doc_move", label: "자산·서류·이동", ids: new Set(["important-documents", "window-locks", "storage-bin", "emergency-contact-card", "family-photo", "basic-documents", "door-window-locks", "lock-tools", "transport-cart", "emergency-payment-check", "cash-krw", "cash-usd", "crypto-cold-wallet"]) },
 ];
 
 function krStockScale(item) {
@@ -60,6 +61,8 @@ function krSvg(body, idTag) {
 }
 
 // Unified tactical duotone SVG artwork for all 56 catalog items.
+const KR_CUSTOM_PICTOGRAM = krSvg(`<rect x="10" y="10" width="28" height="28" rx="7" fill="#b8c0ff" fill-opacity=".22" stroke="#d6dbff" stroke-width="1.8" stroke-dasharray="4 3"/><path d="M24 17v14M17 24h14" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>`, "custom");
+
 const KR_READY_PICTOGRAMS = {
   "drinking-water": krSvg(`<rect x="18" y="4" width="12" height="5" rx="1.5" fill="#7be0eb" stroke="#dffbff" stroke-width="1.5"/><path d="M18 10h12l4 6v25a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3V16z" fill="#328fa6" fill-opacity=".55" stroke="#9beaf4" stroke-width="1.8"/><rect x="15" y="22" width="18" height="11" rx="1.5" fill="#d9f7fa" fill-opacity=".9"/><path d="M19 27.5h10M24 14v4" stroke="#1d6d82" stroke-width="2" stroke-linecap="round"/>`, "water"),
   "shelf-stable-meal": krSvg(`<path d="M12 10h24l3 32a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2z" fill="#e59a4b" fill-opacity=".28" stroke="#f5c07a" stroke-width="1.8"/><path d="M14 15h20" stroke="#f5c07a" stroke-width="1.6" stroke-dasharray="2 2"/><rect x="16" y="21" width="16" height="14" rx="2" fill="#f7cfa0" fill-opacity=".25" stroke="#f7cfa0" stroke-width="1.5"/><path d="M21 26c0-2 3-2 3-4m3 4c0-2 3-2 3-4" stroke="#ffd89c" stroke-width="1.6" stroke-linecap="round"/>`, "meal"),
@@ -149,6 +152,29 @@ const KR_READY_PICTOGRAMS = {
   "batteries-aaa": krSvg(`<rect x="17" y="12" width="14" height="28" rx="2.5" fill="#72efdd" fill-opacity=".25" stroke="#a6fff2" stroke-width="1.8"/><rect x="21" y="8" width="6" height="4" rx="1" fill="#a6fff2"/><path d="M24 20v6m-3-3h6" stroke="#a6fff2" stroke-width="1.8" stroke-linecap="round"/>`, "battaaa"),
   "batteries-special": krSvg(`<circle cx="24" cy="24" r="12" fill="#90e0ef" fill-opacity=".25" stroke="#caf0f8" stroke-width="1.8"/><circle cx="24" cy="24" r="6" fill="none" stroke="#caf0f8" stroke-width="1.4" stroke-dasharray="2 2"/><path d="M24 20v8m-4-4h8" stroke="#caf0f8" stroke-width="1.6" stroke-linecap="round"/>`, "battspecial"),
   "otc-medicine": krSvg(`<rect x="10" y="15" width="28" height="18" rx="4" fill="#ff9ebb" fill-opacity=".26" stroke="#ffc2d4" stroke-width="1.8"/><path d="M17 24h14M24 19v10" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/><circle cx="33" cy="20" r="2" fill="#ffe066"/>`, "otc"),
+  "digestive-medicine": krSvg(`<rect x="13" y="10" width="22" height="29" rx="4" fill="#9be7a8" fill-opacity=".24" stroke="#c8f7d0" stroke-width="1.8"/><path d="M18 20c3-3 9-3 12 0M18 27c3 3 9 3 12 0" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/><rect x="17" y="6" width="14" height="5" rx="1.5" fill="#c8f7d0"/>`, "digestive-medicine"),
+  "cold-medicine": krSvg(`<rect x="9" y="17" width="30" height="16" rx="8" fill="#ffb4a2" fill-opacity=".28" stroke="#ffd6cc" stroke-width="1.8"/><path d="M24 17v16" stroke="#ffd6cc" stroke-width="1.8"/><path d="M14 11c2-3 5-3 7 0M27 11c2-3 5-3 7 0" fill="none" stroke="#9ed8ff" stroke-width="1.8" stroke-linecap="round"/>`, "cold-medicine"),
+  antidiarrheal: krSvg(`<rect x="12" y="13" width="24" height="24" rx="5" fill="#ffd166" fill-opacity=".22" stroke="#ffe7a3" stroke-width="1.8"/><circle cx="19" cy="21" r="2.4" fill="#ffffff"/><circle cx="29" cy="21" r="2.4" fill="#ffffff"/><circle cx="19" cy="30" r="2.4" fill="#ffffff"/><circle cx="29" cy="30" r="2.4" fill="#ffffff"/>`, "antidiarrheal"),
+  "wound-ointment": krSvg(`<path d="M12 30l14-14 6 6-14 14H12z" fill="#f4a261" fill-opacity=".26" stroke="#ffcf9f" stroke-width="1.8" stroke-linejoin="round"/><path d="M32 22l4-4-6-6-4 4" fill="#ffffff" fill-opacity=".85" stroke="#ffcf9f" stroke-width="1.6"/><path d="M15 33h4" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>`, "wound-ointment"),
+  "sterile-gauze": krSvg(`<rect x="11" y="11" width="26" height="26" rx="2.5" fill="#e9f5ff" fill-opacity=".22" stroke="#d6ecff" stroke-width="1.8"/><path d="M11 20h26M11 28h26M20 11v26M28 11v26" stroke="#d6ecff" stroke-width="1.2" stroke-opacity=".8"/>`, "sterile-gauze"),
+  "elastic-bandage": krSvg(`<circle cx="21" cy="24" r="11" fill="#e5c49f" fill-opacity=".28" stroke="#f5dcbc" stroke-width="1.8"/><circle cx="21" cy="24" r="4" fill="none" stroke="#f5dcbc" stroke-width="1.6"/><path d="M32 24h7v10h-9" fill="#e5c49f" fill-opacity=".28" stroke="#f5dcbc" stroke-width="1.8" stroke-linejoin="round"/>`, "elastic-bandage"),
+  "adhesive-bandages": krSvg(`<rect x="8" y="18" width="32" height="12" rx="6" transform="rotate(-30 24 24)" fill="#f2b880" fill-opacity=".3" stroke="#ffd7ad" stroke-width="1.8"/><rect x="19" y="19.5" width="10" height="9" rx="2" transform="rotate(-30 24 24)" fill="#ffffff" fill-opacity=".8"/>`, "adhesive-bandages"),
+  "medical-tape": krSvg(`<circle cx="24" cy="24" r="12" fill="#ffffff" fill-opacity=".18" stroke="#e8f1f5" stroke-width="2.2"/><circle cx="24" cy="24" r="5" fill="none" stroke="#e8f1f5" stroke-width="1.6"/><path d="M33 31l6 6" stroke="#ff9494" stroke-width="2.4" stroke-linecap="round"/>`, "medical-tape"),
+  "batteries-c": krSvg(`<rect x="15" y="12" width="18" height="26" rx="3" fill="#80ffdb" fill-opacity=".24" stroke="#b8fff0" stroke-width="1.8"/><rect x="21" y="8" width="6" height="4" rx="1" fill="#b8fff0"/><text x="24" y="30" text-anchor="middle" font-size="11" font-weight="800" fill="#ffffff" font-family="sans-serif">C</text>`, "batteries-c"),
+  "batteries-d": krSvg(`<rect x="12" y="11" width="24" height="28" rx="4" fill="#48cae4" fill-opacity=".24" stroke="#a8ecf7" stroke-width="1.8"/><rect x="20" y="7" width="8" height="4" rx="1" fill="#a8ecf7"/><text x="24" y="30" text-anchor="middle" font-size="12" font-weight="800" fill="#ffffff" font-family="sans-serif">D</text>`, "batteries-d"),
+  headlamp: krSvg(`<path d="M9 22c4-8 26-8 30 0" fill="none" stroke="#9ed8eb" stroke-width="2.4" stroke-linecap="round"/><rect x="17" y="19" width="14" height="11" rx="3" fill="#ffd166" fill-opacity=".3" stroke="#ffe7a3" stroke-width="1.8"/><path d="M20 34l-3 6M24 34v7M28 34l3 6" stroke="#ffe066" stroke-width="2" stroke-linecap="round"/>`, "headlamp"),
+  "emergency-blanket": krSvg(`<path d="M10 14h28l-4 20H14z" fill="#e0c068" fill-opacity=".3" stroke="#f5dd8c" stroke-width="1.8" stroke-linejoin="round"/><path d="M15 20l6 8 5-6 7 8" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-opacity=".8"/>`, "emergency-blanket"),
+  mouthwash: krSvg(`<path d="M18 16h12v22a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3z" fill="#5bc0eb" fill-opacity=".28" stroke="#9fe3ff" stroke-width="1.8"/><rect x="20" y="9" width="8" height="7" rx="1.5" fill="#9fe3ff"/><path d="M21 27h6" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>`, "mouthwash"),
+  "disposable-tableware": krSvg(`<ellipse cx="20" cy="30" rx="11" ry="5" fill="#f1faee" fill-opacity=".2" stroke="#e8f4ec" stroke-width="1.8"/><path d="M33 12v26M36 12v8a3 3 0 0 1-6 0v-8" fill="none" stroke="#e8f4ec" stroke-width="1.8" stroke-linecap="round"/>`, "disposable-tableware"),
+  "plastic-wrap": krSvg(`<rect x="8" y="18" width="32" height="12" rx="3" fill="#90e0ef" fill-opacity=".22" stroke="#caf0f8" stroke-width="1.8"/><path d="M14 30c4 6 16 6 20 0" fill="#caf0f8" fill-opacity=".25" stroke="#caf0f8" stroke-width="1.4"/><circle cx="12" cy="24" r="2" fill="#caf0f8"/>`, "plastic-wrap"),
+  "infant-medicine": krSvg(`<path d="M19 12h10v6l3 4v16a3 3 0 0 1-3 3H19a3 3 0 0 1-3-3V22l3-4z" fill="#ffafcc" fill-opacity=".28" stroke="#ffd1e3" stroke-width="1.8" stroke-linejoin="round"/><path d="M20 30h8M24 26v8" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>`, "infant-medicine"),
+  "ice-packs": krSvg(`<rect x="10" y="14" width="28" height="20" rx="5" fill="#a2d2ff" fill-opacity=".3" stroke="#cde6ff" stroke-width="1.8"/><path d="M24 18v12M19 21l10 6M29 21l-10 6" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>`, "ice-packs"),
+  "charging-cable": krSvg(`<path d="M12 36c0-10 8-8 12-14s8-6 12-6" fill="none" stroke="#9ed8eb" stroke-width="2.2" stroke-linecap="round"/><rect x="34" y="11" width="6" height="10" rx="1.5" fill="#cfefff" fill-opacity=".8"/><rect x="8" y="34" width="8" height="6" rx="1.5" fill="#cfefff" fill-opacity=".8"/>`, "charging-cable"),
+  "spare-shoes": krSvg(`<path d="M8 30c0-5 3-11 7-11 2 4 6 5 10 5 6 0 14 2 15 6v4H8z" fill="#8d99ae" fill-opacity=".3" stroke="#c6cfdb" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 34h32" stroke="#c6cfdb" stroke-width="2"/>`, "spare-shoes"),
+  "aluminum-tape": krSvg(`<circle cx="24" cy="24" r="13" fill="#c0c7cf" fill-opacity=".32" stroke="#e3e8ee" stroke-width="2"/><circle cx="24" cy="24" r="5.5" fill="none" stroke="#e3e8ee" stroke-width="1.6"/><path d="M14 16l4 3M30 30l4 3" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>`, "aluminum-tape"),
+  "cable-ties": krSvg(`<path d="M12 34L32 14a3 3 0 0 1 4 4L16 38" fill="none" stroke="#f1faee" stroke-width="2.2" stroke-linecap="round"/><rect x="9" y="31" width="7" height="7" rx="1.5" fill="#f1faee" fill-opacity=".3" stroke="#f1faee" stroke-width="1.6"/><path d="M20 26l2 2M24 22l2 2M28 18l2 2" stroke="#f1faee" stroke-width="1.4"/>`, "cable-ties"),
+  "important-documents": krSvg(`<path d="M15 10h14l6 6v22H15z" fill="#bde0fe" fill-opacity=".24" stroke="#d8ecff" stroke-width="1.8" stroke-linejoin="round"/><path d="M11 14v28h20" fill="none" stroke="#d8ecff" stroke-width="1.6" stroke-opacity=".7"/><path d="M19 22h11M19 27h11M19 32h7" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>`, "important-documents"),
+  "window-locks": krSvg(`<rect x="9" y="10" width="30" height="28" rx="2" fill="#8ecae6" fill-opacity=".18" stroke="#c4e7f6" stroke-width="1.8"/><path d="M24 10v28" stroke="#c4e7f6" stroke-width="1.6"/><rect x="27" y="21" width="7" height="7" rx="1.5" fill="#ffd166" fill-opacity=".85"/>`, "window-locks"),
 };
 
 function krReadyItems(snapshot) {
@@ -198,9 +224,19 @@ const KR_LOCATION_MAX = 60;
 const KR_LOCATION_EXAMPLES = ["현관 팬트리", "주방 팬트리", "베란다 창고", "거실 수납장", "차량 트렁크"];
 const KR_PIN_SVG = '<svg class="pin" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="currentColor"/></svg>';
 
-/** Normalise typed text to what the server accepts: trimmed, single-line, at most 60 chars. */
+// Characters refused in any typed text (server refuses them too); output is escaped as well.
+const KR_FORBIDDEN_TEXT = /[<>"'`&\\]/g;
+const KR_CUSTOM_NAME_MAX = 40;
+const KR_CUSTOM_UNITS = ["개", "병", "팩", "통", "박스", "세트", "켤레", "장", "롤", "kg"];
+const KR_CUSTOM_DATES = [["", "기한 없음 (수량만 점검)"], ["유통기한", "유통기한"], ["소비기한", "소비기한"], ["사용기한", "사용기한 (약·위생용품)"], ["사용 권장기한", "사용 권장기한 (건전지)"]];
+
+/** Normalise typed text to what the server accepts: single line, no markup characters, trimmed, length-capped. */
+function krCleanText(value, max) {
+  return String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(KR_FORBIDDEN_TEXT, "").replace(/\s+/g, " ").trim().slice(0, max).trim();
+}
+
 function krCleanLocation(value) {
-  return String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, KR_LOCATION_MAX).trim();
+  return krCleanText(value, KR_LOCATION_MAX);
 }
 
 /** Distinct locations of one item, the place holding the most stock first. */
@@ -301,7 +337,7 @@ function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item)
     const status = snapshot.summary.items[item.id];
     const ready = readyIds.has(item.id);
     const inactive = !(snapshot.items[item.id]?.applicable ?? !krIsSelectable(item));
-    const pictogram = KR_READY_PICTOGRAMS[item.id] || "◈";
+    const pictogram = KR_READY_PICTOGRAMS[item.id] || KR_CUSTOM_PICTOGRAM;
     const current = status.usable ?? 0;
     // Stock whose package date is still unknown is on the shelf too; show it so a save never looks lost.
     const held = current + (status.unknown_date_quantity ?? 0);
@@ -327,22 +363,22 @@ const KR_READY_SHORT_NAMES = {
   "drinking-water": "생수", "instant-rice": "즉석밥", "cup-noodles": "컵라면", "shelf-stable-meal": "레토르트 간편식",
   "spam-canned-ham": "스팸", "canned-tuna": "참치캔", "canned-pupa": "번데기캔", "canned-whelk": "골뱅이캔", "canned-fruit": "과일캔",
   "canned-food": "기타 통조림", hygiene: "두루마리 휴지", "wet-wipes": "물티슈",
-  flashlight: "손전등", batteries: "AA 건전지", "batteries-aaa": "AAA 건전지", "batteries-special": "특수 건전지",
-  backpack: "대피 가방", blanket: "담요", "first-aid-kit": "응급 처치", "otc-medicine": "상비약",
-  "infant-supplies": "영유아 용품", "prescription-preparedness": "처방약", radio: "자가발전 라디오",
+  flashlight: "손전등", batteries: "AA 건전지", "batteries-aaa": "AAA 건전지", "batteries-special": "버튼셀 건전지",
+  backpack: "대피 가방", blanket: "담요", "first-aid-kit": "소독약", "otc-medicine": "해열진통제",
+  "infant-supplies": "기저귀", "prescription-preparedness": "처방약", radio: "자가발전 라디오",
   "water-container": "급수 용기", "portable-stove": "휴대 버너", "butane-canister": "부탄가스", "self-heating-ration": "발열식 비상식량",
   candles: "양초", "hand-warmers": "손난로", "large-plastic-bags": "대형 비닐", lighter: "라이터",
   "solid-fuel": "고체 연료", "child-id-card": "아이 인식표", "portable-solar-panel": "태양광 패널", "manual-can-opener": "캔 따개",
-  "insulated-bottle": "보온병", "cooler-ice-pack": "냉매", "portable-water-filter": "정수 필터", "storage-bin": "보관함",
-  "long-storage-snacks": "간식", "infant-formula": "분유", "ready-to-feed-formula": "액상 분유", "infant-feeding-supplies": "수유 용품",
-  "power-bank": "보조배터리", "portable-power-station": "휴대 전원", "charging-cables": "충전선", "warm-clothes": "방한복",
+  "insulated-bottle": "보온병", "cooler-ice-pack": "아이스박스", "portable-water-filter": "정수 필터", "storage-bin": "보관함",
+  "long-storage-snacks": "간식", "infant-formula": "분유", "ready-to-feed-formula": "액상 분유", "infant-feeding-supplies": "일회용 젖병",
+  "power-bank": "보조배터리", "portable-power-station": "휴대 전원", "charging-cables": "휴대폰 충전기", "warm-clothes": "여벌 옷",
   raincoat: "우비", masks: "마스크", "rubber-gloves": "고무장갑", "rubber-boots": "장화",
-  "sealing-tape": "밀봉 테이프", "emergency-contact-card": "연락 카드", "family-photo": "가족 사진", "sanitation-bags": "위생 봉투",
-  "thermal-mat": "단열 매트", "child-comfort-kit": "아이 안심 꾸러미", "basic-documents": "서류", "door-window-locks": "문·창 잠금",
-  "door-alarm": "문 알림", "child-carrier": "아이 캐리어", "transport-cart": "운반 수레", "water-sanitation-kit": "물 위생 도구",
+  "sealing-tape": "투명 테이프", "emergency-contact-card": "연락 카드", "family-photo": "가족 사진", "sanitation-bags": "위생 봉투",
+  "thermal-mat": "단열 매트", "child-comfort-kit": "아이 안심 꾸러미", "basic-documents": "신분증 사본", "door-window-locks": "현관 보조 잠금",
+  "door-alarm": "문 알림", "child-carrier": "아이 캐리어", "transport-cart": "운반 수레", "water-sanitation-kit": "손 소독제",
   "hot-water-bag": "온수 주머니", "portable-radio-communication": "무전기", "emergency-payment-check": "비상 결제", "protective-goggles": "보호 안경",
   "faucet-water-tank": "수도꼭지 물통", "water-purification-tablets": "아쿠아탭스",
-  "metal-fuel-can": "철제 기름통", "fuel-siphon-nozzle": "자바라 노즐",
+  "metal-fuel-can": "철제 기름통", "fuel-siphon-nozzle": "주유 펌프",
   "butane-torch": "부탄 토치", rice: "쌀", "spam-canned-ham": "스팸", "canned-tuna": "참치캔",
   "salt-jar": "소금(병)", "honey-gift-set": "벌꿀", "sleeping-bag": "캠핑 침낭",
   "home-solar-panel": "가정용 태양광", "portable-solar-panel": "휴대 태양광",
@@ -352,6 +388,29 @@ const KR_READY_SHORT_NAMES = {
   "toilet-coagulant": "변기 응고제", "cat-litter": "고양이 모래", "lock-tools": "자물쇠 공구",
   "cash-krw": "원화 현금", "cash-usd": "달러 외화", "crypto-cold-wallet": "코인·지갑",
   "child-carrier": "산악 아기캐리어", "transport-cart": "웨건 수레",
+  "digestive-medicine": "소화제",
+  "cold-medicine": "감기약",
+  antidiarrheal: "지사제",
+  "wound-ointment": "상처 연고",
+  "sterile-gauze": "멸균 거즈",
+  "elastic-bandage": "압박 붕대",
+  "adhesive-bandages": "일회용 밴드",
+  "medical-tape": "의료용 테이프",
+  "batteries-c": "C형 건전지",
+  "batteries-d": "D형 건전지",
+  headlamp: "헤드랜턴",
+  "emergency-blanket": "은박 보온포",
+  mouthwash: "가글액",
+  "disposable-tableware": "일회용 식기",
+  "plastic-wrap": "위생 랩",
+  "infant-medicine": "영유아 상비약",
+  "ice-packs": "아이스팩",
+  "charging-cable": "충전 케이블",
+  "spare-shoes": "여벌 신발",
+  "aluminum-tape": "알루미늄 테이프",
+  "cable-ties": "케이블타이",
+  "important-documents": "중요 서류 사본",
+  "window-locks": "창문 잠금",
 };
 
 const KR_STOCK_RANKS = [
@@ -366,8 +425,11 @@ const KR_STOCK_WEIGHTS = {
   "instant-rice": 5, "cup-noodles": 5, "shelf-stable-meal": 5,
   "spam-canned-ham": 3, "canned-tuna": 3, "canned-pupa": 3, "canned-whelk": 3, "canned-fruit": 3,
   hygiene: 4, "wet-wipes": 4,
-  flashlight: 6, batteries: 4, "batteries-aaa": 2, "batteries-special": 2,
-  backpack: 5, blanket: 5, "first-aid-kit": 5, "otc-medicine": 5,
+  flashlight: 6, batteries: 4, "batteries-aaa": 2, "batteries-special": 1, "batteries-c": 1, "batteries-d": 1,
+  backpack: 5, blanket: 5,
+  // First aid and medicine were one bundle each (weight 5); each single product now carries 1.
+  "first-aid-kit": 1, "sterile-gauze": 1, "elastic-bandage": 1, "adhesive-bandages": 1, "medical-tape": 1,
+  "otc-medicine": 1, "digestive-medicine": 1, "cold-medicine": 1, "antidiarrheal": 1, "wound-ointment": 1,
 };
 
 function krStockScore(snapshot) {
@@ -427,7 +489,7 @@ function krStockShelvesOnly(snapshot, escape, showInactive, editing, filter, opt
   const catObj = KR_OPTIONAL_CATEGORIES.find((cat) => cat.id === optCategory) || KR_OPTIONAL_CATEGORIES[0];
   const query = optSearch.trim().toLowerCase();
   const filteredInactive = inactive.filter((item) => {
-    if (catObj.ids && !catObj.ids.has(item.id)) return false;
+    if (catObj.match ? !catObj.match(item) : catObj.ids && !catObj.ids.has(item.id)) return false;
     if (!query) return true;
     const shortName = (KR_READY_SHORT_NAMES[item.id] || "").toLowerCase();
     return item.name.toLowerCase().includes(query) || shortName.includes(query);
@@ -439,7 +501,7 @@ function krStockShelvesOnly(snapshot, escape, showInactive, editing, filter, opt
   const categoryBar = `<div class="opt-toolbar"><div class="opt-cats" role="group" aria-label="선택 물품 분류">${KR_OPTIONAL_CATEGORIES.map((cat) =>
     `<button type="button" data-opt-cat="${cat.id}" aria-pressed="${optCategory === cat.id}">${cat.label}</button>`).join("")}</div><input id="opt-search" type="search" placeholder="품목 검색..." aria-label="미사용 선택 물품 검색" value="${escape(optSearch)}"></div>`;
   const backupBar = `<div class="backup-bar"><button type="button" id="backup-export">💾 재고 백업 저장 (JSON)</button><button type="button" id="backup-import-btn">📂 백업 복원</button><input type="file" id="backup-import" accept="application/json,.json" hidden aria-hidden="true" tabindex="-1"></div>`;
-  return shelves + `<section class="ready-panel" aria-labelledby="optional-shelf-title"><div class="shelf-head"><h3 id="optional-shelf-title">선택 물품 <span>사용 중 ${active.length}종 · 완비 ${ready.filter(krIsSelectable).length}종</span></h3></div>
+  return shelves + `<section class="ready-panel" aria-labelledby="optional-shelf-title"><div class="shelf-head"><h3 id="optional-shelf-title">선택 물품 <span>사용 중 ${active.length}종 · 완비 ${ready.filter(krIsSelectable).length}종</span></h3><button type="button" id="add-custom" class="add-custom" ${editing ? "disabled" : ""}>＋ 물품 직접 추가</button></div>
     ${active.length ? krReadyGrid(snapshot, escape, active, editing, quickMode) : '<p class="ready-empty">표시할 선택 물품이 없습니다.</p>'}
     ${inactive.length && filter === "all" ? `<details id="optional-shelf" ${showInactive ? "open" : ""}><summary>아직 사용하지 않는 물품 ${inactive.length}종 보기</summary>${categoryBar}${krReadyGrid(snapshot, escape, filteredInactive, editing, false)}</details>` : ""}${backupBar}</section>`;
 }
@@ -447,8 +509,8 @@ function krStockShelvesOnly(snapshot, escape, showInactive, editing, filter, opt
 const KR_RECORD_MISSIONS = [
   { id: "water", title: "마실 물 기록", ids: ["drinking-water"], mode: "all", art: KR_READY_PICTOGRAMS["drinking-water"] },
   { id: "food", title: "먹을거리 기록", ids: ["instant-rice", "cup-noodles", "shelf-stable-meal", "spam-canned-ham", "canned-tuna", "canned-pupa", "canned-whelk", "canned-fruit", "canned-food", "self-heating-ration"], mode: "any", art: KR_READY_PICTOGRAMS["spam-canned-ham"] },
-  { id: "light", title: "빛·전원 기록", ids: ["flashlight", "batteries", "batteries-aaa", "batteries-special", "power-bank"], mode: "any", art: KR_READY_PICTOGRAMS.flashlight },
-  { id: "care", title: "구급·상비약 기록", ids: ["first-aid-kit", "otc-medicine"], mode: "any", art: KR_READY_PICTOGRAMS["first-aid-kit"] },
+  { id: "light", title: "빛·전원 기록", ids: ["flashlight", "batteries", "batteries-aaa", "batteries-special", "batteries-c", "batteries-d", "power-bank"], mode: "any", art: KR_READY_PICTOGRAMS.flashlight },
+  { id: "care", title: "구급·상비약 기록", ids: ["first-aid-kit", "sterile-gauze", "elastic-bandage", "adhesive-bandages", "medical-tape", "otc-medicine", "digestive-medicine", "cold-medicine", "antidiarrheal", "wound-ointment"], mode: "any", art: KR_READY_PICTOGRAMS["first-aid-kit"] },
 ];
 
 function krMissionState(snapshot) {
@@ -533,6 +595,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._optCategory = "all";
     this._optSearch = "";
     this._quickMode = false;
+    this._customDraft = null;
     let savedView;
     try { savedView = window.localStorage?.getItem("kr_survival_kit_view"); } catch { /* optional */ }
     this._viewMode = savedView === "3d" ? "3d" : "2d";
@@ -550,7 +613,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
   }
 
   connectedCallback() {
-    this._timer = window.setInterval(() => { if (!this._draft) this._load(); }, 30000);
+    this._timer = window.setInterval(() => { if (!this._draft && !this._customDraft) this._load(); }, 30000);
     this._clockTimer = window.setInterval(() => this._updateAtmosphere(), 30000);
   }
 
@@ -798,6 +861,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       schema: "kr-survival-kit-backup-v1",
       exported_at: new Date().toISOString(),
       household_size: this._snapshot.household_size ?? 4,
+      custom_items: this._snapshot.custom_items ?? {},
       items: this._snapshot.items ?? {},
     }, null, 2);
     const blob = new Blob([payload], { type: "application/json" });
@@ -837,7 +901,13 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       return;
     }
     const catalog = new Map(this._snapshot.catalog.map((item) => [item.id, item]));
-    const entries = Object.entries(items).filter(([id, rec]) => catalog.has(id) && rec && typeof rec === "object");
+    // Custom items from the backup: reuse one with the same name here, otherwise create it on restore.
+    const backupCustoms = parsed.custom_items && typeof parsed.custom_items === "object" && !Array.isArray(parsed.custom_items) ? parsed.custom_items : {};
+    const customPlan = Object.entries(backupCustoms).filter(([id, def]) => /^custom-[1-9][0-9]{0,5}$/.test(id) && def && typeof def === "object")
+      .map(([id, def]) => ({ id, name: krCleanText(def.name, KR_CUSTOM_NAME_MAX), unit: KR_CUSTOM_UNITS.includes(def.unit) ? def.unit : "개",
+        date: def.date_kind === "expiry" && KR_CUSTOM_DATES.some(([value]) => value && value === def.date_label) ? def.date_label : def.date_kind === "expiry" ? "유통기한" : "" }))
+      .filter((plan) => plan.name);
+    const entries = Object.entries(items).filter(([id, rec]) => (catalog.has(id) || customPlan.some((plan) => plan.id === id)) && rec && typeof rec === "object");
     const people = parsed.household_size;
     const restorePeople = Number.isInteger(people) && people >= 1 && people <= 99 && people !== this._snapshot.household_size;
     if (!entries.length && !restorePeople) {
@@ -865,7 +935,22 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
           failed.push(`가구 인원(${error.message || "오류"})`);
         }
       }
-      for (const [itemId, rec] of entries) {
+      const idMap = new Map();
+      for (const plan of customPlan) {
+        const existing = this._snapshot.catalog.find((item) => item.custom && item.name.toLowerCase() === plan.name.toLowerCase());
+        if (existing) { idMap.set(plan.id, existing.id); continue; }
+        try {
+          const created = await this._call("add_custom_item", { revision, name: plan.name, unit: plan.unit,
+            date_kind: plan.date ? "expiry" : "inspection", ...(plan.date ? { date_label: plan.date } : {}) });
+          revision = created.revision;
+          idMap.set(plan.id, created.item_id);
+        } catch (error) {
+          failed.push(plan.name);
+        }
+      }
+      for (const [backupId, rec] of entries) {
+        const itemId = idMap.get(backupId) || (catalog.has(backupId) && !catalog.get(backupId).custom ? backupId : null);
+        if (!itemId) continue;
         try {
           const result = await this._call("set_item", {
             item_id: itemId,
@@ -882,7 +967,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
           revision = result.revision;
           restored += 1;
         } catch (error) {
-          failed.push(KR_READY_SHORT_NAMES[itemId] || catalog.get(itemId).name);
+          failed.push(KR_READY_SHORT_NAMES[itemId] || catalog.get(itemId)?.name || itemId);
           if (/changed|revision/i.test(error.message || "")) {
             revision = (await this._call("get_inventory")).revision;
           }
@@ -897,6 +982,66 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._message = failed.length
       ? `백업에서 ${restored}개 품목을 복원했고, ${failed.length}건은 값이 올바르지 않아 건너뛰었습니다: ${failed.slice(0, 8).join(", ")}${failed.length > 8 ? " 외" : ""}`
       : `백업에서 ${restored}개 품목${restorePeople ? `과 가구 인원 ${people}명` : ""}을 복원했습니다.`;
+    this._render();
+  }
+
+  async _addCustom() {
+    if (this._saving || !this._customDraft) return;
+    const name = krCleanText(this._customDraft.name, KR_CUSTOM_NAME_MAX);
+    const { unit, date } = this._customDraft;
+    if (!name) {
+      this._message = "물품 이름을 입력하세요.";
+      this._render();
+      return;
+    }
+    if (this._snapshot.catalog.some((item) => item.name.toLowerCase() === name.toLowerCase())) {
+      this._message = `"${name}"은(는) 이미 있는 물품입니다. 목록에서 찾아 수정하세요.`;
+      this._render();
+      return;
+    }
+    this._saving = true;
+    try {
+      const result = await this._call("add_custom_item", {
+        revision: this._snapshot.revision, name, unit,
+        date_kind: date ? "expiry" : "inspection", ...(date ? { date_label: date } : {}),
+      });
+      this._customDraft = null;
+      this._saving = false;
+      await this._load();
+      const item = this._snapshot?.catalog.find((entry) => entry.id === result.item_id);
+      this._message = `${name}을(를) 추가했습니다. 수량을 입력하세요.`;
+      if (item) this._edit(item, false);
+      else this._render();
+      return;
+    } catch (error) {
+      this._message = /changed|revision/i.test(error.message || "")
+        ? "다른 수정이 먼저 저장됐습니다. 다시 추가를 눌러 주세요."
+        : /exists/i.test(error.message || "") ? "같은 이름의 물품이 이미 있습니다."
+        : `물품을 추가하지 못했습니다. ${error.message || ""}`;
+      if (/changed|revision/i.test(error.message || "")) await this._load();
+    }
+    this._saving = false;
+    this._render();
+  }
+
+  async _removeCustom() {
+    if (this._saving || !this._draft) return;
+    const item = this._snapshot.catalog.find((entry) => entry.id === this._draft.id);
+    if (!item?.custom || !window.confirm(`직접 추가한 "${item.name}" 물품과 재고 기록을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    this._saving = true;
+    try {
+      await this._call("remove_custom_item", { revision: this._snapshot.revision, item_id: item.id });
+      this._draft = null;
+      this._shelfEditId = null;
+      await this._load();
+      this._message = `${item.name} 물품을 삭제했습니다.`;
+    } catch (error) {
+      this._message = /changed|revision/i.test(error.message || "")
+        ? "다른 수정이 먼저 저장됐습니다. 최신 재고를 확인하고 다시 삭제하세요."
+        : "삭제하지 못했습니다. HA 로그를 확인한 뒤 다시 시도하세요.";
+      await this._load();
+    }
+    this._saving = false;
     this._render();
   }
 
@@ -944,8 +1089,14 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const draftRecommendation = recommendations.get(this._draft?.id);
     const noteCoveredByBasis = draftItem?.note && draftRecommendation?.basis?.includes(draftItem.note);
     const labelCheckDays = snapshot?.label_check_days?.[draftItem?.id] ?? 7;
-    const draftIcon = draftItem ? (KR_READY_PICTOGRAMS[draftItem.id] || "") : "";
+    const draftIcon = draftItem ? (KR_READY_PICTOGRAMS[draftItem.id] || KR_CUSTOM_PICTOGRAM) : "";
     const knownPlaces = krAllLocations(snapshot);
+    const custom = this._customDraft;
+    const customForm = custom && !this._draft ? `<form id="custom-editor"><div class="dialog-head"><span class="dialog-art" aria-hidden="true">${KR_CUSTOM_PICTOGRAM}</span><div><h3 id="item-dialog-title" tabindex="-1">물품 직접 추가</h3><p class="dialog-status">목록에 없는 물품을 우리 집 물품으로 추가합니다.</p></div></div>` +
+      `<label for="custom-name">물품 이름 <small>(최대 ${KR_CUSTOM_NAME_MAX}자)</small></label><input id="custom-name" type="text" required maxlength="${KR_CUSTOM_NAME_MAX}" autocomplete="off" placeholder="예: 캠핑용 랜턴, 반려견 사료" value="${escape(custom.name)}" aria-describedby="custom-name-help"><p id="custom-name-help" class="item-note">꺾쇠(&lt; &gt;)·따옴표·&amp; 같은 특수문자는 자동으로 빠집니다.</p>` +
+      `<label for="custom-unit">단위</label><select id="custom-unit">${KR_CUSTOM_UNITS.map((unit) => `<option value="${unit}" ${custom.unit === unit ? "selected" : ""}>${unit}</option>`).join("")}</select>` +
+      `<label for="custom-date">기한 관리</label><select id="custom-date">${KR_CUSTOM_DATES.map(([value, text]) => `<option value="${value}" ${custom.date === value ? "selected" : ""}>${text}</option>`).join("")}</select>` +
+      `<div class="actions"><button type="submit" class="primary" ${this._saving ? "disabled" : ""}>추가하고 수량 입력</button><button type="button" id="custom-cancel">취소</button></div></form>` : "";
     const edit = this._draft && draftItem ? `<form id="editor"><div class="dialog-head"><span class="dialog-art" aria-hidden="true">${draftIcon}</span><div><h3 id="item-dialog-title" tabindex="-1">${escape(draftItem.name)} 수정</h3><p class="dialog-status">현재 ${escape(krStockText(draftItem, (draftItem.status.usable ?? 0) + (draftItem.status.unknown_date_quantity ?? 0)))} · ${states[draftItem.status.state]} · 실사 ${escape(draftItem.status.verified_on || "없음")}${draftItem.status.next_review_on ? ` · 다음 ${escape(draftItem.status.next_review_on)}` : ""}</p></div></div>` +
       (draftItem.status.target != null ? `<p class="recommendation">${people}인 가구 목표 <strong>${escape(krStockText(draftItem, draftItem.status.target))}</strong></p>` : "") +
       (draftItem.examples ? `<p class="item-note">${escape(draftItem.examples)}</p>` : "") +
@@ -977,7 +1128,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       `<label class="check-row"><input id="applicable" type="checkbox" ${this._draft.applicable ? "checked" : ""}> 우리 집에서 관리</label>` +
       `<label for="review-interval">재고 점검 주기 (일)</label><input id="review-interval" type="number" min="1" max="3650" step="1" value="${escape(this._draft.review_interval_days)}" placeholder="기본 ${escape(snapshot.default_review_interval_days ?? 30)}일"><p class="item-note">마지막 저장일로부터 이 기간이 지나면 실사 필요로 표시됩니다.</p></details>` +
       `<div class="actions"><button type="submit" class="primary">저장</button><button type="button" id="cancel">취소</button>` +
-      `${snapshot.items[this._draft.id] ? `<button type="button" id="delete" class="danger">기록 삭제</button>` : ""}</div></form>` : "";
+      `${draftItem.custom ? `<button type="button" id="remove-custom" class="danger">이 물품 삭제</button>` : snapshot.items[this._draft.id] ? `<button type="button" id="delete" class="danger">기록 삭제</button>` : ""}</div></form>` : "";
     const counts = snapshot?.summary;
     const filters = [["all", "전체", null], ["shortage", "부족", counts?.shortage_count],
       ["needs_check", "확인 필요", counts?.needs_check_count], ["expiring", "기한 임박", counts?.expiring_count]];
@@ -1009,7 +1160,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .item-note{font-size:.84rem;opacity:.88}
       label{display:block;margin:.65rem 0 .25rem;font-weight:600;font-size:.9rem}
       label.check-row{display:flex;align-items:center;gap:.5rem;margin:.6rem 0;cursor:pointer}
-      input:not([type=checkbox]){box-sizing:border-box;width:100%;min-height:42px;padding:.45rem .6rem;font:inherit;color:var(--primary-text-color,#173048);background:var(--card-background-color,#fff);border:1px solid #5c7a8a;border-radius:8px}
+      input:not([type=checkbox]),#custom-editor select{box-sizing:border-box;width:100%;min-height:42px;padding:.45rem .6rem;font:inherit;color:var(--primary-text-color,#173048);background:var(--card-background-color,#fff);border:1px solid #5c7a8a;border-radius:8px}
       .lot-edit{min-inline-size:0;border:1px solid var(--divider-color,#3b5868);border-radius:10px;padding:.75rem;margin:.65rem 0;background:rgba(0,0,0,.06)}
       .lot-edit legend{font-weight:750;font-size:.88rem;padding:0 .35rem}.lot-total{display:block;margin-top:.45rem;font-weight:750;color:var(--kr-accent,#8fe6ee)}
       .field-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}.qty-row{display:flex;gap:.35rem;align-items:center}.qty-row input{flex:1;min-width:0}
@@ -1102,7 +1253,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .stock-label{font-size:.71rem;font-weight:700;color:#d6edf0}
       .pin{flex:none;vertical-align:-1px}
       .ready-loc{display:flex;align-items:flex-start;justify-content:center;gap:3px;max-width:100%;box-sizing:border-box;padding:2px 7px;border-radius:8px;background:rgba(255,209,102,.13);border:1px solid rgba(255,209,102,.35);color:#ffe3a3;font-size:.68rem;font-weight:700;line-height:1.35}
-      .ready-loc .pin{margin-top:2px}.ready-loc .loc-more{flex:none;font-weight:800;opacity:.9}
+      .ready-loc .pin{margin-top:2px}.add-custom{margin-inline-start:auto;min-height:36px;padding:.3rem .8rem;border-radius:8px;border:1px dashed rgba(184,192,255,.7);background:rgba(184,192,255,.1);color:inherit;font:inherit;font-size:.82rem;font-weight:800;cursor:pointer}.add-custom:disabled{opacity:.5;cursor:not-allowed}.add-custom:focus-visible{outline:3px solid #ffd899;outline-offset:2px}#custom-editor select,#custom-editor input{width:100%;box-sizing:border-box}.ready-loc .loc-more{flex:none;font-weight:800;opacity:.9}
       .ready-loc>span{min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:keep-all;overflow-wrap:anywhere}
       .location-panel>details>summary{list-style:none;cursor:pointer}.location-panel>details>summary::-webkit-details-marker{display:none}
       .location-panel>details>summary h3{display:flex;align-items:center;gap:.4rem;margin:0}.location-panel>details>summary h3::after{content:"+";margin-inline-start:auto;font-weight:800;opacity:.7}.location-panel>details[open]>summary h3::after{content:"−"}
@@ -1149,7 +1300,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .dialog-art svg{width:34px;height:34px}
       #item-dialog h3{font-size:1.2rem;margin:0}
       .dialog-status{font-size:.82rem;margin:.2rem 0 0;color:var(--kr-muted,#b8d6dc)}
-      #item-dialog input{background:var(--kr-bg,#0c1923);color:inherit}
+      #item-dialog input,dialog select{background:var(--kr-bg,#0c1923);color:inherit}
       #item-dialog button{color:inherit}
       #item-dialog button.primary{background:var(--kr-accent,#1b8d96);color:var(--kr-accent-ink,#fff);border-color:transparent}
       .shelf-message{font-size:.86rem;padding:.55rem .8rem;border-radius:8px;background:rgba(25,127,131,.18);margin-top:.65rem}
@@ -1198,7 +1349,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     :host([data-kr-themed]) .add-lot{border-color:var(--kr-accent);color:var(--kr-accent)}
     :host([data-kr-themed]) .quick-bar .qbtn[data-dir="up"]{color:var(--kr-accent)}
     :host([data-kr-themed]) .quick-bar .qbtn:hover:not(:disabled){background:var(--kr-glow);border-color:var(--kr-accent)}
-    </style><ha-card>${edit ? `<dialog id="item-dialog" aria-labelledby="item-dialog-title">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit}</dialog>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨">${survChip}<span id="local-clock">--:--</span><span id="local-weather" hidden></span><div class="view-switch" role="group" aria-label="창고 보기"><button type="button" data-view-mode="2d" aria-pressed="${this._viewMode === "2d"}">2D 선반</button><button type="button" data-view-mode="3d" aria-pressed="${this._viewMode === "3d"}">3D 창고</button></div><button type="button" id="refresh" aria-label="재고 새로고침" title="재고 새로고침">↻</button></div></div>` +
+    </style><ha-card>${edit || customForm ? `<dialog id="item-dialog" aria-labelledby="item-dialog-title">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit || customForm}</dialog>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨">${survChip}<span id="local-clock">--:--</span><span id="local-weather" hidden></span><div class="view-switch" role="group" aria-label="창고 보기"><button type="button" data-view-mode="2d" aria-pressed="${this._viewMode === "2d"}">2D 선반</button><button type="button" data-view-mode="3d" aria-pressed="${this._viewMode === "3d"}">3D 창고</button></div><button type="button" id="refresh" aria-label="재고 새로고침" title="재고 새로고침">↻</button></div></div>` +
       (!snapshot ? `<p class="hero-copy">${this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` : "") +
       `${signals}</div><div class="status-disclosures">${krStockRankView(snapshot, this._rankOpen)}${krMissionView(snapshot, escape, animateMission, this._missionOpen)}</div>` +
       (!edit && this._message ? `<p class="shelf-message" role="status">${escape(this._message)}</p>` : "") +
@@ -1213,7 +1364,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       if (!previousDialog) dialog.querySelector("h3")?.focus({ preventScroll: true });
       dialog.addEventListener("cancel", (event) => {
         event.preventDefault();
-        dialog.querySelector("#cancel").click();
+        (dialog.querySelector("#cancel") || dialog.querySelector("#custom-cancel"))?.click();
       });
     }
     this.shadowRoot.querySelectorAll(".lot-edit").forEach((row) => {
@@ -1359,6 +1510,39 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       this._returnToShelf();
     });
     this.shadowRoot.querySelector("#delete")?.addEventListener("click", () => this._delete());
+    this.shadowRoot.querySelector("#remove-custom")?.addEventListener("click", () => this._removeCustom());
+    this.shadowRoot.querySelector("#add-custom")?.addEventListener("click", () => {
+      if (this._draft || this._saving) return;
+      this._customDraft = { name: "", unit: "개", date: "" };
+      this._message = "";
+      this._render();
+      this.shadowRoot.querySelector("#custom-name")?.focus({ preventScroll: true });
+    });
+    const customName = this.shadowRoot.querySelector("#custom-name");
+    customName?.addEventListener("input", () => {
+      // Drop refused characters as they are typed so the field always shows what will be saved.
+      const cleaned = customName.value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(KR_FORBIDDEN_TEXT, "");
+      if (cleaned !== customName.value) {
+        const pos = Math.max(0, (customName.selectionStart ?? cleaned.length) - (customName.value.length - cleaned.length));
+        customName.value = cleaned;
+        customName.setSelectionRange(pos, pos);
+      }
+      this._customDraft.name = customName.value;
+    });
+    this.shadowRoot.querySelector("#custom-unit")?.addEventListener("change", (e) => { this._customDraft.unit = e.target.value; });
+    this.shadowRoot.querySelector("#custom-date")?.addEventListener("change", (e) => { this._customDraft.date = e.target.value; });
+    this.shadowRoot.querySelector("#custom-editor")?.addEventListener("submit", (event) => { event.preventDefault(); this._addCustom(); });
+    this.shadowRoot.querySelector("#custom-cancel")?.addEventListener("click", () => {
+      if (this._saving) return;
+      this._customDraft = null;
+      this._message = "";
+      this._render();
+      this.shadowRoot.querySelector("#add-custom")?.focus({ preventScroll: true });
+    });
+    this.shadowRoot.querySelectorAll("input.location").forEach((input) => input.addEventListener("input", () => {
+      const cleaned = input.value.replace(KR_FORBIDDEN_TEXT, "");
+      if (cleaned !== input.value) input.value = cleaned;
+    }));
     if (keptStage) {
       this.shadowRoot.querySelector(".warehouse-3d-stage")?.replaceWith(keptStage);
       this._engine3d.rebuild();
@@ -1386,7 +1570,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       const saveEnv = () => {
         try { window.localStorage?.setItem("kr_survival_kit_3d_env", JSON.stringify(envPrefs)); } catch { /* private mode */ }
       };
-      import(`${base}kr-warehouse-3d.js?v=0.9.2`).then(({ KrWarehouseThreeEngine }) => {
+      import(`${base}kr-warehouse-3d.js?v=0.10.0`).then(({ KrWarehouseThreeEngine }) => {
         if (!this.shadowRoot.contains(canvas3d)) return;
         this._engine3d = new KrWarehouseThreeEngine(
           canvas3d, tooltip3d,
@@ -1698,7 +1882,7 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       sheet.rows.map((row) => `<li class="time-row"><div class="time-rail"><span class="time-dot" aria-hidden="true"></span><span class="time-when">${esc(row.when)}</span></div><div class="time-copy"><h4>${esc(row.title)}</h4><p>${esc(row.text)}</p></div></li>`).join("");
     const sheetHeading = sheet.id === "field-skills" ? "이동·위생 점검" : sheet.layout === "reference" ? "장비 사용 점검" : "상황이 이어질 때";
     const sheetSummary = sheet.id === "field-skills" ? "평시에 경로와 시설을 확인하고, 현장에서는 공식 지시를 먼저 따르세요." : sheet.layout === "reference" ? "제품 설명서와 표시를 먼저 확인하세요." : "새 경보와 현장 지시가 나오면 그 안내를 먼저 따르세요.";
-    const sources = Object.values(guide.sources).filter((source) => source.url);
+    const sources = Object.values(guide.sources).filter((source) => typeof source.url === "string" && /^https:\/\//i.test(source.url)); // only https links are rendered
     const uniqueSources = [...new Map(sources.map((source) => [source.url.replace("https://www.", "https://"), source])).values()];
     const alertTone = scenario.kind === "민방공 경보" ? "danger" : scenario.kind === "생활 기반 장애" ? "warn" : "info";
     const haPlayers = Object.entries(this._hass?.states || {})

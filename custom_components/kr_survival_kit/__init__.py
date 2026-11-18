@@ -14,7 +14,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PLATFORMS
 from .dashboard import async_register_dashboard
-from .inventory import DEFAULT_HOUSEHOLD_SIZE, LABEL_CHECK_DAYS, MAX_AMOUNT, MAX_REVIEW_DAYS, Inventory, InventoryError, RevisionConflict, summarize
+from .inventory import CUSTOM_UNITS, DATE_LABELS, DEFAULT_HOUSEHOLD_SIZE, LABEL_CHECK_DAYS, MAX_AMOUNT, MAX_REVIEW_DAYS, Inventory, InventoryError, RevisionConflict, summarize
 from .mqtt_publish import MqttPublisher, async_remove_discovery
 
 
@@ -38,19 +38,19 @@ def _review_interval(value):
 
 SET_SCHEMA = vol.Schema({
     vol.Optional("entry_id"): str,
-    vol.Required("item_id"): str,
+    vol.Required("item_id"): vol.All(str, vol.Length(min=1, max=80)),
     vol.Required("revision"): _nonnegative_int,
     vol.Required("applicable"): bool,
     vol.Required("target"): vol.Any(None, _nonnegative_int),
-    vol.Required("lots"): [_lot],
+    vol.Required("lots"): vol.All([_lot], vol.Length(max=200)),
     vol.Required("confirm"): bool,
     vol.Optional("apply_date_defaults", default=False): bool,
     vol.Optional("review_interval_days"): _review_interval,
-    vol.Optional("verified_on"): vol.Any(None, str),
+    vol.Optional("verified_on"): vol.Any(None, vol.All(str, vol.Length(max=10))),
 })
 DELETE_SCHEMA = vol.Schema({
     vol.Optional("entry_id"): str,
-    vol.Required("item_id"): str,
+    vol.Required("item_id"): vol.All(str, vol.Length(min=1, max=80)),
     vol.Required("revision"): _nonnegative_int,
 })
 HOUSEHOLD_SCHEMA = vol.Schema({
@@ -59,6 +59,20 @@ HOUSEHOLD_SCHEMA = vol.Schema({
     vol.Required("household_size"): vol.All(_nonnegative_int, vol.Range(min=1, max=99)),
 })
 GET_SCHEMA = vol.Schema({vol.Optional("entry_id"): str})
+ADD_CUSTOM_SCHEMA = vol.Schema({
+    vol.Optional("entry_id"): str,
+    vol.Required("revision"): _nonnegative_int,
+    vol.Required("name"): vol.All(str, vol.Length(min=1, max=40)),
+    vol.Required("unit"): vol.In(CUSTOM_UNITS),
+    vol.Required("date_kind"): vol.In(("expiry", "inspection")),
+    vol.Optional("date_label"): vol.Any(None, vol.In(DATE_LABELS)),
+})
+REMOVE_CUSTOM_SCHEMA = vol.Schema({
+    vol.Optional("entry_id"): str,
+    vol.Required("revision"): _nonnegative_int,
+    vol.Required("item_id"): vol.All(str, vol.Length(min=1, max=20)),
+})
+SERVICES = ("set_item", "delete_item", "set_household_size", "get_inventory", "add_custom_item", "remove_custom_item")
 
 
 async def async_setup_entry(hass, entry):
@@ -100,6 +114,14 @@ async def async_setup_entry(hass, entry):
             DOMAIN, "get_inventory", _get_inventory(hass), schema=GET_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
+        hass.services.async_register(
+            DOMAIN, "add_custom_item", _add_custom_item(hass), schema=ADD_CUSTOM_SCHEMA,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
+        hass.services.async_register(
+            DOMAIN, "remove_custom_item", _remove_custom_item(hass), schema=REMOVE_CUSTOM_SCHEMA,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
     await async_register_dashboard(hass, entry, household, guide, quiz)
     return True
 
@@ -111,7 +133,7 @@ async def async_unload_entry(hass, entry):
         await publisher.close()
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        for service in ("set_item", "delete_item", "set_household_size", "get_inventory"):
+        for service in SERVICES:
             hass.services.async_remove(DOMAIN, service)
     return unloaded
 
@@ -182,6 +204,35 @@ def _set_household_size(hass):
         inventory, _ = await _admin_inventory(hass, call)
         try:
             revision = await inventory.set_household_size(call.data["revision"], call.data["household_size"])
+        except InventoryError as error:
+            raise HomeAssistantError(str(error)) from error
+        except OSError as error:
+            raise HomeAssistantError("Inventory save failed; previous values are still active") from error
+        return {"revision": revision}
+    return handle
+
+
+def _add_custom_item(hass):
+    async def handle(call):
+        inventory, _ = await _admin_inventory(hass, call)
+        data = call.data
+        try:
+            revision, item_id = await inventory.add_custom_item(
+                data["revision"], data["name"], data["unit"], data["date_kind"], data.get("date_label"),
+            )
+        except InventoryError as error:
+            raise HomeAssistantError(str(error)) from error
+        except OSError as error:
+            raise HomeAssistantError("Inventory save failed; previous values are still active") from error
+        return {"revision": revision, "item_id": item_id}
+    return handle
+
+
+def _remove_custom_item(hass):
+    async def handle(call):
+        inventory, _ = await _admin_inventory(hass, call)
+        try:
+            revision = await inventory.remove_custom_item(call.data["revision"], call.data["item_id"])
         except InventoryError as error:
             raise HomeAssistantError(str(error)) from error
         except OSError as error:

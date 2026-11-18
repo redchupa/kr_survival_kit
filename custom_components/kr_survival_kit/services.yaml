@@ -76,3 +76,51 @@ set_household_size:
       name: 통합 항목 ID
       selector:
         text:
+
+add_custom_item:
+  name: Add custom item
+  description: Add a household item that is not in the built-in catalog. Administrator only.
+  fields:
+    revision:
+      name: Current revision
+      required: true
+      example: 3
+    name:
+      name: Item name
+      description: 1-40 characters. The characters < > " ' ` & and backslash are not allowed.
+      required: true
+      example: 캠핑용 랜턴
+    unit:
+      name: Unit
+      required: true
+      example: 개
+      selector:
+        select:
+          options: ["개", "병", "팩", "통", "박스", "세트", "켤레", "장", "롤", "kg"]
+    date_kind:
+      name: Date tracking
+      description: expiry to record a use-by date, inspection for quantity checks only.
+      required: true
+      example: inspection
+      selector:
+        select:
+          options: ["expiry", "inspection"]
+    date_label:
+      name: Date wording
+      example: 사용기한
+      selector:
+        select:
+          options: ["유통기한", "소비기한", "사용기한", "사용 권장기한"]
+
+remove_custom_item:
+  name: Remove custom item
+  description: Delete a custom item and its stock record. Administrator only.
+  fields:
+    revision:
+      name: Current revision
+      required: true
+      example: 4
+    item_id:
+      name: Custom item ID
+      required: true
+      example: custom-1

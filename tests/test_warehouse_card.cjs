@@ -11,7 +11,7 @@ class MockElement {
   attachShadow() { this.shadowRoot = { querySelector: (selector) => elements[selector] }; }
 }
 const context = { HTMLElement: MockElement, customElements: { define() {}, get() {} }, window: { customCards: [], requestAnimationFrame: (callback) => callback() }, Intl, Date };
-vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse; globalThis.daysUntil = krDaysUntil; globalThis.addMonths = krAddMonths; globalThis.survivalDays = krSurvivalDays; globalThis.urgentQuests = krUrgentQuests; globalThis.expiringStrip = krExpiringStrip; globalThis.quickPlan = krQuickPlan; globalThis.quickStep = krQuickStep; globalThis.lotTotal = krLotTotal; globalThis.dateLabel = krDateLabel; globalThis.expiryPresets = krExpiryPresets;", context);
+vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse; globalThis.daysUntil = krDaysUntil; globalThis.addMonths = krAddMonths; globalThis.survivalDays = krSurvivalDays; globalThis.urgentQuests = krUrgentQuests; globalThis.expiringStrip = krExpiringStrip; globalThis.quickPlan = krQuickPlan; globalThis.quickStep = krQuickStep; globalThis.lotTotal = krLotTotal; globalThis.dateLabel = krDateLabel; globalThis.expiryPresets = krExpiryPresets; globalThis.cleanText = krCleanText; globalThis.cleanLocation = krCleanLocation; globalThis.customIcon = KR_CUSTOM_PICTOGRAM; globalThis.optCats = KR_OPTIONAL_CATEGORIES;", context);
 
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -194,3 +194,18 @@ console.log("quick ±1 scenarios passed");
   assert.equal(context.expiryPresets({ id: "spam-canned-ham" }).map(([months]) => months).join(","), "6,12,24");
 }
 console.log("use-by date labels passed");
+
+// Typed text drops markup characters before it is sent; custom items render with a generic icon.
+{
+  assert.equal(context.cleanText("<img src=x onerror=" + String.fromCharCode(34) + "alert(1)" + String.fromCharCode(34) + ">현관 & '창고'" + String.fromCharCode(96, 92), 60), "img src=x onerror=alert(1)현관 창고");
+  assert.equal(context.cleanLocation("  주방\n팬트리  3층 "), "주방 팬트리 3층");
+  assert.equal(context.cleanText("가".repeat(50), 40).length, 40);
+  const custom = { id: "custom-1", name: "캠핑용 랜턴", tier: "optional", unit: "개", date_kind: "inspection", custom: true };
+  const grid = context.testGrid({ catalog: [custom], today: "2026-11-18", items: { [custom.id]: { applicable: true, lots: [] } },
+    summary: { items: { [custom.id]: { ...base, target: null, usable: 0, state: "needs_check" } } } }, escape, [custom]);
+  assert.ok(grid.includes(context.customIcon), "custom items use the generic custom icon");
+  assert.match(grid, /캠핑용 랜턴/);
+  const customCat = context.optCats.find((cat) => cat.id === "custom");
+  assert.ok(customCat.match(custom) && !customCat.match({ id: "radio" }), "the 직접 추가 filter selects only custom items");
+}
+console.log("text filter and custom items passed");

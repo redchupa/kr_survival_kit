@@ -8,8 +8,11 @@ export const STOCK_WEIGHTS = {
   "instant-rice": 5, "cup-noodles": 5, "shelf-stable-meal": 5,
   "spam-canned-ham": 3, "canned-tuna": 3, "canned-pupa": 3, "canned-whelk": 3, "canned-fruit": 3,
   hygiene: 4, "wet-wipes": 4,
-  flashlight: 6, batteries: 4, "batteries-aaa": 2, "batteries-special": 2,
-  backpack: 5, blanket: 5, "first-aid-kit": 5, "otc-medicine": 5,
+  flashlight: 6, batteries: 4, "batteries-aaa": 2, "batteries-special": 1, "batteries-c": 1, "batteries-d": 1,
+  backpack: 5, blanket: 5,
+  // First aid and medicine were one bundle each (weight 5); each single product now carries 1.
+  "first-aid-kit": 1, "sterile-gauze": 1, "elastic-bandage": 1, "adhesive-bandages": 1, "medical-tape": 1,
+  "otc-medicine": 1, "digestive-medicine": 1, "cold-medicine": 1, "antidiarrheal": 1, "wound-ointment": 1,
 };
 
 export const SHELTER_RANKS = [

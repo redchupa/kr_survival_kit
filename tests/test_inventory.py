@@ -424,3 +424,67 @@ async def test_batteries_medicine_and_hygiene_track_use_by_dates():
     status = summarize(CATALOG, reloaded.snapshot["items"], TODAY)["items"]["batteries-aaa"]
     assert (status["state"], status["unknown_date_quantity"]) == ("needs_check", 4)
     assert revision == 1
+
+
+@pytest.mark.asyncio
+async def test_custom_items_round_trip_and_reject_markup():
+    store = FakeStore()
+    stock = Inventory(store, CATALOG)
+    revision, lantern = await stock.add_custom_item(0, "캠핑용 랜턴", "개", "inspection")
+    revision, food = await stock.add_custom_item(revision, "반려견 사료", "kg", "expiry", "소비기한")
+    assert (lantern, food) == ("custom-1", "custom-2")
+    assert stock.catalog[food]["tier"] == "optional" and stock.catalog[food]["custom"] is True
+    assert stock.snapshot["items"][lantern]["applicable"] is True
+    revision = await stock.set_item(food, revision, True, 10, [
+        {"lot_id": "a", "quantity": 8, "expires_on": "2027-01-01", "location": "베란다 창고"}], True, TODAY)
+    status = summarize(stock.catalog.values(), stock.snapshot["items"], TODAY)["items"][food]
+    assert (status["usable"], status["state"]) == (8, "shortage")
+
+    before = deepcopy(store.saved)
+    bad = [("<script>", "개", "inspection", None), ("a\"b", "개", "inspection", None), ("a&b", "개", "inspection", None),
+           ("가" * 41, "개", "inspection", None), ("", "개", "inspection", None), (" 앞공백", "개", "inspection", None),
+           ("줄\n바꿈", "개", "inspection", None), ("단위", "ml", "inspection", None), ("종류", "개", "maybe", None),
+           ("라벨", "개", "inspection", "소비기한"), ("라벨2", "개", "expiry", "<b>"), ("캠핑용 랜턴", "개", "inspection", None),
+           ("생수", "개", "inspection", None)]
+    for name, unit, kind, label in bad:
+        with pytest.raises(InventoryError):
+            await stock.add_custom_item(revision, name, unit, kind, label)
+    assert store.saved == before
+    with pytest.raises(RevisionConflict):
+        await stock.add_custom_item(revision - 1, "새 물품", "개", "inspection")
+
+    reloaded = Inventory(store, CATALOG)
+    await reloaded.load()
+    assert reloaded.catalog[food]["name"] == "반려견 사료"
+    assert reloaded.snapshot["items"][food]["lots"][0]["location"] == "베란다 창고"
+    revision = await reloaded.remove_custom_item(revision, food)
+    assert food not in reloaded.catalog and food not in reloaded.snapshot["items"]
+    with pytest.raises(InventoryError):
+        await reloaded.remove_custom_item(revision, "drinking-water")
+    with pytest.raises(InventoryError):
+        await reloaded.set_item(food, revision, True, 1, [], True, TODAY)
+    # Numbering continues after the highest remaining id, so a removed id is never confused with a new one.
+    revision, again = await reloaded.add_custom_item(revision, "구급 담요", "장", "inspection")
+    assert again == "custom-2"
+
+
+@pytest.mark.asyncio
+async def test_markup_characters_are_refused_in_locations_and_repaired_in_old_data():
+    stock = Inventory(FakeStore(), CATALOG)
+    for bad in ["<img src=x>", "현관\"팬트리", "a'b", "a`b", "a&b", "a\b"]:
+        with pytest.raises(InventoryError, match="location"):
+            await stock.set_item("flashlight", 0, True, 2, [{"lot_id": "a", "quantity": 1, "expires_on": None, "location": bad}], True, TODAY)
+    store = FakeStore()
+    store.saved = {"schema_version": 1, "revision": 2, "household_size": 4, "items": {
+        "flashlight": {"applicable": True, "target": 2, "verified_on": TODAY, "confirmed": True, "lots": [
+            {"lot_id": "a", "quantity": 1, "expires_on": None, "location": "<img src=x onerror=alert(1)>현관"},
+            {"lot_id": "b", "quantity": 1, "expires_on": None, "location": "<>"}]}},
+        "custom_items": {"custom-1": {"name": "<b>랜턴</b>", "unit": "개", "date_kind": "inspection"}}}
+    old = Inventory(store, CATALOG)
+    await old.load()
+    lots = old.snapshot["items"]["flashlight"]["lots"]
+    assert [lot["location"] for lot in lots] == ["img src=x onerror=alert(1)현관", None]
+    assert old.catalog["custom-1"]["name"] == "b랜턴/b"
+    store.saved["custom_items"] = {"custom-01": {"name": "x", "unit": "개", "date_kind": "inspection"}}
+    with pytest.raises(InventoryError):
+        await Inventory(store, CATALOG).load()
