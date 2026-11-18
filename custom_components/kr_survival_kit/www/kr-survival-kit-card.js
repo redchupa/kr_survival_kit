@@ -4,9 +4,6 @@ const KR_SURVIVAL_GROUPS = {
   power: new Set(["flashlight", "batteries", "radio", "candles", "portable-solar-panel", "power-bank", "portable-power-station", "charging-cables", "door-alarm", "portable-radio-communication"]),
 };
 
-function krSurvivalGroup(item) {
-  return Object.keys(KR_SURVIVAL_GROUPS).find((group) => KR_SURVIVAL_GROUPS[group].has(item.id)) || "living";
-}
 
 function krStockScale(item) {
   return item.id === "drinking-water" ? 1000 : 1;
@@ -95,7 +92,7 @@ function krIsSelectable(item) {
 function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item) =>
   !krIsSelectable(item) && snapshot.items[item.id]?.applicable !== false), editing = false) {
   if (!snapshot) return `<p class="ready-empty">재고를 불러오는 중입니다.</p>`;
-  if (!visible.length) return `<p class="ready-empty">활성화한 물품이 없습니다.</p>`;
+  if (!visible.length) return `<p class="ready-empty">이 조건에 맞는 물품이 없습니다.</p>`;
   const readyIds = new Set(krReadyItems(snapshot).map((item) => item.id));
   return `<div class="ready-grid" role="list">${visible.map((item) => {
     const status = snapshot.summary.items[item.id];
@@ -142,31 +139,37 @@ function krStockScore(snapshot) {
   return possible ? Math.floor(earned * 100 / possible + 1e-9) : 0;
 }
 
-function krStockRankView(snapshot) {
+function krStockRankView(snapshot, open = false) {
   if (!snapshot) return "";
   const score = krStockScore(snapshot);
   const index = Math.min(KR_STOCK_RANKS.length - 1, Math.floor(score / 10));
   const [rank, color] = KR_STOCK_RANKS[index];
   const next = KR_STOCK_RANKS[index + 1];
   const message = next ? `${next[0]}까지 ${(index + 1) * 10 - score}점` : "최고 등급 달성";
-  return `<section class="stock-rank" aria-labelledby="stock-rank-title" style="--rank-color:${color}">
-    <div class="stock-rank-head"><div><h3 id="stock-rank-title">비축 등급</h3><strong>${rank}</strong></div><div class="stock-score"><b>${score}</b><span> / 100점</span></div></div>
-    <progress aria-label="비축 점수" value="${score}" max="100"></progress>
-    <p>${message}</p>
-    <details><summary>점수 계산 기준</summary><p>기본품마다 목표 달성률에 배점을 곱합니다. 생수 30점, 간편식 16점, 통조림 12점, 손전등과 구급함 각 10점, 위생용품 7점, 건전지·배낭·담요 각 5점입니다. 유효한 재고만 반영하며 목표 미설정과 미확인은 0점입니다. 선택 물품과 퀴즈는 별도입니다. 이 점수는 비축 준비의 진도입니다.</p></details>
-    </section>`;
+  return `<details class="stock-rank compact-detail" ${open ? "open" : ""}>
+    <summary><span>비축 등급</span><strong class="rank-badge" style="--rank-color:${color}">${rank}</strong><span class="stock-score">${score} / 100점</span></summary>
+    <div class="rank-detail"><progress aria-label="비축 점수" value="${score}" max="100"></progress>
+    <p>${message}</p><p>배점은 생수 30점, 간편식 16점, 통조림 12점, 손전등과 구급함 각 10점, 위생용품 7점, 건전지·배낭·담요 각 5점입니다. 유효한 보유량이 목표에 가까울수록 점수가 올라갑니다. 선택 물품과 퀴즈 점수는 별도입니다.</p></div>
+    </details>`;
 }
 
-function krStockShelves(snapshot, escape, showInactive, editing) {
+function krStockShelves(snapshot, escape, showInactive, editing, filter) {
   const optional = snapshot?.catalog.filter(krIsSelectable) ?? [];
-  const active = optional.filter((item) => snapshot.items[item.id]?.applicable);
+  const matches = (item) => {
+    if (filter === "all") return true;
+    const status = snapshot.summary.items[item.id];
+    return filter === "expiring" ? status.expiring_quantity > 0 : status.state === filter;
+  };
+  const essentials = snapshot?.catalog.filter((item) => !krIsSelectable(item) &&
+    snapshot.items[item.id]?.applicable !== false && matches(item));
+  const active = optional.filter((item) => snapshot.items[item.id]?.applicable && matches(item));
   const inactive = optional.filter((item) => !snapshot.items[item.id]?.applicable);
   const ready = krReadyItems(snapshot);
-  const shelves = `<section class="ready-panel" aria-labelledby="essentials-shelf"><h3 id="essentials-shelf" tabindex="-1">기본 비축 물품 <span>완비 ${ready.filter((item) => !krIsSelectable(item)).length}종</span></h3>${krReadyGrid(snapshot, escape, undefined, editing)}</section>`;
+  const shelves = `<section class="ready-panel" aria-labelledby="essentials-shelf"><h3 id="essentials-shelf" tabindex="-1">기본 비축 물품 <span>완비 ${ready.filter((item) => !krIsSelectable(item)).length}종</span></h3>${krReadyGrid(snapshot, escape, essentials, editing)}</section>`;
   if (!optional.length) return shelves;
   return shelves + `<section class="ready-panel" aria-labelledby="optional-shelf-title"><h3 id="optional-shelf-title">선택 물품 <span>사용 중 ${active.length}종 · 완비 ${ready.filter(krIsSelectable).length}종</span></h3>
-    ${active.length ? krReadyGrid(snapshot, escape, active, editing) : '<p class="ready-empty">아래 목록에서 우리 집에 필요한 물품을 고르세요.</p>'}
-    ${inactive.length ? `<details id="optional-shelf" ${showInactive ? "open" : ""}><summary>아직 사용하지 않는 물품 ${inactive.length}종 보기</summary>${krReadyGrid(snapshot, escape, inactive, editing)}</details>` : ""}</section>`;
+    ${active.length ? krReadyGrid(snapshot, escape, active, editing) : '<p class="ready-empty">표시할 선택 물품이 없습니다.</p>'}
+    ${inactive.length && filter === "all" ? `<details id="optional-shelf" ${showInactive ? "open" : ""}><summary>아직 사용하지 않는 물품 ${inactive.length}종 보기</summary>${krReadyGrid(snapshot, escape, inactive, editing)}</details>` : ""}</section>`;
 }
 
 const KR_RECORD_MISSIONS = [
@@ -184,16 +187,16 @@ function krMissionState(snapshot) {
   });
 }
 
-function krMissionView(snapshot, escape, animate = false) {
+function krMissionView(snapshot, escape, animate = false, open = false) {
   const missions = krMissionState(snapshot);
   const complete = missions.filter((mission) => mission.complete).length;
   const names = ["기록 시작", "기록 진행", "기록 확장", "기록 강화", "4분야 기록"];
-  return `<section class="mission-panel" aria-label="비축 기록 미션"><div class="mission-head"><h3>기록 미션</h3><strong>준비 기록 단계 ${complete}/4 · ${names[complete]}</strong></div>` +
+  return `<details class="mission-panel compact-detail" ${open ? "open" : ""}><summary class="mission-head"><span>기록 미션</span><strong>준비 기록 단계 ${complete}/4 · ${names[complete]}</strong></summary><div class="mission-detail">` +
     `<div class="mission-progress" role="progressbar" aria-label="준비 기록 단계" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${complete}"><span style="width:${complete * 25}%"></span></div>` +
     `<p>이 단계는 재고 기록과 실사 상태를 보여줍니다. 생존 확률을 뜻하지 않습니다.</p>` +
     `<div class="mission-grid">${missions.map((mission) => `<div class="mission-item ${mission.complete ? `done${animate ? " unlock" : ""}` : "pending"}">` +
       `<span class="mission-art" aria-hidden="true">${mission.complete ? mission.art : "○"}</span>` +
-      `<span class="mission-title">${escape(mission.title)}</span><span class="mission-state">${mission.complete ? "기록 달성" : mission.mode === "any" ? "대상 중 완비 0개" : `완비 ${mission.count}/${mission.ids.length}개`}</span></div>`).join("")}</div></section>`;
+      `<span class="mission-title">${escape(mission.title)}</span><span class="mission-state">${mission.complete ? "기록 달성" : mission.mode === "any" ? "대상 중 완비 0개" : `완비 ${mission.count}/${mission.ids.length}개`}</span></div>`).join("")}</div></div></details>`;
 }
 
 class KrSurvivalKitInventoryCard extends HTMLElement {
@@ -205,12 +208,8 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._message = "";
     this._loading = false;
     this._loadError = false;
-    this._optionalOpen = false;
     this._optionalShelfOpen = false;
-    this._optionalQuery = "";
-    this._focusOptionalSearch = false;
-    this._categoryFilter = "all";
-    this._statusFilter = "attention";
+    this._statusFilter = "all";
   }
 
   setConfig(config) {
@@ -311,9 +310,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
   _edit(item, fromShelf) {
     if (this._draft || this._saving) return;
     this._shelfEditId = fromShelf ? item.id : null;
-    this._focusOptionalSearch = false;
     const saved = this._snapshot.items[item.id];
-    if (item.tier === "optional") this._optionalOpen = true;
     this._draft = {
       id: item.id,
       applicable: saved?.applicable ?? true,
@@ -329,9 +326,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     }
     this._message = "";
     this._render();
-    const editor = this.shadowRoot.querySelector("#editor");
-    (editor?.querySelector(".lot-edit input") || editor?.querySelector("h3"))?.focus({ preventScroll: true });
-    editor?.scrollIntoView({ block: "start" });
+
   }
 
   _returnToShelf() {
@@ -344,7 +339,6 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       const details = trigger?.closest("details");
       const target = (details && !details.open ? details.querySelector("summary") : trigger)
         || this.shadowRoot.querySelector("#essentials-shelf");
-      target?.scrollIntoView({ block: "center", inline: "nearest" });
       target?.focus({ preventScroll: true });
     });
   }
@@ -425,7 +419,9 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
   }
 
   async _delete() {
+    if (this._saving) return;
     if (!window.confirm("이 품목의 가구 재고 기록을 삭제할까요?")) return;
+    this._saving = true;
     try {
       await this._call("delete_item", {
         item_id: this._draft.id,
@@ -440,98 +436,36 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         : "삭제하지 못했습니다. HA 로그를 확인한 뒤 다시 시도하세요.";
       await this._load();
     }
+    this._saving = false;
     this._render();
     if (!this._draft) this._returnToShelf();
   }
 
-  _filterOptionalItems() {
-    const query = this._optionalQuery.trim().toLocaleLowerCase("ko");
-    let found = 0;
-    this.shadowRoot.querySelectorAll("#optional-items .item").forEach((row) => {
-      row.hidden = !row.dataset.name.toLocaleLowerCase("ko").includes(query);
-      if (!row.hidden) found += 1;
-    });
-    const noMatch = this.shadowRoot.querySelector("#optional-no-match");
-    if (noMatch) noMatch.hidden = !query || found !== 0;
-  }
-
   _render() {
-    const restoreOptionalSearchFocus = this._focusOptionalSearch || this.shadowRoot.activeElement?.id === "optional-search";
+    this._rankOpen = this.shadowRoot.querySelector(".stock-rank")?.open ?? this._rankOpen;
+    this._missionOpen = this.shadowRoot.querySelector(".mission-panel")?.open ?? this._missionOpen;
+    this._optionalShelfOpen = this.shadowRoot.querySelector("#optional-shelf")?.open ?? this._optionalShelfOpen;
+    const previousDialog = this.shadowRoot.querySelector("#item-dialog");
+    const dialogScroll = previousDialog?.scrollTop ?? 0;
     const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     })[char]);
     const snapshot = this._snapshot;
     const people = snapshot?.household_size ?? 4;
     const states = { shortage: "부족", needs_check: "확인 필요", sufficient: "충족", not_applicable: "해당 없음" };
-    const priority = { shortage: 0, needs_check: 1, sufficient: 2, not_applicable: 3 };
-    const items = snapshot?.catalog.map((item) => ({ ...item, status: snapshot.summary.items[item.id] }))
-      .sort((left, right) => priority[left.status.state] - priority[right.status.state]) || [];
+    const items = snapshot?.catalog.map((item) => ({ ...item, status: snapshot.summary.items[item.id] })) ?? [];
     const recommendations = new Map([
-      ...(snapshot?.household?.items || []),
-      ...(snapshot?.household?.optional_items || []),
+      ...(snapshot?.household?.items || []), ...(snapshot?.household?.optional_items || []),
     ].map((entry) => [entry.item_id, entry]));
-    const expiring = (item) => (snapshot.items[item.id]?.applicable ?? !["household", "optional"].includes(item.tier)) && item.status.expiring_quantity > 0;
-    const attention = (item) => item.status.state === "shortage" || item.status.state === "needs_check" || expiring(item);
-    const filteredItems = items.filter((item) => {
-      if (this._categoryFilter !== "all" && krSurvivalGroup(item) !== this._categoryFilter) return false;
-      if (this._statusFilter === "attention") return attention(item);
-      if (this._statusFilter === "expiring") return expiring(item);
-      if (this._statusFilter === "optional") return item.tier === "optional";
-      return this._statusFilter === "all" || item.status.state === this._statusFilter;
-    });
-    const renderRows = (listedItems) => listedItems.map((item) => {
-      const status = item.status;
-      const recommendation = recommendations.get(item.id);
-      const saved = snapshot.items[item.id];
-      const newOptional = item.tier === "optional" && !saved;
-      const lots = saved?.lots || [];
-      const recorded = lots.reduce((sum, lot) => sum + lot.quantity, 0);
-      const dateLabel = krDateLabel(item);
-      const noteCoveredByBasis = item.note && recommendation?.basis?.includes(item.note);
-      const lotText = lots.length ? lots.map((lot, index) =>
-        `<li>묶음 ${index + 1} · ${lot.bottle_ml ? `${escape(krStockText(item, lot.bottle_ml))} × ${escape(lot.bottle_count)}병 = ` : ""}${escape(krStockText(item, lot.quantity))}` +
-        ` · 입고일 ${escape(lot.received_on || "미상")}` +
-        (item.date_kind === "expiry" ? ` · ${escape(dateLabel)} ${escape(lot.expires_on || "미확인")}${lot.label_check_on ? ` · 포장 기한 확인일 ${escape(lot.label_check_on)}` : ""}` : "") + "</li>"
-      ).join("") : "<li>기록된 묶음 없음</li>";
-      return `<article class="item" data-name="${escape(item.name)}"><div class="item-head"><div class="item-title"><h3>${escape(item.name)}</h3>` +
-        `<span class="state ${escape(status.state)}">${states[status.state]}</span>` +
-        (expiring(item) ? `<span class="expiry-state">기한 임박</span>` : "") + `</div>` +
-        `<button type="button" data-edit="${escape(item.id)}">${newOptional ? "설정" : "수정"}</button></div>` +
-        `<p class="row-meta">${newOptional ? "가구에 필요하면 설정" : saved ? status.confirmed && status.verified_on ? `사용 가능 집계 ${escape(krStockText(item, status.usable))}` : "수량 확인 필요" : "수량 미기록"}` +
-        (status.target != null ? ` <span>목표 ${escape(krStockText(item, status.target))}</span>` : "") + `</p>` +
-        (saved && item.date_kind === "expiry" ? `<p class="rotation-meta">${status.expired_quantity ? `${escape(dateLabel)} 경과 ${escape(krStockText(item, status.expired_quantity))} · ` : ""}${status.unknown_date_quantity ? `${escape(dateLabel)} 미확인 ${escape(krStockText(item, status.unknown_date_quantity))} · ` : ""}다음 ${escape(dateLabel)} ${escape(status.next_expiry_on || "확인 필요")}</p>` : "") +
-        `<details class="item-more"><summary>기록과 참고 보기</summary>` +
-        (item.examples ? `<p>${escape(item.examples)}</p>` : "") +
-        (item.note && !noteCoveredByBasis ? `<p>${escape(item.note)}</p>` : "") +
-        (recommendation ? `<p>참고 기준 · ${escape(recommendation.basis)}</p>` : "") +
-        (item.id === "water-container" && recommendation ? `<p>안전수 보관 용량 예시와 급수 용기 개수 목표는 단위가 다릅니다.</p>` : "") +
-        (saved ? `<p>기록 총수량 ${escape(krStockText(item, recorded))}${item.date_kind === "expiry" ? " (기한 미확인·경과분 포함)" : ""} · 가구 목표 ${status.target === null ? "미설정" : escape(krStockText(item, status.target))} · 마지막 실사 ${escape(status.verified_on || "기록 없음")}${status.confirmed ? "" : " · 현재 수량 미확인"}</p><p>점검 주기 ${escape(status.review_interval_days ?? snapshot.default_review_interval_days ?? 30)}일 · 다음 점검일 ${escape(status.next_review_on || "미정")}</p><ul>${lotText}</ul>` : "") +
-        `</details></article>`;
-    }).join("");
-    const regularItems = filteredItems.filter((item) => item.tier !== "optional");
-    const allOptionalItems = items.filter((item) => item.tier === "optional");
-    const optionalItems = filteredItems.filter((item) => item.tier === "optional");
-    const activeOptionalCount = allOptionalItems.filter((item) => item.status.state !== "not_applicable").length;
-    const rows = renderRows(regularItems);
-    const optionalRows = allOptionalItems.length
-      ? `<details id="optional-items" ${this._optionalOpen ? "open" : ""}><summary>선택 물품 ${allOptionalItems.length}개 · 사용 중 ${activeOptionalCount}개</summary>` +
-        `<p>기본은 해당 없음입니다. 필요한 품목만 설정하세요.</p>` +
-        (this._statusFilter !== "optional" ? `<button type="button" id="show-all-optional">선택 물품 모두 보기</button><p>현재 필터에 맞는 선택 물품 ${optionalItems.length}개</p>` : "") +
-        `<label for="optional-search">선택 물품 찾기</label><input id="optional-search" type="search" placeholder="이름으로 찾기" value="${escape(this._optionalQuery)}">` +
-        `<details class="optional-guidance"><summary>선택·사용 기준</summary>` +
-        `<p>${escape(snapshot?.household?.optional_intro || "품목별 사용 조건과 수량을 확인하세요.")}</p>` +
-        (snapshot?.household?.optional_safety ? `<p class="optional-safety">${escape(snapshot.household.optional_safety)}</p>` : "") +
-        `</details>` +
-        `<p id="optional-no-match" hidden>일치하는 선택 물품이 없습니다.</p>${renderRows(optionalItems)}</details>`
-      : "";
     const draftItem = items.find((item) => item.id === this._draft?.id);
     const draftRecommendation = recommendations.get(this._draft?.id);
     const noteCoveredByBasis = draftItem?.note && draftRecommendation?.basis?.includes(draftItem.note);
     const labelCheckDays = snapshot?.label_check_days?.[draftItem?.id] ?? 7;
-    const edit = this._draft && draftItem ? `<form id="editor"><h3 tabindex="-1">${escape(draftItem.name)} 수정</h3>` +
+    const edit = this._draft && draftItem ? `<form id="editor"><h3 id="item-dialog-title" tabindex="-1">${escape(draftItem.name)} 수정</h3>` +
       (draftItem.examples ? `<p class="item-note">${escape(draftItem.examples)}</p>` : "") +
       (draftItem.note && !noteCoveredByBasis ? `<p class="item-note">${escape(draftItem.note)}</p>` : "") +
-      `<p>현재 기록 ${escape(krStockText(draftItem, draftItem.status.usable))} · ${states[draftItem.status.state]} · 마지막 실사 ${escape(draftItem.status.verified_on || "기록 없음")}</p>` +
+      (draftRecommendation?.basis ? `<details class="item-reference"><summary>품목 참고 기준</summary><p>${escape(draftRecommendation.basis)}</p></details>` : "") +
+      `<p>현재 기록 ${escape(krStockText(draftItem, draftItem.status.usable))} · ${states[draftItem.status.state]} · 마지막 실사 ${escape(draftItem.status.verified_on || "기록 없음")}${draftItem.status.next_review_on ? ` · 다음 점검 ${escape(draftItem.status.next_review_on)}` : ""}</p>` +
       (draftItem.status.target != null ? `<p class="recommendation">${people}인 가구 목표 <strong>${escape(krStockText(draftItem, draftItem.status.target))}</strong></p>` : "") +
       (draftItem.id === "drinking-water" ? `<p class="item-note">2 L 생수 12병이면 병 용량에 2, 병 수에 12를 입력하세요.</p>` : "") +
       (this._draft.lots.length > 1 ? `<p class="item-note">이전에 저장한 날짜별 기록입니다. 기존 날짜를 확인하며 각 수량을 수정할 수 있습니다.</p>` : "") +
@@ -543,7 +477,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
             `<output class="lot-total" aria-live="polite"></output>`
           : `<label>${draftItem.id === "drinking-water" ? "보유량 합계 (L)" : `보유 수량 (${escape(krStockUnit(draftItem))})`}<input class="quantity" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(lot.quantity)}" required></label>`) +
         `<label>입고일<input class="received-on" type="date" value="${escape(lot.received_on || snapshot.today || "")}"></label>` +
-        (draftItem.date_kind === "expiry" ? `<label>${escape(krDateLabel(draftItem))} (포장 기준)<input class="expiry" type="date" value="${escape(lot.expires_on || "")}" aria-describedby="expiry-help"></label>` : "") +
+        (draftItem.date_kind === "expiry" ? `<label>${escape(krDateLabel(draftItem))} (포장 기준)<input class="expiry" type="date" value="${escape(lot.expires_on || "")}" aria-describedby="expiry-help"></label>${lot.label_check_on ? `<small>포장 기한 확인일 ${escape(lot.label_check_on)}</small>` : ""}` : "") +
         `</fieldset>`
       ).join("") + `<p class="item-note">입고일을 비우면 오늘로 저장합니다. 저장한 날을 마지막 실사일로 기록합니다.</p>` +
       (draftItem.date_kind === "expiry" ? `<p id="expiry-help" class="item-note">포장 날짜가 여러 개면 가장 빠른 날짜를 입력하세요. 비워 두면 입고 후 ${labelCheckDays}일을 포장 기한 확인일로 등록합니다. 확인 전에는 준비 완료 수량에 포함하지 않습니다.</p>` : "") +
@@ -553,20 +487,11 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       `<label for="review-interval">재고 점검 주기 (일)</label><input id="review-interval" type="number" min="1" max="3650" step="1" value="${escape(this._draft.review_interval_days)}" placeholder="기본 ${escape(snapshot.default_review_interval_days ?? 30)}일"><p class="item-note">마지막으로 저장한 날부터 이 기간이 지나면 수량과 상태를 다시 확인하라는 표시가 뜹니다. 자주 쓰는 물품은 짧게 정하세요. 예를 들어 7일은 매주 재고를 확인한다는 뜻입니다.</p></details>` +
       `<div class="actions"><button type="submit" class="primary">저장</button><button type="button" id="cancel">취소</button>` +
       `<button type="button" id="delete">기록 삭제</button></div></form>` : "";
-    const categoryLabels = { water: "물", food: "식품·조리", power: "전원·통신", living: "생활·보호" };
-    const categoryButtons = Object.entries(categoryLabels).map(([group, label]) =>
-      `<button type="button" data-category="${group}" aria-pressed="${this._categoryFilter === group}">${label}</button>`
-    ).join("");
     const counts = snapshot?.summary;
-    const signals = counts && !this._draft ? `<div class="signals" aria-label="재고 점검 현황">` +
-      `<button type="button" data-status="shortage"><span>부족</span><strong>${counts.shortage_count}</strong></button>` +
-      `<button type="button" data-status="needs_check"><span>확인 필요</span><strong>${counts.needs_check_count}</strong></button>` +
-      `<button type="button" data-status="expiring"><span>기한 임박</span><strong>${counts.expiring_count}</strong></button></div>` : "";
-    const statusLabels = { attention: "점검 필요", shortage: "부족", needs_check: "확인 필요", expiring: "기한 임박", optional: "선택 물품", all: "전체" };
-    const statusButtons = Object.entries(statusLabels).map(([value, label]) =>
-      `<button type="button" data-status="${value}" aria-pressed="${this._statusFilter === value}">${label}</button>`
-    ).join("");
-    const listTitle = statusLabels[this._statusFilter] || "품목";
+    const filters = [["all", "전체", null], ["shortage", "부족", counts?.shortage_count],
+      ["needs_check", "확인 필요", counts?.needs_check_count], ["expiring", "기한 임박", counts?.expiring_count]];
+    const signals = counts ? `<div class="signals" aria-label="선반 필터">${filters.map(([id, label, count]) =>
+      `<button type="button" data-status="${id}" aria-pressed="${this._statusFilter === id}"><span>${label}</span>${count == null ? "" : `<strong>${count}</strong>`}</button>`).join("")}</div>` : "";
     const missionSignature = krMissionState(snapshot).map((mission) => mission.complete).join("");
     const animateMission = Boolean(snapshot && missionSignature !== this._missionSignature);
     this._missionSignature = missionSignature;
@@ -575,12 +500,8 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       ha-card{display:block;padding:1.2rem;background:var(--card-background-color,#fff);border-radius:14px}
       h2{font-size:1.25rem;margin:0 0 .3rem}h3{font-size:1rem;margin:0 0 .35rem}h4{font-size:.95rem;margin:1rem 0 .4rem}
       p{margin:.35rem 0;color:var(--secondary-text-color,#405564);line-height:1.5}ul{margin:.35rem 0;padding-left:1.25rem;line-height:1.55}
-      .intro{border-left:4px solid #197f83;padding-left:.8rem;margin:.75rem 0 1rem}
       .recommendation{padding:.55rem .7rem;background:rgba(25,127,131,.08);border-radius:7px}
       .item-note{font-size:.9rem}
-      .optional-safety{border-left:3px solid #a9670e;padding-left:.7rem}
-      .item{padding:1rem 0;border-top:1px solid var(--divider-color,#d7e1e7)}.item-head{display:flex;justify-content:space-between;gap:.8rem;align-items:start}
-      .state{display:inline-block;font-weight:700;font-size:.82rem}.shortage{color:#ad342d}.needs_check{color:#a9670e}.sufficient{color:#13777b}
       button{font:inherit;min-height:44px;padding:.45rem .75rem;border:1px solid #197f83;background:transparent;color:var(--primary-text-color,#173048);border-radius:8px;cursor:pointer}
       button:hover{background:rgba(25,127,131,.1)}button:focus-visible,input:focus-visible{outline:3px solid #d28b24;outline-offset:2px}
       .primary{background:#156d73;color:#fff}.message{padding:.7rem;border-radius:8px;background:rgba(210,139,36,.16);line-height:1.5}
@@ -592,18 +513,9 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .hero h2{font-size:clamp(1.65rem,3vw,2.45rem);line-height:1.18;letter-spacing:-.045em;margin:0 0 .8rem;color:#f3fafb}
       .hero p{color:#c6d9df;max-width:35rem}.hero .hero-copy{font-size:1rem;line-height:1.6}
       .signals{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.25rem}.signals button{display:flex;gap:.7rem;align-items:baseline;background:rgba(7,19,29,.42);color:#eef7f8;border:1px solid #668b9c;min-width:6.5rem;justify-content:space-between}.signals strong{font-size:1.3rem;font-variant-numeric:tabular-nums}.signals button:hover{background:#2a5369}
-      .inventory-panel{padding:clamp(1rem,2.4vw,2rem);background:var(--card-background-color,#fff);color:var(--primary-text-color,#173048)}
-      .inventory-heading{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}.inventory-heading h2{margin:0;font-size:1.32rem;color:var(--primary-text-color,#173048)}
-      .inventory-heading p{margin:0}.filter-bar{display:flex;gap:.45rem;flex-wrap:wrap;margin:1rem 0}.filter-bar button{border-color:var(--divider-color,#9cabb2);border-radius:999px;padding:.45rem .85rem}.filter-bar button[aria-pressed="true"]{background:#176d86;border-color:#176d86;color:#fff}
-      .filter-note{font-size:.9rem}.items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;align-items:start}.items>.item,.items>#optional-items{border:1px solid var(--divider-color,#d7e1e7);border-radius:10px;padding:.8rem 1rem;margin:0;min-width:0}
-      .item{padding:.8rem 1rem;border-top:0}.item h3{margin:0;font-size:1rem;line-height:1.35}.item-head{align-items:center}.item-title{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}.item-head button{flex:none}
-      .state,.expiry-state{font-size:.77rem;border-radius:999px;padding:.13rem .48rem;border:1px solid currentColor}.expiry-state{color:#a9670e}.row-meta{font-size:.9rem;margin:.4rem 0}.row-meta span{display:block;color:var(--secondary-text-color,#405564)}
-      .item-more{margin-top:.45rem}.item-more summary{font-weight:600;font-size:.88rem}.item-more p{margin:.6rem 0}.items>#optional-items{grid-column:1/-1}.items>#optional-items>.item{border-top:1px solid var(--divider-color,#d7e1e7)}
-      .empty{grid-column:1/-1;padding:1.25rem;border:1px dashed var(--divider-color,#8da3ad);border-radius:10px}.items>form{grid-column:1/-1;width:100%;box-sizing:border-box}.inventory-panel form{max-width:48rem;margin:0 auto}
       button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #e0a950;outline-offset:2px}
-      @media(max-width:620px){.items{grid-template-columns:1fr}.hero{padding:1.15rem}.inventory-panel{padding:1rem}}
-      @media(prefers-color-scheme:dark){.shortage{color:#ff9d94}.needs_check{color:#f0b76d}.sufficient{color:#78d8d2}}
-      @media(max-width:400px){.item-head{flex-wrap:wrap}}
+      #refresh{min-width:44px;padding:0 .4rem;font-size:1.15rem;color:inherit;border-color:var(--kr-line,#79b3c0)}
+      @media(max-width:560px){.signals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.3rem;margin-top:.7rem}.signals button{min-width:0;display:grid;justify-items:center;justify-content:center;align-content:center;gap:.12rem;padding:.32rem .16rem;font-size:.76rem;text-align:center}.signals strong{font-size:1rem}.hero h2{margin-bottom:.25rem}.hero-head{gap:8px}}
       .household-strip{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem 1rem;padding:.75rem 1rem;border:1px solid #78aebe;border-radius:14px;background:#0b2636;margin-block:1rem}.household-strip strong{color:#a4fff0}.household-strip p{margin:0}.lot-edit{min-inline-size:0}.lot-edit legend,.lot-total{font-weight:750}.lot-total{align-self:center}#item-settings summary{cursor:pointer;padding:.5rem 0}.lot-edit input{box-sizing:border-box;max-width:100%}
       .hero{position:relative;display:block;background:linear-gradient(135deg,#1b3a4c,#102432 65%,#0d1c2a);transition:background .5s ease}
       .hero[data-daypart="day"]{background:linear-gradient(135deg,#27566a,#173b4e 55%,#132b3a)}
@@ -613,16 +525,16 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .hero[data-weather="snow"]::after{opacity:.17;background:radial-gradient(circle at 15% 22%,#fff 0 2px,transparent 3px),radial-gradient(circle at 78% 55%,#fff 0 2px,transparent 3px),radial-gradient(circle at 46% 81%,#fff 0 2px,transparent 3px);background-size:110px 100px;animation:krSkyDrift 28s linear infinite}
       .hero>*{position:relative;z-index:1}.hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
       .atmosphere{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.atmosphere span{display:inline-flex;min-height:35px;align-items:center;padding:5px 10px;border:1px solid #79b3c082;border-radius:8px;background:#07192768;color:#d9f1f4;font-size:.84rem;font-variant-numeric:tabular-nums}
-      .atmosphere-note{font-size:.76rem!important;color:#accbd5!important;margin-top:0!important}
-      .rotation-meta{font-size:.83rem;color:#8b5c0b;font-weight:650}
-      .stock-rank{margin-top:1.25rem;padding:1rem;border:1px solid var(--rank-color);border-radius:14px;background:#122e40;color:#f0f9fa}.stock-rank-head{display:flex;justify-content:space-between;align-items:end;gap:.5rem;flex-wrap:wrap}.stock-rank h3{margin:0 0 .2rem;font-size:.92rem}.stock-rank-head strong{font-size:clamp(1.25rem,4vw,2rem);color:var(--rank-color)}.stock-score{font-variant-numeric:tabular-nums;color:#dceff1}.stock-score b{font-size:clamp(1.4rem,5vw,2.4rem);color:var(--rank-color)}.stock-rank progress{display:block;width:100%;height:.7rem;margin:.7rem 0;accent-color:var(--rank-color)}.stock-rank p{margin:.45rem 0;line-height:1.5}.stock-rank summary,#optional-shelf summary{cursor:pointer;color:#c5eff2;padding:.4rem 0}.stock-rank details p{font-size:.83rem}.ready-panel details .ready-grid{margin-top:.65rem}
+      .atmosphere-note{font-size:.76rem!important;color:var(--kr-muted,#accbd5)!important;margin-top:0!important}
+      .status-disclosures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin-top:.9rem;align-items:start}.compact-detail{min-width:0;border:1px solid var(--kr-line,#476c80);border-radius:10px;background:var(--kr-surface,#122e40)}.compact-detail summary,.quiz-head{min-height:44px;cursor:pointer;list-style:none}.compact-detail summary::-webkit-details-marker,.quiz-head::-webkit-details-marker{display:none}.compact-detail summary{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem .65rem;padding:.55rem .7rem}.compact-detail summary::after,.quiz-head::after{content:"＋";margin-inline-start:auto;color:var(--kr-accent,#a9dce2);font-weight:700}.compact-detail[open] summary::after,.quiz-panel[open] .quiz-head::after{content:"−"}.rank-badge{padding:.14rem .45rem;border-radius:6px;color:#141d28;background:var(--rank-color);font-size:.86rem}.stock-score{font-size:.83rem;font-variant-numeric:tabular-nums;color:var(--kr-muted,#dceff1)}.rank-detail,.mission-detail{padding:.15rem .7rem .7rem}.rank-detail progress{display:block;width:100%;height:.55rem;accent-color:var(--kr-accent,#a9dce2)}.rank-detail p,.mission-detail p{font-size:.83rem;color:var(--kr-muted,#dceff1)}#optional-shelf summary{cursor:pointer;padding:.4rem 0}.ready-panel details .ready-grid{margin-top:.65rem}@media(max-width:560px){.status-disclosures{grid-template-columns:1fr}}
+      #item-dialog{box-sizing:border-box;width:min(42rem,calc(100% - 24px));max-height:min(88dvh,54rem);margin:auto;padding:clamp(.9rem,3vw,1.55rem);overflow:auto;overscroll-behavior:contain;border:1px solid var(--kr-line,#547a8b);border-radius:16px;background:var(--kr-surface,#fff);color:var(--kr-text,#173048);color-scheme:var(--kr-scheme,light);box-shadow:0 24px 60px #0007}#item-dialog::backdrop{background:#08121cc4}#item-dialog h3{font-size:1.25rem;margin:0 0 .5rem}#item-dialog .actions{margin-top:.7rem}#item-dialog input{background:var(--kr-bg,#fff);color:inherit}#item-dialog button{color:inherit}#item-dialog button.primary{background:var(--kr-accent,#197f83);color:var(--kr-accent-ink,#fff)}.shelf-message{font-size:.85rem}#item-dialog .item-note{max-width:64ch}.item-reference{margin:.5rem 0}
+
       .ready-panel{margin-top:1.5rem;padding:1rem;border:1px solid #719aaa80;border-radius:12px;background:#102b3aab}
       .ready-panel h3{margin:0 0 .85rem;color:#ecf8f9;font-size:1.03rem}.ready-panel h3 span{color:#a9dce2;font-variant-numeric:tabular-nums}
       .ready-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:.5rem}
       .ready-item{min-width:0}.ready-item .shelf-edit{position:relative;display:flex;flex-direction:column;align-items:center;gap:.34rem;width:100%;height:100%;min-width:0;padding:.56rem .4rem .72rem;border:1px solid #6f9ca9;border-radius:10px;background:#25485b;color:#f4fafa;text-align:center}
       .ready-item .shelf-edit:hover:not(:disabled){border-color:#abdfe9;background:#30586b}.ready-item .shelf-edit:focus-visible{outline:3px solid #ffd899;outline-offset:3px}.shelf-edit:disabled{cursor:default}.shelf-action{align-self:end;padding:.13rem .35rem;border:1px solid #7ea7b4;border-radius:4px;color:#f0f8fb;font-size:.72rem;line-height:1.3}
       .ready-art{display:grid;place-items:center;min-height:3rem;font-size:2.35rem;line-height:1;filter:none}.ready-name{font-size:.86rem;font-weight:750;line-height:1.25;overflow-wrap:anywhere}.ready-number{font-size:.8rem;font-weight:650;color:#e6f5f7;line-height:1.3;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-      .editing-panel{margin:0 0 1rem}#editor{scroll-margin-top:12px}
       .ready-empty{margin:.15rem 0!important;padding:.7rem 0;color:#d9e9eb!important;line-height:1.55}
       .ready-item[data-complete="true"] .shelf-edit{border-color:#8bd8bb;background:#23564f}.stock-meter{display:block;width:80%;height:4px;border-radius:999px;background:#18303d;overflow:hidden}.stock-meter span{display:block;height:100%;background:#8ed4df;border-radius:inherit}.ready-item[data-complete="true"] .stock-meter span{background:#9de8be}.stock-label{font-size:.75rem;color:#e1eff2}
       .ready-art svg{display:block;width:44px;height:44px}
@@ -632,41 +544,41 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       @media(max-width:850px){.ready-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
       @media(max-width:650px){.ready-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
       @media(max-width:450px){.ready-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ready-panel{padding:.8rem}}
-      .mission-panel{margin-top:1.25rem}.mission-head{display:flex;gap:.5rem 1rem;align-items:baseline;justify-content:space-between;flex-wrap:wrap}.mission-head h3{margin:0;color:#f0f9fa}.mission-head strong{color:#bde9e9;font-size:.84rem}.mission-panel>p{max-width:none;font-size:.8rem;color:#c3dce1}
+      .mission-head{display:flex;gap:.5rem 1rem;align-items:baseline;justify-content:space-between;flex-wrap:wrap}.mission-head h3{margin:0;color:#f0f9fa}.mission-head strong{color:#bde9e9;font-size:.84rem}.mission-panel>p{max-width:none;font-size:.8rem;color:#c3dce1}
       .mission-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem;margin-top:.6rem}.mission-item{display:grid;grid-template-columns:2.6rem minmax(0,1fr);gap:.15rem .55rem;align-items:center;min-width:0;padding:.55rem .7rem;border:1px solid #537d8d;border-radius:8px;background:#18394a}.mission-item.done{border-color:#84c5cb;background:#21566a}.mission-art{grid-row:1/3;display:grid;place-items:center;font-size:1.6rem}.mission-item.pending .mission-art{font-size:1.2rem;color:#a6c7ce}.mission-title{font-size:.81rem;font-weight:700}.mission-state{font-size:.72rem;color:#c7dfe3}
       .mission-progress{height:8px;margin:.65rem 0 .55rem;overflow:hidden;border:1px solid #6e9baa;border-radius:999px;background:#0e2a39}.mission-progress span{display:block;height:100%;background:#83d4d2;border-radius:999px;transition:width .45s ease}
       .mission-item{position:relative}.mission-item.done::after{content:"✓";position:absolute;right:.55rem;top:.35rem;display:grid;place-items:center;width:1.1rem;height:1.1rem;border-radius:50%;background:#c5f1e9;color:#145269;font-size:.72rem;font-weight:900}.mission-item.unlock .mission-art{animation:krMissionUnlock .5s ease-out both}@keyframes krMissionUnlock{from{transform:scale(.65);opacity:.25}to{transform:scale(1);opacity:1}}
 
       @media(max-width:650px){.mission-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
       @media(max-width:400px){.mission-item{grid-template-columns:1fr;text-align:center}.mission-art{grid-row:auto}}
-    </style><ha-card>${edit ? `<section class="inventory-panel editing-panel" aria-label="품목 수정">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit}</section>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨"><span id="local-clock">--:--</span><span id="local-weather">날씨 연동 안 됨</span></div></div><p class="atmosphere-note" id="time-source">HA 시간대 · 시각 기준 주야 테마</p>` +
-      `<p class="hero-copy">${snapshot ? Object.keys(snapshot.items).length ? "품목 그림을 누르면 수량과 기한을 바로 수정할 수 있습니다." : "품목 그림을 눌러 실제 수량과 목표를 기록하세요." : this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` +
+      :host([data-kr-themed]){color:var(--kr-text);--primary-text-color:var(--kr-text);--secondary-text-color:var(--kr-muted);--divider-color:var(--kr-line)}
+      :host([data-kr-themed]) ha-card{background:var(--kr-bg)}:host([data-kr-themed]) .hero{color:var(--kr-text);background:radial-gradient(ellipse at top right,var(--kr-glow),transparent 58%),var(--kr-bg)}
+      :host([data-kr-themed]) .hero h2,:host([data-kr-themed]) .hero p,:host([data-kr-themed]) .atmosphere,:host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) .household-strip strong,:host([data-kr-themed]) .ready-panel h3,:host([data-kr-themed]) .ready-name{color:var(--kr-text)}
+      :host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) .household-strip,:host([data-kr-themed]) .ready-panel,:host([data-kr-themed]) .signals button,:host([data-kr-themed]) .ready-item .shelf-edit,:host([data-kr-themed]) .mission-item{background:var(--kr-surface);border-color:var(--kr-line);color:var(--kr-text)}
+      :host([data-kr-themed]) .signals button[aria-pressed="true"],:host([data-kr-themed]) .ready-item .shelf-edit:hover:not(:disabled){background:var(--kr-glow);border-color:var(--kr-accent)}
+      :host([data-kr-themed]) .ready-panel h3 span,:host([data-kr-themed]) .signals button strong,:host([data-kr-themed]) .mission-head strong,:host([data-kr-themed]) .mission-art,:host([data-kr-themed]) .shelf-action{color:var(--kr-accent)}
+      :host([data-kr-themed]) .ready-number,:host([data-kr-themed]) .stock-label,:host([data-kr-themed]) .mission-state,:host([data-kr-themed]) .ready-empty{color:var(--kr-muted)!important}
+      :host([data-kr-themed]) .stock-meter,:host([data-kr-themed]) .mission-progress{background:var(--kr-line)}:host([data-kr-themed]) .stock-meter span,:host([data-kr-themed]) .mission-progress span{background:var(--kr-accent)}
+      :host([data-kr-themed]) .ready-item[data-complete="true"] .shelf-edit,:host([data-kr-themed]) .mission-item.done{border-color:var(--kr-accent)}
+    </style><ha-card>${edit ? `<dialog id="item-dialog" aria-labelledby="item-dialog-title">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit}</dialog>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨"><span id="local-clock">--:--</span><span id="local-weather">날씨 연동 안 됨</span><button type="button" id="refresh" aria-label="재고 새로고침" title="재고 새로고침">↻</button></div></div><p class="atmosphere-note" id="time-source">HA 시간대 · 시각 기준 주야 테마</p>` +
+      (!snapshot ? `<p class="hero-copy">${this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` : "") +
       (snapshot ? `<div class="household-strip"><strong>${people}인 가구 · 3일</strong><p>생수 ${people * 6} L · 식사 ${people * 9}인분</p></div>` : "") +
-      `${signals}` +
-      (counts ? `<p class="filter-note">부족·확인 필요·기한 임박 수치는 서로 겹칠 수 있습니다. 부족 0건이 준비 완료를 뜻하지 않습니다.</p>` : "") +
-      `</div>${krStockRankView(snapshot)}${krMissionView(snapshot, escape, animateMission)}${krStockShelves(snapshot, escape, this._optionalShelfOpen, Boolean(this._draft))}</section>` +
-      (edit ? "" : `<section class="inventory-panel" id="inventory-list"><div class="inventory-heading"><h2 tabindex="-1">${listTitle} <span>${filteredItems.length}개</span></h2><button type="button" id="refresh">새로고침</button></div>` +
-      `<div class="filter-bar" aria-label="품목 분류 필터">${categoryButtons}</div><div class="filter-bar" aria-label="품목 상태 필터">${statusButtons}</div>` +
-      `<p class="filter-note">인원을 바꾸면 기본 목표가 갱신됩니다. 품목의 목표량 입력을 비우면 기본 목표를 적용합니다.</p>` +
-      (this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : "") +
-      `<div class="items">${snapshot ? ((filteredItems.length ? rows : `<p class="empty">조건에 맞는 품목이 없습니다. 다른 필터를 선택하세요.</p>`) + optionalRows) : `<p class="empty">${this._loading ? "재고를 불러오는 중입니다." : "재고를 표시할 수 없습니다."}</p>`}</div></section>`) + `</ha-card>`;
-    this.shadowRoot.querySelector("#optional-items")?.addEventListener("toggle", (event) => {
-      this._optionalOpen = event.currentTarget.open;
-    });
-    this.shadowRoot.querySelector("#optional-search")?.addEventListener("input", (event) => {
-      this._optionalQuery = event.currentTarget.value;
-      this._filterOptionalItems();
-    });
-    this._filterOptionalItems();
-    if (restoreOptionalSearchFocus) window.requestAnimationFrame(() => {
-      const details = this.shadowRoot.querySelector("#optional-items");
-      const search = this.shadowRoot.querySelector("#optional-search");
-      if (details?.open && search) {
-        search.focus({ preventScroll: true });
-        search.scrollIntoView({ block: "nearest" });
-        this._focusOptionalSearch = false;
-      }
-    });
+      `${signals}</div><div class="status-disclosures">${krStockRankView(snapshot, this._rankOpen)}${krMissionView(snapshot, escape, animateMission, this._missionOpen)}</div>` +
+      (!edit && this._message ? `<p class="shelf-message" role="status">${escape(this._message)}</p>` : "") +
+      `${krStockShelves(snapshot, escape, this._optionalShelfOpen, Boolean(this._draft), this._statusFilter)}</section></ha-card>`;
+    for (const [selector, state] of [[".stock-rank", "_rankOpen"], [".mission-panel", "_missionOpen"], ["#optional-shelf", "_optionalShelfOpen"]]) {
+      this.shadowRoot.querySelector(selector)?.addEventListener("toggle", (event) => { this[state] = event.currentTarget.open; });
+    }
+    const dialog = this.shadowRoot.querySelector("#item-dialog");
+    if (dialog) {
+      dialog.showModal();
+      dialog.scrollTop = dialogScroll;
+      if (!previousDialog) dialog.querySelector("h3")?.focus({ preventScroll: true });
+      dialog.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        dialog.querySelector("#cancel").click();
+      });
+    }
     this.shadowRoot.querySelectorAll(".lot-edit").forEach((row) => {
       const output = row.querySelector(".lot-total");
       if (!output) return;
@@ -681,46 +593,18 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       update();
     });
     this.shadowRoot.querySelector("#refresh")?.addEventListener("click", () => this._load());
-    this.shadowRoot.querySelectorAll("[data-category]").forEach((button) => button.addEventListener("click", (event) => {
-      const category = button.dataset.category;
-      this._categoryFilter = this._categoryFilter === category ? "all" : category;
-      this._render();
-      if (event.detail === 0) {
-        this.shadowRoot.querySelector(`[data-category="${category}"]`)?.focus({ preventScroll: true });
-      } else {
-        this.shadowRoot.querySelector("#refresh")?.focus({ preventScroll: true });
-        this.shadowRoot.querySelector("#inventory-list")?.scrollIntoView({ block: "start", behavior: "smooth" });
-      }
-    }));
     this.shadowRoot.querySelectorAll("[data-status]").forEach((button) => button.addEventListener("click", () => {
-      const status = button.dataset.status;
-      this._statusFilter = status;
-      this._optionalOpen ||= this._statusFilter === "optional";
+      this._statusFilter = button.dataset.status;
       this._render();
-      if (button.closest(".signals")) {
-        this.shadowRoot.querySelector("#inventory-list h2")?.focus();
-      } else {
-        this.shadowRoot.querySelector(`.filter-bar [data-status="${status}"]`)?.focus({ preventScroll: true });
-      }
+      this.shadowRoot.querySelector(`[data-status="${this._statusFilter}"]`)?.focus({ preventScroll: true });
     }));
-    this.shadowRoot.querySelector("#show-all-optional")?.addEventListener("click", () => {
-      this._categoryFilter = "all";
-      this._statusFilter = "optional";
-      this._optionalOpen = true;
-      this._focusOptionalSearch = true;
-      this._render();
-    });
-    this.shadowRoot.querySelector("#optional-shelf")?.addEventListener("toggle", (event) => {
-      this._optionalShelfOpen = event.currentTarget.open;
-    });
     this.shadowRoot.querySelectorAll("[data-edit]").forEach((button) => button.addEventListener("click", () =>
       this._edit(snapshot.catalog.find((item) => item.id === button.dataset.edit), button.classList.contains("shelf-edit"))));
     this.shadowRoot.querySelector("#editor")?.addEventListener("submit", (event) => { event.preventDefault(); this._save(); });
     this.shadowRoot.querySelector("#cancel")?.addEventListener("click", () => {
-      const wasOptional = draftItem?.tier === "optional";
+      if (this._saving) return;
       this._draft = null;
       this._message = "";
-      this._focusOptionalSearch = wasOptional && !this._shelfEditId;
       this._render();
       this._returnToShelf();
     });
@@ -805,20 +689,21 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       if (url.protocol !== "https:") return "";
       return `<a href="${escape(url.href)}" target="_blank" rel="noopener noreferrer">${escape(source.publisher || source.title || id)}</a>`;
     }).filter(Boolean).join(" · ");
-    return `<section class="quiz-panel" aria-label="상황 판단 연습"><div class="quiz-head"><h3>${escape(data.title || "상황 판단 연습")}</h3><span>학습 진도 ${answered}/${data.questions.length} · 정답 ${correct}/${data.questions.length}</span></div>` +
+    return `<details class="quiz-panel" ${this._quizOpen ? "open" : ""}><summary class="quiz-head"><strong>${escape(data.title || "상황 판단 연습")}</strong><span>학습 진도 ${answered}/${data.questions.length} · 정답 ${correct}/${data.questions.length}</span></summary>` +
       `<p>학습 기록은 이 브라우저에만 저장됩니다. 실제 대피 판단이나 생존 가능성 점수가 아닙니다.</p>` +
       `<div class="quiz-question"><small>${escape(level?.title || "학습 문제")} · ${index + 1}/${data.questions.length}</small><h4>${escape(question.prompt)}</h4>` +
       `<div class="quiz-choices">${question.choices.map((entry) => `<button type="button" data-quiz-choice="${escape(entry.id)}" aria-pressed="${selected === entry.id}">${escape(entry.text)}</button>`).join("")}</div>` +
       (choice ? `<div class="quiz-feedback" role="status"><p><strong>${selected === question.answer_id ? "맞았습니다." : "다시 확인해 보세요."}</strong> ${escape(choice.feedback)}</p>` +
         `<p><strong>정답: ${escape(answer?.text || "자료 확인 필요")}</strong> ${escape(answer?.feedback || "")}</p>` +
         `<p class="quiz-sources">${sourceLinks ? `공식 출처: ${sourceLinks}` : `공식 참고 자료를 확인하세요.`}</p></div>` : "") +
-      `<div class="quiz-nav"><button type="button" data-quiz-nav="prev" ${index === 0 ? "disabled" : ""}>이전</button><button type="button" data-quiz-nav="next" ${index === data.questions.length - 1 ? "disabled" : ""}>다음 문제</button></div><button type="button" data-quiz-reset>학습 기록 지우고 다시 풀기</button></div></section>`;
+      `<div class="quiz-nav"><button type="button" data-quiz-nav="prev" ${index === 0 ? "disabled" : ""}>이전</button><button type="button" data-quiz-nav="next" ${index === data.questions.length - 1 ? "disabled" : ""}>다음 문제</button></div><button type="button" data-quiz-reset>학습 기록 지우고 다시 풀기</button></div></details>`;
   }
 
   set hass(value) { this._hass = value; }
   getCardSize() { return 10; }
 
   _render() {
+    this._quizOpen = this.shadowRoot.querySelector(".quiz-panel")?.open ?? this._quizOpen;
     const guide = this._guide;
     if (!guide) return;
     const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -856,11 +741,24 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       @media(max-width:760px){.hero{grid-template-columns:1fr;min-height:0}.orb{display:none}.layout{grid-template-columns:1fr}.rail{padding:18px}.nav-items{grid-template-columns:repeat(auto-fit,minmax(125px,1fr))}.references ul{columns:1}}@media(max-width:420px){.shell{padding:12px}.hero{padding:22px;border-radius:15px}.layout{gap:12px;margin-top:12px}.action-top,.action-body,.timeline{padding:20px}.timeline{margin-top:12px}.time-row{grid-template-columns:80px minmax(0,1fr);gap:13px}.time-rail{padding-right:12px}.time-when{font-size:.82rem}.time-copy{padding-bottom:22px}.rail{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:14px}.rail h2{grid-column:1/-1;margin:0 0 4px}.nav-group,.nav-items{display:contents}.nav-group h3{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.nav-items button{min-height:42px;text-align:center;font-size:.84rem;padding:8px 2px}.references{margin-top:12px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
       .quiz-panel{margin-top:24px;border-radius:18px;padding:1.2rem clamp(1rem,2.4vw,2rem);border:1px solid var(--line);background:#172938;color:#e7f3f6}.quiz-panel h3{margin:0}.quiz-panel p{max-width:60rem}.quiz-head{display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap}.quiz-head span{font-size:.84rem;font-weight:700}.quiz-question{max-width:65rem;margin-top:1rem;padding:1rem;border:1px solid var(--divider-color,#9cabb2);border-radius:10px}.quiz-question small{color:var(--muted)}.quiz-question h4{font-size:1rem;line-height:1.5}.quiz-choices{display:grid;gap:.5rem}.quiz-choices button{text-align:left}.quiz-choices button[aria-pressed="true"]{border-color:#197f83;background:#dff2f1;color:#113d49;font-weight:700}.quiz-feedback{padding:.65rem .8rem;border-left:3px solid #197f83;background:#e5f3f2;color:#173b45!important}.quiz-feedback p{margin:.3rem 0;color:#173b45}.quiz-sources a{color:#075c72;text-decoration:underline;font-weight:700}.quiz-sources a:focus-visible{outline:3px solid #d28b24;outline-offset:2px}.quiz-nav{display:flex;justify-content:space-between;gap:.5rem;margin-top:.8rem}.quiz-nav button:disabled{opacity:.5;cursor:default}
       .quiz-panel button{font:inherit;color:#e7f3f6;background:#213e4d;border:1px solid #547b8e;border-radius:8px;padding:10px 12px;min-height:44px;cursor:pointer}.quiz-panel [data-quiz-reset]{margin-top:10px}
+      .quiz-head{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem .75rem}.quiz-head span{margin-inline-start:auto}.quiz-head::after{content:"＋"}.quiz-panel[open] .quiz-head::after{content:"−"}.quiz-panel[open] .quiz-head{margin-bottom:.6rem}
+      :host([data-kr-themed]){color:var(--kr-text);--cyan:var(--kr-accent);--line:var(--kr-line);--muted:var(--kr-muted)}:host([data-kr-themed]) ha-card{background:var(--kr-bg)}
+      :host([data-kr-themed]) .hero{background:radial-gradient(ellipse at 78% 38%,var(--kr-glow),transparent 60%),var(--kr-surface);border-color:var(--kr-line)}
+      :host([data-kr-themed]) .rail,:host([data-kr-themed]) .action,:host([data-kr-themed]) .timeline,:host([data-kr-themed]) .references,:host([data-kr-themed]) .quiz-panel{background:var(--kr-surface);color:var(--kr-text);border-color:var(--kr-line)}
+      :host([data-kr-themed]) .action-top,:host([data-kr-themed]) .reference-item,:host([data-kr-themed]) .comms,:host([data-kr-themed]) .action-body .household{background:var(--kr-glow);color:var(--kr-text);border-color:var(--kr-line)}
+      :host([data-kr-themed]) .hero p,:host([data-kr-themed]) .action-body li,:host([data-kr-themed]) .action-body p,:host([data-kr-themed]) .sheet-intro,:host([data-kr-themed]) .time-copy p,:host([data-kr-themed]) .reference-item p{color:var(--kr-muted)}
+      :host([data-kr-themed]) .hero strong,:host([data-kr-themed]) .time-copy h4,:host([data-kr-themed]) .reference-item h4,:host([data-kr-themed]) .nav-items button,:host([data-kr-themed]) .sheet-tabs button{color:var(--kr-text)}
+      :host([data-kr-themed]) .kind,:host([data-kr-themed]) .action-top h3,:host([data-kr-themed]) .references a,:host([data-kr-themed]) .comms strong,:host([data-kr-themed]) .time-when,:host([data-kr-themed]) .reference-item span{color:var(--kr-accent)}
+      :host([data-kr-themed]) .hero-actions a,:host([data-kr-themed]) .quiz-panel button,:host([data-kr-themed]) .nav-items button.active,:host([data-kr-themed]) .sheet-tabs button[aria-selected="true"]{border-color:var(--kr-line);background:var(--kr-glow);color:var(--kr-text)}
+      :host([data-kr-themed]) .nav-items button:hover,:host([data-kr-themed]) .sheet-tabs button:hover{background:var(--kr-glow)}
     </style><ha-card><main class="shell"><header class="hero"><div class="hero-content"><h2>상황 안내</h2><p><strong>${esc(guide.official_first)}</strong> 받은 경보를 선택하면 첫 행동을 바로 확인할 수 있습니다.</p><div class="hero-actions"><a href="${esc(this._assetPath)}/kr-survival-kit-a4.pdf" target="_blank" rel="noopener">A4 행동 카드 열기</a><a class="secondary" href="${esc(this._assetPath)}/kr-survival-kit-offline.html" target="_blank" rel="noopener">오프라인 안내 열기</a><a class="secondary" href="/kr-survival-kit/home">비축 관리로</a></div></div><div class="orb" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 8 82 21v25c0 23-13 36-32 47C31 82 18 69 18 46V21z" fill="#7bc8d9" stroke="#dafaff" stroke-width="2"/><path d="M50 18 73 27v19c0 17-8 28-23 37-15-9-23-20-23-37V27z" fill="#22506a"/><path d="M50 30v34M33 47h34" stroke="#bbf1f3" stroke-width="7" stroke-linecap="round"/></svg></div></header>
     <div class="layout"><nav class="rail" aria-label="상황 선택"><h2>상황별 첫 행동</h2>${scenarioNav}</nav><section class="action" aria-live="polite"><div class="action-top"><p class="kind">${esc(scenario.kind)}</p><h2>${esc(scenario.title)}</h2><h3>먼저 할 일</h3><p class="first-action">${esc(scenario.first_action)}</p></div><div class="action-body"><h3>이어 확인할 일</h3>${detail}${household}<div class="comms"><strong>전화·인터넷이 끊기면</strong>${esc(guide.communication_loss.first_action)} ${esc(guide.communication_loss.paper_note)}</div></div></section></div>
     <section class="timeline" aria-labelledby="timeline-title"><div class="section-head"><h2 id="timeline-title">${sheetHeading}</h2><p>${sheetSummary}</p></div><div class="sheet-tabs" role="tablist" aria-label="상세 행동 안내">${sheetNav}</div><div id="sheet-panel" role="tabpanel" aria-labelledby="tab-${esc(sheet.id)}" tabindex="0"><h3>${esc(sheet.title)}</h3><p class="sheet-intro">${esc(sheet.intro)}</p>${sheet.layout === "reference" ? `<div class="reference-grid">${rows}</div>` : `<ol class="time-list">${rows}</ol>`}</div></section>
     ${this._quizView(esc)}
     <details class="references"><summary>공식 참고 자료와 파일 보관 방법</summary><p>외부 출처는 인터넷 연결이 필요합니다. PDF는 열린 화면에서 인쇄·다운로드하고, HTML은 브라우저의 ‘다른 이름으로 저장’으로 미리 보관하세요.</p><ul>${uniqueSources.map((source) => `<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.publisher)} · ${esc(source.title)}</a></li>`).join("")}</ul></details></main></ha-card>`;
+    this.shadowRoot.querySelector(".quiz-panel")?.addEventListener("toggle", (event) => {
+      this._quizOpen = event.currentTarget.open;
+    });
     this.shadowRoot.querySelectorAll("[data-quiz-choice]").forEach((button) => button.addEventListener("click", () => {
       const question = this._quizData?.questions?.[this._quizIndex];
       if (!question?.choices?.some((choice) => choice.id === button.dataset.quizChoice)) return;
@@ -908,19 +806,27 @@ if (!customElements.get("kr-survival-kit-guide-card")) {
 }
 window.customCards.push({ type: "kr-survival-kit-guide-card", name: "KR Survival Kit 상황 안내", description: "경보별 첫 행동과 시간순 안내" });
 
+const KR_PANEL_THEMES = {
+  black: {name: "블랙", scheme:"dark", bg: "#101215", surface: "#1c2026", glow: "#272f36", text: "#f1f4f5", muted: "#c0cbd0", line: "#49535d", accent: "#96e4da", "accent-ink": "#102021"},
+  white: {name: "화이트", scheme:"light", bg: "#f3f6f8", surface: "#ffffff", glow: "#e1ebf1", text: "#152b3a", muted: "#405763", line: "#aabfc9", accent: "#075d70", "accent-ink": "#ffffff"},
+  blue: {name: "블루", scheme:"dark", bg: "#101d38", surface: "#182d4f", glow: "#234568", text: "#eef6ff", muted: "#c6daf0", line: "#56769c", accent: "#8bd8ff", "accent-ink": "#112540"},
+  ivory: {name: "아이보리", scheme:"light", bg: "#f2e9d7", surface: "#fff9ec", glow: "#ece0c5", text: "#362b20", muted: "#5d5040", line: "#b6a387", accent: "#714619", "accent-ink": "#ffffff"},
+};
+
 class KrSurvivalKitPanel extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" }).innerHTML = `
       <style>
-        :host { display: block; color: var(--primary-text-color); }
+        :host { display:block; color:var(--kr-text); background:var(--kr-bg); min-height:100%; }
         header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px;
-          padding: 8px 16px; background: var(--card-background-color); }
+          padding: 8px 16px; background:var(--kr-surface); border-bottom:1px solid var(--kr-line); }
         nav { display: flex; flex-wrap: wrap; gap: 8px; }
         a { color: inherit; padding: 10px 12px; border-radius: 8px; text-decoration: none; }
-        a[aria-current="page"] { color: var(--primary-text-color); font-weight: 700;
-          box-shadow: inset 0 -3px var(--primary-color); }
+        a[aria-current="page"] { color:var(--kr-text); font-weight:700;
+          box-shadow: inset 0 -3px var(--kr-accent); }
         a:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+        .theme-switch{display:flex;flex-wrap:wrap;gap:5px;margin-inline-start:auto}.theme-switch button{min-height:36px;padding:.3rem .5rem;border:1px solid var(--kr-line);border-radius:7px;color:var(--kr-text);background:var(--kr-bg);cursor:pointer;font:inherit;font-size:.84rem}.theme-switch button[aria-pressed="true"]{background:var(--kr-accent);color:var(--kr-accent-ink);border-color:var(--kr-accent)}.theme-switch button:focus-visible{outline:2px solid var(--kr-accent);outline-offset:2px}@media(max-width:600px){.theme-switch{width:100%;margin-inline-start:0}}
         main { padding: clamp(4px, 2vw, 20px); }
       </style>
       <header>
@@ -930,8 +836,31 @@ class KrSurvivalKitPanel extends HTMLElement {
           <a href="/kr-survival-kit/home">비축 관리</a>
           <a href="/kr-survival-kit/guide">상황 안내</a>
         </nav>
+        <div class="theme-switch" role="group" aria-label="화면 테마">${Object.entries(KR_PANEL_THEMES).map(([id, theme]) =>
+          `<button type="button" data-theme="${id}" aria-pressed="false">${theme.name}</button>`).join("")}</div>
       </header>
       <main></main>`;
+    let saved;
+    try { saved = window.localStorage.getItem("kr_survival_kit_theme"); } catch { /* storage is optional */ }
+    this._theme = Object.hasOwn(KR_PANEL_THEMES, saved) ? saved : "black";
+    this.shadowRoot.querySelectorAll("[data-theme]").forEach((button) => button.addEventListener("click", () => {
+      this._applyTheme(button.dataset.theme);
+      try { window.localStorage.setItem("kr_survival_kit_theme", button.dataset.theme); } catch { /* storage is optional */ }
+    }));
+  }
+
+  connectedCallback() {
+    this._applyTheme(this._theme);
+  }
+
+  _applyTheme(name) {
+    this._theme = name;
+    for (const [key, value] of Object.entries(KR_PANEL_THEMES[name])) {
+      if (key !== "name") this.style.setProperty(`--kr-${key}`, value);
+    }
+    for (const button of this.shadowRoot.querySelectorAll("[data-theme]")) {
+      button.setAttribute("aria-pressed", String(button.dataset.theme === name));
+    }
   }
 
   set hass(value) {
@@ -957,6 +886,7 @@ class KrSurvivalKitPanel extends HTMLElement {
     const isGuide = view === "guide";
     const { guide, quiz, asset_path } = this._config;
     const card = document.createElement(isGuide ? "kr-survival-kit-panel-guide" : "kr-survival-kit-panel-inventory");
+    card.toggleAttribute("data-kr-themed", true);
     card.setConfig(isGuide
       ? { guide_data: guide, asset_path, quiz_data: quiz }
       : {});

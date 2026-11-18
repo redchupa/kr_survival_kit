@@ -125,7 +125,7 @@ def main():
         inactive.locator("summary").click()
         assert inactive.locator('[data-item="self-heating-ration"] .stock-label').inner_text() == "미사용"
         assert shelf.locator('[data-item="radio"] .ready-art').is_visible()
-        assert page.locator("kr-survival-kit-inventory-card .stock-rank").get_by_role("progressbar").get_attribute("value") == "16"
+        assert page.locator("kr-survival-kit-inventory-card .stock-rank").locator("progress").get_attribute("value") == "16"
         render(make_snapshot(24, demo_full=True))
         assert inactive.get_attribute("open") is not None
         assert "챌린저" in page.locator("kr-survival-kit-inventory-card .stock-rank").inner_text()
@@ -156,6 +156,10 @@ def main():
             window.demoGuide.setConfig({guide_data: guide, quiz_data: quiz});
             document.body.append(window.demoGuide);
         }""", {"guide": GUIDE, "quiz": QUIZ})
+        quiz_panel = page.locator("kr-survival-kit-guide-card .quiz-panel")
+        assert quiz_panel.get_attribute("open") is None
+        assert not quiz_panel.locator(".quiz-question").is_visible()
+        quiz_panel.locator("summary").click()
         first = QUIZ["questions"][0]
         wrong = next(choice for choice in first["choices"] if choice["id"] != first["answer_id"])
         wrong_button = page.locator(f'kr-survival-kit-guide-card [data-quiz-choice="{wrong["id"]}"]')
@@ -217,7 +221,12 @@ def main():
         assert_focused(shelf.locator('[data-item="self-heating-ration"] button'))
 
         render(make_snapshot(2))
+        water_tile.scroll_into_view_if_needed()
+        original = water_tile.bounding_box()["y"]
         water_tile.locator(".ready-art").click()
+        assert page.get_by_role("dialog", name="생수 수정").is_visible()
+        assert abs(water_tile.bounding_box()["y"] - original) < 2
+        assert page.locator("#inventory-list").count() == 0
         target = page.locator("kr-survival-kit-inventory-card #editor #target")
         quantity = page.locator("kr-survival-kit-inventory-card #editor .quantity")
         received_on = page.locator("kr-survival-kit-inventory-card #editor .received-on")
@@ -294,7 +303,8 @@ def main():
         assert_focused(water_button)
         water_button.press("Enter")
         assert card.locator("#editor h3").inner_text() == "생수 수정"
-        card.locator("#cancel").click()
+        page.keyboard.press("Escape")
+        assert not card.locator("#item-dialog").count()
         assert_focused(water_button)
 
         page.evaluate("""({guide, quiz, snapshot}) => {
@@ -309,9 +319,25 @@ def main():
         assert panel.locator("a[aria-current='page']").inner_text() == "비축 관리"
         assert panel.locator("kr-survival-kit-panel-inventory .ready-art").count() > 1
         assert panel.locator(".quiz-panel").count() == 0
+        for label, palette in [("블랙", "#101215"), ("화이트", "#f3f6f8"), ("블루", "#101d38"), ("아이보리", "#f2e9d7")]:
+            theme = panel.get_by_role("button", name=label, exact=True)
+            theme.click()
+            assert theme.get_attribute("aria-pressed") == "true"
+            assert panel.evaluate("el => getComputedStyle(el).getPropertyValue('--kr-bg').trim()") == palette
+            if label in ("화이트", "아이보리"):
+                assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth")
+            page.screenshot(path=str(EVIDENCE / f"panel-theme-{palette[1:]}.jpg"), type="jpeg", quality=88)
+        assert page.evaluate("localStorage.getItem('kr_survival_kit_theme')") == "ivory"
+        for section in (".stock-rank", ".mission-panel"):
+            detail = panel.locator(section)
+            assert detail.get_attribute("open") is None
+            detail.locator("summary").click()
+            assert detail.get_attribute("open") is not None
+            detail.locator("summary").click()
         panel.evaluate("element => element.route = {path: '/guide'}")
         assert panel.locator("a[aria-current='page']").inner_text() == "상황 안내"
-        assert panel.locator(".quiz-panel").count() == 1
+        assert panel.locator(".quiz-panel").get_attribute("open") is None
+        assert panel.get_by_role("button", name="아이보리").get_attribute("aria-pressed") == "true"
         assert panel.get_by_role("link", name="A4 행동 카드 열기").get_attribute("href") == "/kr_survival_kit_assets/kr-survival-kit-a4.pdf"
         assert panel.get_by_role("link", name="오프라인 안내 열기").get_attribute("href") == "/kr_survival_kit_assets/kr-survival-kit-offline.html"
         assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth")

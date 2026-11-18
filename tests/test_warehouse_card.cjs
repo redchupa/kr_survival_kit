@@ -45,7 +45,7 @@ const withOptional = snapshot(base);
 withOptional.catalog.push({ id: "radio", tier: "optional" });
 assert.equal(context.stockScore(withOptional), 100);
 for (const [index, rank] of ["아이언", "브론즈", "실버", "골드", "플레티넘", "에메랄드", "다이아", "마스터", "그랜드마스터", "챌린저"].entries()) {
-  assert.match(context.stockRank(snapshot({ ...base, target: 100, usable: index * 10 })), new RegExp(`<strong>${rank}</strong>`));
+  assert.match(context.stockRank(snapshot({ ...base, target: 100, usable: index * 10 })), new RegExp(`<strong class="rank-badge"[^>]*>${rank}</strong>`));
 }
 assert.equal(context.stockFormat(item, 1001), "1.001");
 assert.equal(context.stockParse(item, "1.001"), 1001);
@@ -79,32 +79,21 @@ card._config.weather_entity = undefined;
 card._updateAtmosphere();
 assert.equal(elements["#local-weather"].textContent, "날씨 연동 안 됨");
 
-const handlers = {};
-const focus = [];
-let scrolled = 0;
-const categoryButton = { dataset: { category: "water" }, addEventListener: (_type, handler) => { handlers.category = handler; } };
-const statusButton = { closest: () => null, dataset: { status: "shortage" }, addEventListener: (_type, handler) => { handlers.status = handler; } };
+let changeStatus;
+let focused = false;
+const statusButton = { dataset: { status: "shortage" }, addEventListener: (_type, handler) => { changeStatus = handler; } };
 card.shadowRoot = {
-  activeElement: null,
   innerHTML: "",
-  querySelector: (selector) => {
-    if (selector === '[data-category="water"]') return { focus: () => focus.push("category") };
-    if (selector === '.filter-bar [data-status="shortage"]') return { focus: () => focus.push("status") };
-    if (selector === "#refresh") return { focus: () => focus.push("refresh"), addEventListener() {} };
-    if (selector === "#inventory-list") return { scrollIntoView: () => { scrolled += 1; } };
-    return elements[selector] || null;
-  },
-  querySelectorAll: (selector) => selector === "[data-category]" ? [categoryButton] : selector === "[data-status]" ? [statusButton] : [],
+  querySelector: (selector) => selector === '[data-status="shortage"]'
+    ? { focus: () => { focused = true; } } : elements[selector] || null,
+  querySelectorAll: (selector) => selector === "[data-status]" ? [statusButton] : [],
 };
 card._snapshot = snapshot(base);
 card._render();
-handlers.category({ detail: 0 });
-assert.deepEqual(focus, ["category"]);
-assert.equal(scrolled, 0);
-handlers.status({ detail: 0 });
-assert.deepEqual(focus, ["category", "status"]);
-handlers.category({ detail: 1 });
-assert.deepEqual(focus, ["category", "status", "refresh"]);
-assert.equal(scrolled, 1);
+changeStatus();
+assert.equal(card._statusFilter, "shortage");
+assert.equal(focused, true);
+assert.doesNotMatch(card.shadowRoot.innerHTML, /data-item="drinking-water"/);
+assert.doesNotMatch(card.shadowRoot.innerHTML, /id="inventory-list"/);
 
 console.log("Inventory grid, catalog pictograms, L units, escaping, weather freshness, and keyboard focus passed");
