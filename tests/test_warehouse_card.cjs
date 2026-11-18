@@ -11,7 +11,7 @@ class MockElement {
   attachShadow() { this.shadowRoot = { querySelector: (selector) => elements[selector] }; }
 }
 const context = { HTMLElement: MockElement, customElements: { define() {}, get() {} }, window: { customCards: [], requestAnimationFrame: (callback) => callback() }, Intl, Date };
-vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse; globalThis.daysUntil = krDaysUntil; globalThis.addMonths = krAddMonths;", context);
+vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse; globalThis.daysUntil = krDaysUntil; globalThis.addMonths = krAddMonths; globalThis.survivalDays = krSurvivalDays; globalThis.urgentQuests = krUrgentQuests; globalThis.expiringStrip = krExpiringStrip;", context);
 
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -101,4 +101,13 @@ assert.doesNotMatch(card.shadowRoot.innerHTML, /data-item="drinking-water"/);
 assert.doesNotMatch(card.shadowRoot.innerHTML, /id="inventory-list"/);
 assert.match(card.shadowRoot.innerHTML, /data-view-mode="3d"/);
 
-console.log("Inventory grid, catalog pictograms, L units, escaping, weather freshness, and keyboard focus passed");
+const days = context.survivalDays({ household_size: 4, summary: { items: { "drinking-water": { usable: 24000 }, "instant-rice": { usable: 12 }, "spam-canned-ham": { usable: 6 } } } });
+assert.equal(days.waterDays, 3);
+assert.equal(days.foodDays, 2);
+const quests = context.urgentQuests({ catalog: [item], items: { "drinking-water": { applicable: true } }, summary: { items: { "drinking-water": { ...base, usable: 0, state: "shortage" } } } });
+assert.equal(quests.length, 1);
+assert.equal(quests[0].itemId, "drinking-water");
+const expHtml = context.expiringStrip({ today: "2026-11-18", catalog: [item], items: { "drinking-water": { applicable: true } }, summary: { items: { "drinking-water": { ...base, expiring_quantity: 2000, next_expiry_on: "2026-11-25" } } } }, escape);
+assert.match(expHtml, /D-7/);
+
+console.log("Inventory grid, catalog pictograms, L units, escaping, weather freshness, survival days, quests, and keyboard focus passed");

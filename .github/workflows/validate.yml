@@ -28,6 +28,8 @@ jobs:
       - run: python scripts/build_dashboard.py
       - run: python tests/check_package.py
       - run: node --check custom_components/kr_survival_kit/www/kr-survival-kit-card.js
+      - run: node --check custom_components/kr_survival_kit/www/kr-warehouse-3d.js
+      - run: node --check custom_components/kr_survival_kit/www/kr-survival-core.js
       - run: node tests/test_warehouse_card.cjs
       - run: python tests/test_warehouse_visual.py
       - run: python scripts/audit_public.py

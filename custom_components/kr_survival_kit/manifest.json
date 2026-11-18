@@ -4,7 +4,7 @@
   "version": "0.7.0",
   "documentation": "https://github.com/redchupa/kr_survival_kit",
   "issue_tracker": "https://github.com/redchupa/kr_survival_kit/issues",
-  "codeowners": [],
+  "codeowners": ["@redchupa"],
   "config_flow": true,
   "dependencies": ["panel_custom", "lovelace"],
   "integration_type": "service",
