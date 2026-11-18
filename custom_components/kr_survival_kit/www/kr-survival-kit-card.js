@@ -889,7 +889,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         try { return window.localStorage?.getItem("kr_survival_kit_theme") || "black"; } catch { return "black"; }
       };
       const base = this._config?.asset_path ? `${this._config.asset_path.replace(/\/$/, "")}/` : KR_SCRIPT_BASE;
-      import(`${base}kr-warehouse-3d.js`).then(({ KrWarehouseThreeEngine }) => {
+      import(`${base}kr-warehouse-3d.js?v=0.5.1`).then(({ KrWarehouseThreeEngine }) => {
         if (!this.shadowRoot.contains(canvas3d)) return;
         this._engine3d = new KrWarehouseThreeEngine(
           canvas3d, tooltip3d,

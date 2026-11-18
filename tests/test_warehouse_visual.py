@@ -82,8 +82,8 @@ def main():
         page = browser.new_page(viewport={"width": 1280, "height": 900}, device_scale_factor=1)
         page.route("https://synthetic.invalid/kr_survival_kit_assets/*", lambda route: route.fulfill(
             status=200,
-            content_type="application/javascript" if route.request.url.endswith(".js") else "text/plain",
-            body=(ROOT / "custom_components/kr_survival_kit/www" / route.request.url.split("/")[-1]).read_bytes(),
+            content_type="application/javascript" if route.request.url.split("?")[0].endswith(".js") else "text/plain",
+            body=(ROOT / "custom_components/kr_survival_kit/www" / route.request.url.split("?")[0].split("/")[-1]).read_bytes(),
         ))
         page.route("https://synthetic.invalid/*", lambda route: route.fulfill(status=200, body="<html></html>"))
         page.goto("https://synthetic.invalid/")

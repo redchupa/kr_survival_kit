@@ -261,18 +261,18 @@ export class KrWarehouseThreeEngine {
     const essentials = snapshot.catalog.filter((i) => !["household", "optional"].includes(i.tier));
     const allOptional = snapshot.catalog.filter((i) => ["household", "optional"].includes(i.tier));
     const activeOpt = allOptional.filter((i) => snapshot.items[i.id]?.applicable);
-    // If optional rack is selected (or no optional items active yet), show active optional items plus preview slots so the rack is never empty.
-    const optionalDisplay = activeOpt.length ? activeOpt : allOptional.slice(0, 15);
     const itemsToShow = this.zone === "essentials"
       ? essentials
       : this.zone === "optional"
-        ? (activeOpt.length ? [...activeOpt, ...allOptional.filter((i) => !snapshot.items[i.id]?.applicable).slice(0, Math.max(0, 15 - activeOpt.length))] : allOptional.slice(0, 20))
-        : [...essentials, ...optionalDisplay];
+        ? allOptional
+        : [...essentials, ...activeOpt];
 
-    const cols = 5;
+    const cols = itemsToShow.length > 35 ? 8 : 6;
     const rows = Math.max(1, Math.ceil(itemsToShow.length / cols));
-    const rackW = 5.6;
+    const rackW = cols * 1.04 + 0.5;
     const rackD = 1.25;
+    this._targetCamDist = rows > 5 ? 13.5 : rows > 3 ? 10.5 : 8.4;
+    if (!this._userZoomed) this.distance = this._targetCamDist;
     const metalMat = new THREE.MeshStandardMaterial({ color: 0x3b5b6e, roughness: 0.35, metalness: 0.78 });
     const deckMat = new THREE.MeshStandardMaterial({ color: 0x1a3547, roughness: 0.55, metalness: 0.4 });
 
@@ -396,7 +396,8 @@ export class KrWarehouseThreeEngine {
     };
     this._onWheel = (e) => {
       e.preventDefault();
-      this.distance = Math.max(4.5, Math.min(14.5, this.distance + e.deltaY * 0.006));
+      this._userZoomed = true;
+      this.distance = Math.max(4.5, Math.min(22.0, this.distance + e.deltaY * 0.008));
     };
     this._onResize = () => {
       const rect = this.canvas.getBoundingClientRect();
@@ -471,7 +472,8 @@ export class KrWarehouseThreeEngine {
   resetCamera() {
     this.yaw = -0.62;
     this.pitch = 0.48;
-    this.distance = 8.4;
+    this._userZoomed = false;
+    this.distance = this._targetCamDist || 8.4;
   }
 
   destroy() {
