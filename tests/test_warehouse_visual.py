@@ -408,7 +408,7 @@ def main():
             editor.locator("#target").fill("24" if item_id == "drinking-water" else "1")
             editor.get_by_role("button", name="저장", exact=True).click()
             assert card.locator(f'.ready-item[data-item="{item_id}"]').get_attribute("data-complete") == "true", item_id
-        assert card.locator('.ready-item[data-complete="true"]').count() == 56
+        assert card.locator('.ready-item[data-complete="true"]').count() == len(CATALOG)
         assert card.locator(".stock-rank progress").get_attribute("value") == "100"
         assert "챌린저" in card.locator(".stock-rank").inner_text()
         browser.close()

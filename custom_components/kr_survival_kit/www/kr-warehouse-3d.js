@@ -3,18 +3,31 @@ import * as THREE from "./three.module.min.js";
 const SHORT_NAMES = {
   "drinking-water": "생수", "shelf-stable-meal": "상온 간편식", "canned-food": "통조림", hygiene: "위생용품",
   flashlight: "손전등", batteries: "건전지", backpack: "대피 가방", blanket: "담요",
-  "first-aid-kit": "구급 세트", "infant-supplies": "영유아 용품", "prescription-preparedness": "상비약", radio: "라디오",
-  "water-container": "급수 용기", "portable-stove": "휴대 버너", "butane-canister": "부탄가스", "self-heating-ration": "발열식량",
-  candles: "양초", "hand-warmers": "손난로", "large-plastic-bags": "대형 비닐", lighter: "라이터",
-  "solid-fuel": "고체 연료", "child-id-card": "인식표", "portable-solar-panel": "태양광 패널", "manual-can-opener": "캔 따개",
-  "insulated-bottle": "보온병", "cooler-ice-pack": "아이스박스", "portable-water-filter": "정수 필터", "storage-bin": "보관함",
-  "long-storage-snacks": "간식", "infant-formula": "분유", "ready-to-feed-formula": "액상 분유", "infant-feeding-supplies": "수유 용품",
-  "power-bank": "보조배터리", "portable-power-station": "휴대 전원", "charging-cables": "충전선", "warm-clothes": "방한복",
-  raincoat: "우비", masks: "마스크", "rubber-gloves": "고무장갑", "rubber-boots": "장화",
-  "sealing-tape": "밀봉 테이프", "emergency-contact-card": "연락 카드", "family-photo": "가족 사진", "sanitation-bags": "위생 봉투",
-  "thermal-mat": "단열 매트", "child-comfort-kit": "안심 꾸러미", "basic-documents": "서류", "door-window-locks": "문·창 잠금",
-  "door-alarm": "문 알림", "child-carrier": "아이 캐리어", "transport-cart": "운반 수레", "water-sanitation-kit": "물 위생 도구",
-  "hot-water-bag": "온수 주머니", "portable-radio-communication": "무전기", "emergency-payment-check": "비상 결제", "protective-goggles": "보호 안경",
+  "first-aid-kit": "구급 세트", "infant-supplies": "영유아 용품", "prescription-preparedness": "상비약", radio: "자가발전 라디오",
+  "water-container": "20L 말통", "faucet-water-tank": "수도꼭지 물통", "water-purification-tablets": "아쿠아탭스",
+  "metal-fuel-can": "철제 기름통", "fuel-siphon-nozzle": "자바라 노즐",
+  "portable-stove": "휴대 버너", "butane-canister": "부탄가스", "butane-torch": "부탄 토치",
+  "self-heating-ration": "발열식량", rice: "쌀", "spam-canned-ham": "스팸", "canned-tuna": "참치캔",
+  "salt-jar": "소금(병)", "honey-gift-set": "벌꿀",
+  candles: "양초", "hand-warmers": "손난로", "sleeping-bag": "캠핑 침낭",
+  "large-plastic-bags": "특대 김장비닐", lighter: "라이터", "solid-fuel": "고체 연료",
+  "child-id-card": "인식표", "home-solar-panel": "가정용 태양광200W", "portable-solar-panel": "휴대용 태양광60W",
+  "manual-can-opener": "캔 따개", "insulated-bottle": "보온병", "cooler-ice-pack": "아이스박스",
+  "portable-water-filter": "정수 필터", "storage-bin": "보관함", "long-storage-snacks": "간식",
+  "infant-formula": "조제분유", "ready-to-feed-formula": "액상분유", "infant-feeding-supplies": "수유 용품",
+  "power-bank": "휴대 보조배터리", "portable-power-station": "가정용 파워뱅크", "charging-cables": "충전선",
+  "warm-clothes": "방한복", raincoat: "우비", masks: "마스크", "gas-mask": "방독면",
+  "gas-mask-filter": "방독면 필터", earplugs: "이어플러그", "compressed-towel": "압축 수건",
+  "rubber-gloves": "고무장갑", "rubber-boots": "장화", "sealing-tape": "밀봉 테이프",
+  "emergency-contact-card": "연락 카드", "family-photo": "가족 사진",
+  "portable-toilet": "휴대용 변기", "toilet-coagulant": "변기 응고제", "cat-litter": "고양이 모래",
+  "sanitation-bags": "위생 봉투", "thermal-mat": "단열 매트", "child-comfort-kit": "안심 꾸러미",
+  "basic-documents": "서류 사본", "door-window-locks": "문·창 잠금", "door-alarm": "문 알림",
+  "lock-tools": "자물쇠 공구", "child-carrier": "산악 아기캐리어", "transport-cart": "웨건 수레",
+  "water-sanitation-kit": "물 위생 도구", "hot-water-bag": "온수 주머니",
+  "portable-radio-communication": "무전기", "emergency-payment-check": "비상 결제",
+  "cash-krw": "원화 현금", "cash-usd": "달러 외화", "crypto-cold-wallet": "코인·지갑",
+  "protective-goggles": "보호 안경",
 };
 
 function makeLabelSprite(text, toneColor) {
@@ -57,7 +70,7 @@ function buildItemMesh(item, ratio, toneColor, isReady) {
     return group;
   }
 
-  if (id === "drinking-water" || id === "water-container") {
+  if (id === "drinking-water" || id === "water-container" || id === "faucet-water-tank") {
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4cc9f0, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.88 });
     const capMat = new THREE.MeshStandardMaterial({ color: 0xe0fbfc, roughness: 0.4 });
     const bottleGeo = new THREE.CylinderGeometry(0.085, 0.085, 0.36, 12);
@@ -73,8 +86,8 @@ function buildItemMesh(item, ratio, toneColor, isReady) {
       b.position.set((col - 1) * 0.2, 0, (row - 0.5) * 0.22);
       group.add(b);
     }
-  } else if (["canned-food", "butane-canister", "insulated-bottle", "infant-formula", "candles"].includes(id)) {
-    const color = id === "butane-canister" ? 0xff9f68 : id === "infant-formula" ? 0xffd166 : 0xe06f6c;
+  } else if (["canned-food", "butane-canister", "insulated-bottle", "infant-formula", "candles", "spam-canned-ham", "canned-tuna", "salt-jar", "honey-gift-set", "gas-mask-filter"].includes(id)) {
+    const color = id === "butane-canister" ? 0xff9f68 : id === "infant-formula" || id === "honey-gift-set" ? 0xffd166 : id === "gas-mask-filter" ? 0x495057 : id === "canned-tuna" ? 0x4ea8de : 0xe06f6c;
     const canMat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.55 });
     const rimMat = new THREE.MeshStandardMaterial({ color: 0xd8e2dc, roughness: 0.25, metalness: 0.8 });
     const geo = new THREE.CylinderGeometry(0.11, 0.11, 0.24, 16);
@@ -243,8 +256,15 @@ export class KrWarehouseThreeEngine {
     }).map((i) => i.id));
 
     const essentials = snapshot.catalog.filter((i) => !["household", "optional"].includes(i.tier));
-    const activeOpt = snapshot.catalog.filter((i) => ["household", "optional"].includes(i.tier) && snapshot.items[i.id]?.applicable);
-    const itemsToShow = this.zone === "essentials" ? essentials : this.zone === "optional" ? activeOpt : [...essentials, ...activeOpt];
+    const allOptional = snapshot.catalog.filter((i) => ["household", "optional"].includes(i.tier));
+    const activeOpt = allOptional.filter((i) => snapshot.items[i.id]?.applicable);
+    // If optional rack is selected (or no optional items active yet), show active optional items plus preview slots so the rack is never empty.
+    const optionalDisplay = activeOpt.length ? activeOpt : allOptional.slice(0, 15);
+    const itemsToShow = this.zone === "essentials"
+      ? essentials
+      : this.zone === "optional"
+        ? (activeOpt.length ? [...activeOpt, ...allOptional.filter((i) => !snapshot.items[i.id]?.applicable).slice(0, Math.max(0, 15 - activeOpt.length))] : allOptional.slice(0, 20))
+        : [...essentials, ...optionalDisplay];
 
     const cols = 5;
     const rows = Math.max(1, Math.ceil(itemsToShow.length / cols));

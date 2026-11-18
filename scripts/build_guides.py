@@ -191,7 +191,7 @@ def validate_catalog(catalog, sources):
         line(item["name"], f"{key}.name")
         if item["tier"] not in {"rotation", "owned", "household", "optional"}:
             raise ValueError(f"Invalid purchase priority for {key}")
-        if item["unit"] not in {"ml", "개", "세트", "켤레"} or item["date_kind"] not in {"expiry", "inspection"}:
+        if item["unit"] not in {"ml", "kg", "개", "세트", "켤레"} or item["date_kind"] not in {"expiry", "inspection"}:
             raise ValueError(f"Invalid unit or date kind for {key}")
         for field in ("note", "examples"):
             if field in item:

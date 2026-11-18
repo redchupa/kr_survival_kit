@@ -10,11 +10,11 @@ const KR_SURVIVAL_GROUPS = {
 
 const KR_OPTIONAL_CATEGORIES = [
   { id: "all", label: "전체" },
-  { id: "water_cook", label: "식수·취사", ids: new Set(["water-container", "portable-stove", "butane-canister", "self-heating-ration", "lighter", "solid-fuel", "manual-can-opener", "insulated-bottle", "cooler-ice-pack", "portable-water-filter", "long-storage-snacks", "water-sanitation-kit"]) },
-  { id: "power_light", label: "전원·통신", ids: new Set(["radio", "candles", "portable-solar-panel", "power-bank", "portable-power-station", "charging-cables", "portable-radio-communication", "door-alarm"]) },
+  { id: "water_cook", label: "식수·식량·취사", ids: new Set(["water-container", "faucet-water-tank", "water-purification-tablets", "portable-stove", "butane-canister", "butane-torch", "self-heating-ration", "rice", "spam-canned-ham", "canned-tuna", "salt-jar", "honey-gift-set", "lighter", "solid-fuel", "manual-can-opener", "insulated-bottle", "cooler-ice-pack", "portable-water-filter", "long-storage-snacks", "water-sanitation-kit"]) },
+  { id: "power_light", label: "전원·연료·통신", ids: new Set(["radio", "candles", "home-solar-panel", "portable-solar-panel", "power-bank", "portable-power-station", "charging-cables", "portable-radio-communication", "door-alarm", "metal-fuel-can", "fuel-siphon-nozzle"]) },
   { id: "care_infant", label: "의료·유아", ids: new Set(["infant-supplies", "prescription-preparedness", "infant-formula", "ready-to-feed-formula", "infant-feeding-supplies", "child-id-card", "child-comfort-kit", "child-carrier"]) },
-  { id: "gear_protect", label: "방호·위생", ids: new Set(["hand-warmers", "large-plastic-bags", "warm-clothes", "raincoat", "masks", "rubber-gloves", "rubber-boots", "sealing-tape", "sanitation-bags", "thermal-mat", "hot-water-bag", "protective-goggles"]) },
-  { id: "doc_move", label: "서류·이동", ids: new Set(["storage-bin", "emergency-contact-card", "family-photo", "basic-documents", "door-window-locks", "transport-cart", "emergency-payment-check"]) },
+  { id: "gear_protect", label: "방호·위생·침구", ids: new Set(["hand-warmers", "sleeping-bag", "large-plastic-bags", "warm-clothes", "raincoat", "masks", "gas-mask", "gas-mask-filter", "earplugs", "compressed-towel", "rubber-gloves", "rubber-boots", "sealing-tape", "portable-toilet", "toilet-coagulant", "cat-litter", "sanitation-bags", "thermal-mat", "hot-water-bag", "protective-goggles"]) },
+  { id: "doc_move", label: "자산·서류·이동", ids: new Set(["storage-bin", "emergency-contact-card", "family-photo", "basic-documents", "door-window-locks", "lock-tools", "transport-cart", "emergency-payment-check", "cash-krw", "cash-usd", "crypto-cold-wallet"]) },
 ];
 
 function krStockScale(item) {
@@ -110,6 +110,29 @@ const KR_READY_PICTOGRAMS = {
   "portable-radio-communication": krSvg(`<path d="M17 16V6" stroke="#8de8b5" stroke-width="2.2" stroke-linecap="round"/><rect x="14" y="16" width="20" height="25" rx="3.5" fill="#4aa678" fill-opacity=".3" stroke="#8de8b5" stroke-width="1.8"/><rect x="18" y="21" width="12" height="7" rx="1" fill="#8de8b5" fill-opacity=".35"/><path d="M18 33h12M18 36h8" stroke="#8de8b5" stroke-width="1.5" stroke-linecap="round"/>`, "walkie"),
   "emergency-payment-check": krSvg(`<rect x="8" y="13" width="32" height="22" rx="3.5" fill="#77cc8e" fill-opacity=".26" stroke="#a6f0ba" stroke-width="1.8"/><path d="M8 20h32" stroke="#a6f0ba" stroke-width="2.5"/><rect x="13" y="26" width="8" height="4" rx="1" fill="#a6f0ba"/>`, "payment"),
   "protective-goggles": krSvg(`<path d="M8 20a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v7a5 5 0 0 1-5 5h-6l-3-4h-4l-3 4h-6a5 5 0 0 1-5-5z" fill="#7ecce0" fill-opacity=".3" stroke="#b5f0ff" stroke-width="1.8"/><path d="M13 21l4 4" stroke="#e6fbff" stroke-width="1.6" stroke-linecap="round"/>`, "goggles"),
+  "faucet-water-tank": krSvg(`<rect x="10" y="12" width="22" height="28" rx="4" fill="#4aa8cc" fill-opacity=".28" stroke="#8de0fa" stroke-width="1.8"/><path d="M32 30h6v5" fill="none" stroke="#8de0fa" stroke-width="2.2" stroke-linecap="round"/><circle cx="38" cy="39" r="1.8" fill="#b8f2ff"/><path d="M16 12V8h10v4" stroke="#8de0fa" stroke-width="1.8"/>`, "faucet"),
+  "water-purification-tablets": krSvg(`<rect x="11" y="10" width="26" height="28" rx="4" fill="#7be0eb" fill-opacity=".2" stroke="#9ef0f8" stroke-width="1.8"/><circle cx="19" cy="19" r="3" fill="#b8f5ff"/><circle cx="29" cy="19" r="3" fill="#b8f5ff"/><circle cx="19" cy="29" r="3" fill="#b8f5ff"/><circle cx="29" cy="29" r="3" fill="#b8f5ff"/>`, "aquatabs"),
+  "metal-fuel-can": krSvg(`<path d="M12 14h18l6 6v20H12z" fill="#d95f59" fill-opacity=".3" stroke="#ff9e99" stroke-width="1.8" stroke-linejoin="round"/><path d="M16 14V9h9v5M17 22l12 12m0-12L17 34" stroke="#ff9e99" stroke-width="1.8" stroke-linecap="round"/>`, "jerrycan"),
+  "fuel-siphon-nozzle": krSvg(`<path d="M12 36c0-14 6-22 14-22h8l4 6" fill="none" stroke="#f7b277" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="18" r="4" fill="#f7b277" fill-opacity=".4" stroke="#f7b277" stroke-width="1.6"/>`, "siphon"),
+  "butane-torch": krSvg(`<rect x="16" y="21" width="12" height="20" rx="2" fill="#ff9f68" fill-opacity=".28" stroke="#ffc299" stroke-width="1.8"/><path d="M20 21v-6h12l4-3" fill="none" stroke="#d4e6f0" stroke-width="2.2" stroke-linecap="round"/><path d="M38 11c2 0 4 1.5 4 3s-2 2-4 2" fill="#ffd166"/>`, "torch"),
+  rice: krSvg(`<path d="M13 13h22l3 26a3 3 0 0 1-3 3H13a3 3 0 0 1-3-3z" fill="#f2e6c9" fill-opacity=".28" stroke="#fff3d6" stroke-width="1.8"/><path d="M16 13c2-3 14-3 16 0" stroke="#fff3d6" stroke-width="1.8"/><ellipse cx="24" cy="27" rx="6" ry="4" fill="#fff3d6" fill-opacity=".5"/>`, "rice"),
+  "spam-canned-ham": krSvg(`<rect x="10" y="14" width="28" height="22" rx="3" fill="#e06f6c" fill-opacity=".35" stroke="#ffb0ad" stroke-width="1.8"/><rect x="14" y="20" width="20" height="10" rx="1.5" fill="#ffe19c" fill-opacity=".3" stroke="#ffe19c" stroke-width="1.4"/>`, "spam"),
+  "canned-tuna": krSvg(`<ellipse cx="24" cy="22" rx="14" ry="7" fill="#5aa8e0" fill-opacity=".32" stroke="#9ed4ff" stroke-width="1.8"/><path d="M10 22v8c0 3.9 6.3 7 14 7s14-3.1 14-7v-8" fill="#4692c9" fill-opacity=".25" stroke="#9ed4ff" stroke-width="1.8"/>`, "tuna"),
+  "salt-jar": krSvg(`<rect x="15" y="14" width="18" height="26" rx="4" fill="#e6f4f8" fill-opacity=".25" stroke="#ffffff" stroke-width="1.8"/><rect x="17" y="9" width="14" height="5" rx="1.5" fill="#a8c4d4"/><path d="M18 29h12l-2 7h-8z" fill="#ffffff" fill-opacity=".6"/>`, "salt"),
+  "honey-gift-set": krSvg(`<path d="M16 15h16l3 8v15a3 3 0 0 1-3 3H16a3 3 0 0 1-3-3V23z" fill="#ffb703" fill-opacity=".32" stroke="#ffd166" stroke-width="1.8"/><rect x="18" y="9" width="12" height="5" rx="1.5" fill="#ffd166"/><path d="M17 26h14" stroke="#fff3b0" stroke-width="2"/>`, "honey"),
+  "sleeping-bag": krSvg(`<path d="M14 14a6 6 0 0 1 6-6h8a6 6 0 0 1 6 6v24a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4z" fill="#5da688" fill-opacity=".3" stroke="#9ee6c7" stroke-width="1.8"/><path d="M14 19h20M24 19v23" stroke="#9ee6c7" stroke-width="1.6"/>`, "sleepbag"),
+  "home-solar-panel": krSvg(`<rect x="6" y="11" width="36" height="24" rx="2" fill="#3a86ff" fill-opacity=".3" stroke="#8fd0ff" stroke-width="1.8"/><path d="M15 11v24M24 11v24M33 11v24M6 19h36M6 27h36" stroke="#8fd0ff" stroke-width="1.2"/><path d="M18 35l-2 6m16-6 2 6" stroke="#8fd0ff" stroke-width="2" stroke-linecap="round"/>`, "homesolar"),
+  "gas-mask": krSvg(`<path d="M14 14c0-4 4-6 10-6s10 2 10 6v12c0 6-4 10-10 10s-10-4-10-10z" fill="#5c7080" fill-opacity=".35" stroke="#b5d0e0" stroke-width="1.8"/><circle cx="19" cy="20" r="3.2" fill="#8fd0ff" fill-opacity=".45" stroke="#b5d0e0" stroke-width="1.4"/><circle cx="29" cy="20" r="3.2" fill="#8fd0ff" fill-opacity=".45" stroke="#b5d0e0" stroke-width="1.4"/><circle cx="24" cy="31" r="4.5" fill="#495057" stroke="#ffd166" stroke-width="1.6"/>`, "gasmask"),
+  "gas-mask-filter": krSvg(`<ellipse cx="24" cy="18" rx="12" ry="5" fill="#5c7080" fill-opacity=".4" stroke="#ffd166" stroke-width="1.8"/><path d="M12 18v12c0 2.8 5.4 5 12 5s12-2.2 12-5V18" fill="#495057" fill-opacity=".35" stroke="#ffd166" stroke-width="1.8"/><path d="M19 13h10v4H19z" fill="#ffd166" fill-opacity=".5"/>`, "gasfilter"),
+  earplugs: krSvg(`<path d="M15 32v-9l3-11h2l3 11v9zM25 32v-9l3-11h2l3 11v9z" fill="#ff9f68" fill-opacity=".35" stroke="#ffc299" stroke-width="1.6" stroke-linejoin="round"/>`, "earplugs"),
+  "compressed-towel": krSvg(`<circle cx="24" cy="24" r="11" fill="#e6f4f8" fill-opacity=".28" stroke="#ffffff" stroke-width="1.8"/><path d="M17 24h14M24 17v14" stroke="#9beaf4" stroke-width="1.8" stroke-linecap="round"/>`, "towel"),
+  "portable-toilet": krSvg(`<ellipse cx="24" cy="18" rx="11" ry="4.5" fill="#d9e8f0" fill-opacity=".3" stroke="#e8f3f8" stroke-width="1.8"/><path d="M13 18l2 19h18l2-19" fill="#9fb5c2" fill-opacity=".25" stroke="#e8f3f8" stroke-width="1.8"/>`, "toilet"),
+  "toilet-coagulant": krSvg(`<rect x="13" y="11" width="22" height="26" rx="3" fill="#8ce2db" fill-opacity=".25" stroke="#9ef0e8" stroke-width="1.8"/><circle cx="20" cy="23" r="1.5" fill="#fff"/><circle cx="28" cy="21" r="1.5" fill="#fff"/><circle cx="24" cy="28" r="1.5" fill="#fff"/>`, "coagulant"),
+  "cat-litter": krSvg(`<path d="M12 12h24l2 26H10z" fill="#e6c453" fill-opacity=".25" stroke="#ffe587" stroke-width="1.8"/><circle cx="24" cy="25" r="4" fill="#ffe587" fill-opacity=".4"/><circle cx="19" cy="21" r="1.5" fill="#ffe587"/><circle cx="29" cy="21" r="1.5" fill="#ffe587"/>`, "catlitter"),
+  "lock-tools": krSvg(`<path d="M14 34L32 14m-18 0l5 5m9 9l6 6" stroke="#b5d6e8" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="15" r="3" fill="none" stroke="#ffd166" stroke-width="1.8"/><rect x="28" y="28" width="9" height="9" rx="2" fill="#ffd166" fill-opacity=".35" stroke="#ffd166" stroke-width="1.6"/>`, "locktools"),
+  "cash-krw": krSvg(`<rect x="8" y="14" width="32" height="20" rx="3" fill="#52b788" fill-opacity=".3" stroke="#9ef0be" stroke-width="1.8"/><path d="M17 20l2.5 8 2.5-6 2.5 6 2.5-8M15 24h18" fill="none" stroke="#d8f3dc" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`, "krw"),
+  "cash-usd": krSvg(`<rect x="8" y="14" width="32" height="20" rx="3" fill="#40916c" fill-opacity=".32" stroke="#8cf2ad" stroke-width="1.8"/><path d="M24 18v12m3-9.5c0-1.5-6-1.5-6 0s6 2 6 4.5-6 2-6 0" fill="none" stroke="#d8f3dc" stroke-width="1.8" stroke-linecap="round"/>`, "usd"),
+  "crypto-cold-wallet": krSvg(`<rect x="13" y="10" width="22" height="28" rx="4" fill="#f7931a" fill-opacity=".26" stroke="#ffb74d" stroke-width="1.8"/><circle cx="24" cy="22" r="5" fill="none" stroke="#ffe082" stroke-width="1.8"/><path d="M24 19v6m-2-3h4M20 33h8" stroke="#ffe082" stroke-width="1.6" stroke-linecap="round"/>`, "crypto"),
 };
 
 function krReadyItems(snapshot) {
@@ -175,6 +198,17 @@ const KR_READY_SHORT_NAMES = {
   "thermal-mat": "단열 매트", "child-comfort-kit": "아이 안심 꾸러미", "basic-documents": "서류", "door-window-locks": "문·창 잠금",
   "door-alarm": "문 알림", "child-carrier": "아이 캐리어", "transport-cart": "운반 수레", "water-sanitation-kit": "물 위생 도구",
   "hot-water-bag": "온수 주머니", "portable-radio-communication": "무전기", "emergency-payment-check": "비상 결제", "protective-goggles": "보호 안경",
+  "faucet-water-tank": "수도꼭지 물통", "water-purification-tablets": "아쿠아탭스",
+  "metal-fuel-can": "철제 기름통", "fuel-siphon-nozzle": "자바라 노즐",
+  "butane-torch": "부탄 토치", rice: "쌀", "spam-canned-ham": "스팸", "canned-tuna": "참치캔",
+  "salt-jar": "소금(병)", "honey-gift-set": "벌꿀", "sleeping-bag": "캠핑 침낭",
+  "home-solar-panel": "가정용 태양광", "portable-solar-panel": "휴대 태양광",
+  "portable-power-station": "가정용 파워뱅크", "power-bank": "휴대 보조배터리",
+  "gas-mask": "방독면", "gas-mask-filter": "방독면 필터", earplugs: "이어플러그",
+  "compressed-towel": "압축 수건", "portable-toilet": "휴대용 변기",
+  "toilet-coagulant": "변기 응고제", "cat-litter": "고양이 모래", "lock-tools": "자물쇠 공구",
+  "cash-krw": "원화 현금", "cash-usd": "달러 외화", "crypto-cold-wallet": "코인·지갑",
+  "child-carrier": "산악 아기캐리어", "transport-cart": "웨건 수레",
 };
 
 const KR_STOCK_RANKS = [
@@ -889,6 +923,81 @@ class KrSurvivalKitGuideCard extends HTMLElement {
     this._quizSources = {};
     this._quizAnswers = {};
     this._quizIndex = 0;
+    this._activeSiren = null;
+    this._audioCtx = null;
+    this._sirenTimer = null;
+  }
+
+  disconnectedCallback() {
+    this._stopSiren();
+  }
+
+  _stopSiren() {
+    if (this._sirenTimer) {
+      window.clearInterval(this._sirenTimer);
+      this._sirenTimer = null;
+    }
+    if (this._audioCtx) {
+      try { this._audioCtx.close(); } catch { /* ignore */ }
+      this._audioCtx = null;
+    }
+    this._activeSiren = null;
+  }
+
+  _playSiren(kind) {
+    if (this._activeSiren === kind) {
+      this._stopSiren();
+      this._render();
+      return;
+    }
+    this._stopSiren();
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    this._audioCtx = ctx;
+    this._activeSiren = kind;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sawtooth";
+    gain.gain.value = 0.08;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const scheduleCycle = () => {
+      const now = ctx.currentTime;
+      if (kind === "air-raid") {
+        // Wailing wave: 320Hz -> 780Hz (2.8s) -> 320Hz (2.2s)
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.linearRampToValueAtTime(780, now + 2.8);
+        osc.frequency.linearRampToValueAtTime(320, now + 5.0);
+        gain.gain.setValueAtTime(0.08, now);
+      } else if (kind === "civil-warning") {
+        // Steady flat tone: 540Hz continuous
+        osc.frequency.setValueAtTime(540, now);
+        gain.gain.setValueAtTime(0.08, now);
+      } else if (kind === "cbrn-alert") {
+        // Two-tone alternating alert
+        osc.frequency.setValueAtTime(660, now);
+        osc.frequency.setValueAtTime(480, now + 0.5);
+        osc.frequency.setValueAtTime(660, now + 1.0);
+        osc.frequency.setValueAtTime(480, now + 1.5);
+        gain.gain.setValueAtTime(0.08, now);
+      } else {
+        // Nuclear urgent rapid pulse
+        osc.frequency.setValueAtTime(880, now);
+        gain.gain.setValueAtTime(0.09, now);
+        gain.gain.setValueAtTime(0.0, now + 0.25);
+        gain.gain.setValueAtTime(0.09, now + 0.45);
+        gain.gain.setValueAtTime(0.0, now + 0.7);
+      }
+    };
+
+    scheduleCycle();
+    osc.start();
+    const period = kind === "air-raid" ? 5000 : kind === "cbrn-alert" ? 2000 : kind === "nuclear-alert" ? 900 : 2000;
+    this._sirenTimer = window.setInterval(scheduleCycle, period);
+    this._render();
   }
 
   setConfig(config) {
@@ -1003,6 +1112,13 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       @media(max-width:760px){.hero{grid-template-columns:1fr;min-height:0}.orb{display:none}.layout{grid-template-columns:1fr}.rail{padding:18px}.nav-items{grid-template-columns:repeat(auto-fit,minmax(125px,1fr))}.references ul{columns:1}}@media(max-width:420px){.shell{padding:12px}.hero{padding:22px;border-radius:15px}.layout{gap:12px;margin-top:12px}.action-top,.action-body,.timeline{padding:20px}.timeline{margin-top:12px}.time-row{grid-template-columns:80px minmax(0,1fr);gap:13px}.time-rail{padding-right:12px}.time-when{font-size:.82rem}.time-copy{padding-bottom:22px}.rail{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:14px}.rail h2{grid-column:1/-1;margin:0 0 4px}.nav-group,.nav-items{display:contents}.nav-group h3{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.nav-items button{min-height:42px;text-align:center;font-size:.84rem;padding:8px 2px}.references{margin-top:12px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
       .quiz-panel{margin-top:24px;border-radius:18px;padding:1.2rem clamp(1rem,2.4vw,2rem);border:1px solid var(--line);background:#172938;color:#e7f3f6}.quiz-panel h3{margin:0}.quiz-panel p{max-width:60rem}.quiz-head{display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap}.quiz-head span{font-size:.84rem;font-weight:700}.quiz-question{max-width:65rem;margin-top:1rem;padding:1rem;border:1px solid var(--divider-color,#9cabb2);border-radius:10px}.quiz-question small{color:var(--muted)}.quiz-question h4{font-size:1rem;line-height:1.5}.quiz-choices{display:grid;gap:.5rem}.quiz-choices button{text-align:left}.quiz-choices button[aria-pressed="true"]{border-color:#197f83;background:#dff2f1;color:#113d49;font-weight:700}.quiz-feedback{padding:.65rem .8rem;border-left:3px solid #197f83;background:#e5f3f2;color:#173b45!important}.quiz-feedback p{margin:.3rem 0;color:#173b45}.quiz-sources a{color:#075c72;text-decoration:underline;font-weight:700}.quiz-sources a:focus-visible{outline:3px solid #d28b24;outline-offset:2px}.quiz-nav{display:flex;justify-content:space-between;gap:.5rem;margin-top:.8rem}.quiz-nav button:disabled{opacity:.5;cursor:default}
       .quiz-panel button{font:inherit;color:#e7f3f6;background:#213e4d;border:1px solid #547b8e;border-radius:8px;padding:10px 12px;min-height:44px;cursor:pointer}.quiz-panel [data-quiz-reset]{margin-top:10px}
+      .siren-box{margin-top:18px;padding:14px 16px;border:1px solid rgba(130,205,220,.38);border-radius:12px;background:rgba(12,30,44,.55)}
+      .siren-box h4{margin:0 0 6px;font-size:.94rem;color:#9ee9ea}
+      .siren-box p{margin:0 0 10px;font-size:.82rem;color:#c3dce2}
+      .siren-row{display:flex;flex-wrap:wrap;gap:7px}
+      .siren-row button{min-height:40px;padding:7px 12px;font-size:.84rem;font-weight:700;border-radius:8px;border:1px solid #568599;background:#193547;color:#eef8fa;cursor:pointer}
+      .siren-row button[aria-pressed="true"]{background:#d94848;border-color:#ff9494;color:#fff}
+      .siren-row button.stop{background:#2d3b45;border-color:#748b99}
       .quiz-head{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem .75rem}.quiz-head span{margin-inline-start:auto}.quiz-head::after{content:"＋"}.quiz-panel[open] .quiz-head::after{content:"−"}.quiz-panel[open] .quiz-head{margin-bottom:.6rem}
       :host([data-kr-themed]){color:var(--kr-text);--cyan:var(--kr-accent);--line:var(--kr-line);--muted:var(--kr-muted)}:host([data-kr-themed]) ha-card{background:var(--kr-bg)}
       :host([data-kr-themed]) .hero{background:radial-gradient(ellipse at 78% 38%,var(--kr-glow),transparent 60%),var(--kr-surface);border-color:var(--kr-line)}
@@ -1014,7 +1130,7 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       :host([data-kr-themed]) .hero-actions a,:host([data-kr-themed]) .quiz-panel button,:host([data-kr-themed]) .nav-items button.active,:host([data-kr-themed]) .sheet-tabs button[aria-selected="true"]{border-color:var(--kr-line);background:var(--kr-glow);color:var(--kr-text)}
       :host([data-kr-themed]) .nav-items button:hover,:host([data-kr-themed]) .sheet-tabs button:hover{background:var(--kr-glow)}
     </style><ha-card><main class="shell"><header class="hero"><div class="hero-content"><h2>상황 안내</h2><p><strong>${esc(guide.official_first)}</strong> 받은 경보를 선택하면 첫 행동을 바로 확인할 수 있습니다.</p><div class="hero-actions"><a href="${esc(this._assetPath)}/kr-survival-kit-a4.pdf" target="_blank" rel="noopener">A4 행동 카드 열기</a><a class="secondary" href="${esc(this._assetPath)}/kr-survival-kit-offline.html" target="_blank" rel="noopener">오프라인 안내 열기</a>${this._showInventoryLink ? `<a class="secondary" href="/kr-survival-kit/home">비축 관리로</a>` : ""}</div></div><div class="orb" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 8 82 21v25c0 23-13 36-32 47C31 82 18 69 18 46V21z" fill="#7bc8d9" stroke="#dafaff" stroke-width="2"/><path d="M50 18 73 27v19c0 17-8 28-23 37-15-9-23-20-23-37V27z" fill="#22506a"/><path d="M50 30v34M33 47h34" stroke="#bbf1f3" stroke-width="7" stroke-linecap="round"/></svg></div></header>
-    <div class="layout"><nav class="rail" aria-label="상황 선택"><h2>상황별 첫 행동</h2>${scenarioNav}</nav><section class="action" data-tone="${alertTone}" aria-live="polite"><div class="action-top"><p class="kind">${esc(scenario.kind)}</p><h2>${esc(scenario.title)}</h2><h3>먼저 할 일</h3><p class="first-action">${esc(scenario.first_action)}</p></div><div class="action-body"><h3>이어 확인할 일</h3>${detail}${household}<div class="comms"><strong>전화·인터넷이 끊기면</strong>${esc(guide.communication_loss.first_action)} ${esc(guide.communication_loss.paper_note)}</div></div></section></div>
+    <div class="layout"><nav class="rail" aria-label="상황 선택"><h2>상황별 첫 행동</h2>${scenarioNav}</nav><section class="action" data-tone="${alertTone}" aria-live="polite"><div class="action-top"><p class="kind">${esc(scenario.kind)}</p><h2>${esc(scenario.title)}</h2><h3>먼저 할 일</h3><p class="first-action">${esc(scenario.first_action)}</p></div><div class="action-body"><h3>이어 확인할 일</h3>${detail}${household}<div class="siren-box"><h4>🔊 민방공 경보음 직접 들어보기 (체험용)</h4><p>실제 경보와 혼동되지 않도록 볼륨을 낮춰 테스트하세요. 버튼을 다시 누르면 소리가 멈춥니다.</p><div class="siren-row"><button type="button" data-siren="air-raid" aria-pressed="${this._activeSiren === "air-raid"}">공습경보 (파상음)</button><button type="button" data-siren="civil-warning" aria-pressed="${this._activeSiren === "civil-warning"}">경계경보 (연속음)</button><button type="button" data-siren="cbrn-alert" aria-pressed="${this._activeSiren === "cbrn-alert"}">화생방경보 (2단음)</button><button type="button" data-siren="nuclear-alert" aria-pressed="${this._activeSiren === "nuclear-alert"}">핵경보 (긴급 펄스)</button>${this._activeSiren ? `<button type="button" class="stop" data-siren-stop>■ 정지</button>` : ""}</div></div><div class="comms"><strong>전화·인터넷이 끊기면</strong>${esc(guide.communication_loss.first_action)} ${esc(guide.communication_loss.paper_note)}</div></div></section></div>
     <section class="timeline" aria-labelledby="timeline-title"><div class="section-head"><h2 id="timeline-title">${sheetHeading}</h2><p>${sheetSummary}</p></div><div class="sheet-tabs" role="tablist" aria-label="상세 행동 안내">${sheetNav}</div><div id="sheet-panel" role="tabpanel" aria-labelledby="tab-${esc(sheet.id)}" tabindex="0"><h3>${esc(sheet.title)}</h3><p class="sheet-intro">${esc(sheet.intro)}</p>${sheet.layout === "reference" ? `<div class="reference-grid">${rows}</div>` : `<ol class="time-list">${rows}</ol>`}</div></section>
     ${this._quizView(esc)}
     <details class="references"><summary>공식 참고 자료와 파일 보관 방법</summary><p>외부 출처는 인터넷 연결이 필요합니다. PDF는 열린 화면에서 인쇄·다운로드하고, HTML은 브라우저의 ‘다른 이름으로 저장’으로 미리 보관하세요.</p><ul>${uniqueSources.map((source) => `<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.publisher)} · ${esc(source.title)}</a></li>`).join("")}</ul></details></main></ha-card>`;
@@ -1040,6 +1156,13 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       this._saveQuizAnswers();
       this._render();
       this.shadowRoot.querySelector("[data-quiz-choice]")?.focus({ preventScroll: true });
+    });
+    this.shadowRoot.querySelectorAll("[data-siren]").forEach((button) => button.addEventListener("click", () => {
+      this._playSiren(button.dataset.siren);
+    }));
+    this.shadowRoot.querySelector("[data-siren-stop]")?.addEventListener("click", () => {
+      this._stopSiren();
+      this._render();
     });
     this.shadowRoot.querySelectorAll("[data-scenario]").forEach((button) => button.addEventListener("click", () => {
       this._scenario = button.dataset.scenario;
