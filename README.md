@@ -50,7 +50,10 @@ python tests/verify_artifacts.py
 
 ## P2 로컬 재고와 Home Assistant
 
-`custom_components/kr_survival_kit/`를 HA 설정 폴더의 `custom_components/`에 복사하고 HA를 재시작한 뒤 **설정 → 기기 및 서비스 → 통합 추가 → KR Survival Kit**를 선택합니다. 한 인스턴스에 한 가구만 등록합니다. 점검 주기(기본 30일)를 정하면 로컬 `Store`에 버전 1 스냅샷을 저장합니다. 브로커나 외부 계정은 필요하지 않습니다. 운영 설치 결과는 아래 [NRGNC 운영 검증](#nrgnc-운영-검증-2026-11-11)에 기록했습니다.
+`custom_components/kr_survival_kit/`를 HA 설정 폴더의 `custom_components/`에 복사하고 HA를 재시작한 뒤 **설정 → 기기 및 서비스 → 통합 추가 → KR Survival Kit**를 선택합니다. 한 인스턴스에 한 가구만 등록합니다. **기본 재고 점검 주기 (일)**를 정하면 실사 후 다시 확인할 시점을 계산합니다. 기본값은 30일이며, 제품 소비기한과 별개입니다. 설정을 마치면 로컬 `Store`에 버전 1 스냅샷을 저장합니다. 브로커나 외부 계정은 필요하지 않습니다. 운영 설치 결과는 아래 [NRGNC 운영 검증](#nrgnc-운영-검증-2026-11-11)에 기록했습니다.
+
+수동 설치는 GitHub의 **Code → Download ZIP**으로 전체 저장소를 받은 뒤 `custom_components/kr_survival_kit/` 폴더 전체를 복사하세요. 이 폴더 안의 `content/`와 `translations/`도 포함해야 합니다. `catalog.ko.json` 누락으로 초기화에 실패했다면 그 폴더 전체를 다시 복사하고 HA를 재시작하세요. 기존에 등록한 통합은 재시작 시 다시 로드됩니다.
+
 
 관리자는 개발자 도구의 action 또는 대시보드 재고 카드에서 `kr_survival_kit.get_inventory`를 호출해 `revision`, 품목별 `state`와 합계를 읽을 수 있습니다. `kr_survival_kit.set_item`은 **현재 revision**과 카탈로그 `item_id`, `applicable`, `target`, `lots`, `confirm`을 요구합니다. `lots`의 각 원소는 `lot_id`, 비음수 정수 `quantity`, ISO 날짜 또는 `null`인 `expires_on`을 가집니다. `kr_survival_kit.delete_item`은 `item_id`와 현재 revision을 요구합니다. 성공한 쓰기는 새 revision을 반환하며, 다른 편집이 먼저 저장되면 다시 조회한 뒤 절대 수량으로 재입력해야 합니다. 이 action들은 HA 관리자만 호출할 수 있습니다. `entry_id`는 단일 가구에서 생략할 수 있습니다.
 

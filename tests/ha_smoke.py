@@ -46,6 +46,18 @@ async def main():
         custom_dir = Path(config_dir) / "custom_components" / DOMAIN
         shutil.copytree(SOURCE, custom_dir, ignore=shutil.ignore_patterns("__pycache__"))
         hass = await start_ha(config_dir)
+        catalog = custom_dir / "content" / "catalog.ko.json"
+        hidden_catalog = catalog.with_suffix(".missing")
+        catalog.rename(hidden_catalog)
+        try:
+            incomplete = await hass.config_entries.flow.async_init(
+                DOMAIN, context={"source": "user"}, data={"inspection_days": 30}
+            )
+            assert incomplete["type"] == "abort", incomplete
+            assert incomplete["reason"] == "incomplete_install", incomplete
+            assert not hass.config_entries.async_entries(DOMAIN)
+        finally:
+            hidden_catalog.rename(catalog)
         flow = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": "user"}, data={"inspection_days": 30}
         )

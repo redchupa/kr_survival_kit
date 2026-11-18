@@ -4,6 +4,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 
+from . import _load_content
 from .const import DOMAIN
 
 
@@ -19,6 +20,10 @@ class KrSurvivalKitConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
+        try:
+            await self.hass.async_add_executor_job(_load_content)
+        except (OSError, ValueError):
+            return self.async_abort(reason="incomplete_install")
         if user_input is not None:
             return self.async_create_entry(title="KR Survival Kit", data=user_input)
         return self.async_show_form(
