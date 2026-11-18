@@ -1,9 +1,10 @@
 {
   "domain": "kr_survival_kit",
   "name": "KR Survival Kit",
+  "after_dependencies": ["mqtt"],
   "codeowners": ["@redchupa"],
   "config_flow": true,
-  "dependencies": ["panel_custom", "lovelace"],
+  "dependencies": ["http", "lovelace", "panel_custom"],
   "documentation": "https://github.com/redchupa/kr_survival_kit",
   "integration_type": "service",
   "iot_class": "local_push",
