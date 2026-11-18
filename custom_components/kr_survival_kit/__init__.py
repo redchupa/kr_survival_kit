@@ -6,6 +6,7 @@ from pathlib import Path
 
 import voluptuous as vol
 
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import SupportsResponse
 from homeassistant.exceptions import ConfigEntryError, HomeAssistantError, Unauthorized
 from homeassistant.helpers.storage import Store
@@ -45,6 +46,7 @@ SET_SCHEMA = vol.Schema({
     vol.Required("confirm"): bool,
     vol.Optional("apply_date_defaults", default=False): bool,
     vol.Optional("review_interval_days"): _review_interval,
+    vol.Optional("verified_on"): vol.Any(None, str),
 })
 DELETE_SCHEMA = vol.Schema({
     vol.Optional("entry_id"): str,
@@ -134,7 +136,9 @@ async def _admin_inventory(hass, call):
         entry = entries[0] if len(entries) == 1 else None
     else:
         entry = hass.config_entries.async_get_entry(entry_id)
-    if entry is None or entry.domain != DOMAIN or entry.runtime_data is None:
+    # An unloaded entry may still carry a stale runtime_data object; only a loaded entry may be written.
+    if (entry is None or entry.domain != DOMAIN or entry.state is not ConfigEntryState.LOADED
+            or not isinstance(getattr(entry, "runtime_data", None), Inventory)):
         raise HomeAssistantError("KR Survival Kit entry is unavailable")
     return entry.runtime_data, entry.data["inspection_days"]
 
@@ -147,7 +151,7 @@ def _set_item(hass):
             revision = await inventory.set_item(
                 data["item_id"], data["revision"], data["applicable"],
                 data["target"], data["lots"], data["confirm"], dt_util.now().date().isoformat(),
-                apply_date_defaults=data["apply_date_defaults"],
+                apply_date_defaults=data["apply_date_defaults"], verified_on=data.get("verified_on"),
                 **({"review_interval_days": data["review_interval_days"]} if "review_interval_days" in data else {}),
             )
         except RevisionConflict as error:

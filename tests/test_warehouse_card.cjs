@@ -11,7 +11,7 @@ class MockElement {
   attachShadow() { this.shadowRoot = { querySelector: (selector) => elements[selector] }; }
 }
 const context = { HTMLElement: MockElement, customElements: { define() {}, get() {} }, window: { customCards: [], requestAnimationFrame: (callback) => callback() }, Intl, Date };
-vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse; globalThis.daysUntil = krDaysUntil; globalThis.addMonths = krAddMonths; globalThis.survivalDays = krSurvivalDays; globalThis.urgentQuests = krUrgentQuests; globalThis.expiringStrip = krExpiringStrip;", context);
+vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse; globalThis.daysUntil = krDaysUntil; globalThis.addMonths = krAddMonths; globalThis.survivalDays = krSurvivalDays; globalThis.urgentQuests = krUrgentQuests; globalThis.expiringStrip = krExpiringStrip; globalThis.quickPlan = krQuickPlan; globalThis.quickStep = krQuickStep; globalThis.lotTotal = krLotTotal;", context);
 
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -124,7 +124,7 @@ const placed = {
 };
 assert.deepEqual([...context.krItemLocations(placed.items[item.id])], ["현관 팬트리", "주방 팬트리 3층 선반"]);
 const placedTile = context.testGrid(placed, escape);
-assert.match(placedTile, /class="ready-loc"[^>]*>.*현관 팬트리 외 1곳/);
+assert.match(placedTile, /class="ready-loc"[^>]*>.*<span>현관 팬트리<\/span><b class="loc-more">\+1곳<\/b>/, "extra places stay outside the clamped name");
 assert.match(placedTile, /보관 위치 현관 팬트리, 주방 팬트리 3층 선반/);
 assert.doesNotMatch(context.testGrid(snapshot(base), escape), /ready-loc/, "no tag without a location");
 const hostile = { ...placed, items: { [item.id]: { applicable: true, lots: [{ lot_id: "x", quantity: 1, location: '<img src=x onerror="alert(1)">' }] } } };
@@ -138,3 +138,46 @@ assert.match(context.krLocationPanel(snapshot(base), escape), /아직 보관 위
 assert.deepEqual([...context.krAllLocations(placed)], ["주방 팬트리 3층 선반", "현관 팬트리"]);
 
 console.log("Inventory grid, catalog pictograms, L units, escaping, weather freshness, survival days, quests, keyboard focus, and storage locations passed");
+
+// Quick ±1 scenarios: bottles move one bottle, −1 consumes the lot that expires first, nothing is claimed when nothing changes.
+{
+  const water = { id: "drinking-water", name: "생수", unit: "ml", date_kind: "expiry" };
+  const bottles = { lots: [{ lot_id: "lot-1", quantity: 24000, bottle_ml: 2000, bottle_count: 12, expires_on: "2027-11-18", location: "현관 팬트리" }] };
+  assert.equal(context.quickStep(water, bottles).short, "1병");
+  assert.equal(context.quickStep(water, { lots: [{ lot_id: "lot-1", quantity: 5000, expires_on: null }] }).short, "1L");
+  let plan = context.quickPlan(water, bottles, -1);
+  assert.equal(plan.changed, -2000, "−1 removes a whole 2 L bottle instead of rounding back to 12 bottles");
+  assert.equal(plan.lots[0].bottle_count, 11);
+  assert.equal(plan.lots[0].quantity, 22000);
+  assert.equal(bottles.lots[0].bottle_count, 12, "the saved record is not mutated");
+  plan = context.quickPlan(water, bottles, 1);
+  assert.deepEqual([plan.changed, plan.lots[0].bottle_count, plan.lots[0].quantity], [2000, 13, 26000]);
+  const loose = context.quickPlan(water, { lots: [{ lot_id: "lot-1", quantity: 500, expires_on: null }] }, -1);
+  assert.deepEqual([loose.changed, loose.lots[0].quantity], [-500, 0], "loose water never goes negative");
+
+  const spam = { id: "spam-canned-ham", name: "스팸", unit: "개", date_kind: "expiry" };
+  const split = { lots: [
+    { lot_id: "lot-1", quantity: 0, expires_on: null, location: "현관 팬트리" },
+    { lot_id: "lot-2", quantity: 3, expires_on: "2027-11-18", location: "주방 팬트리" },
+    { lot_id: "lot-3", quantity: 2, expires_on: "2027-01-01", location: "베란다 창고" },
+    { lot_id: "lot-4", quantity: 4, expires_on: null, location: "차량 트렁크" },
+  ] };
+  plan = context.quickPlan(spam, split, -1);
+  assert.deepEqual([plan.changed, plan.place, plan.lots.map((lot) => lot.quantity).join(",")], [-1, "베란다 창고", "0,3,1,4"], "−1 takes the soonest expiry first");
+  plan = context.quickPlan(spam, { lots: [split.lots[0], split.lots[3]] }, -1);
+  assert.deepEqual([plan.place, plan.lots[1].quantity], ["차량 트렁크", 3], "unknown dates are used after dated stock, but still used");
+  plan = context.quickPlan(spam, split, 1);
+  assert.deepEqual([plan.changed, plan.lots[0].quantity], [1, 1], "+1 restocks the first lot");
+  plan = context.quickPlan(spam, { lots: [{ lot_id: "lot-1", quantity: 0, expires_on: null }] }, -1);
+  assert.equal(plan.changed, 0, "−1 on empty stock reports no change");
+  plan = context.quickPlan(spam, undefined, 1);
+  assert.deepEqual([plan.changed, plan.lots.length, plan.lots[0].lot_id], [1, 1, "lot-1"], "first +1 creates a lot");
+  assert.equal(context.quickPlan(spam, { lots: [{ lot_id: "lot-1", quantity: 1_000_000_000, expires_on: null }] }, 1).changed, 0, "never exceeds the server limit");
+  assert.equal(context.lotTotal(split), 9);
+
+  const tile = context.testGrid({ catalog: [spam], today: "2026-11-18", items: { [spam.id]: { applicable: true, lots: [{ lot_id: "lot-1", quantity: 0, expires_on: null }, { lot_id: "lot-2", quantity: 6, expires_on: null }] } },
+    summary: { items: { [spam.id]: { ...base, target: null, usable: 0, unknown_date_quantity: 6, state: "needs_check" } } } }, escape, undefined, false, true);
+  assert.match(tile, /6 개 \/ 목표 미설정/, "stock without a package date is still shown on the tile");
+  assert.doesNotMatch(tile, /data-quick="spam-canned-ham:-1"[^>]*disabled/, "−1 is enabled while any lot holds stock");
+}
+console.log("quick ±1 scenarios passed");

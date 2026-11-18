@@ -1358,7 +1358,7 @@ export class KrWarehouseThreeEngine {
 
       const unit = item.id === "drinking-water" ? "L" : item.unit;
       const scale = item.id === "drinking-water" ? 1000 : 1;
-      const qtyText = `${(status.usable ?? 0) / scale} ${unit} / ${status.target == null ? "미설정" : `${status.target / scale} ${unit}`}`;
+      const qtyText = `${((status.usable ?? 0) + (status.unknown_date_quantity ?? 0)) / scale} ${unit} / ${status.target == null ? "미설정" : `${status.target / scale} ${unit}`}`;
       const statusLabel = ready ? "완비" : status.state === "shortage" ? "부족" : status.expiring_quantity > 0 ? "기한 임박" : "실사 필요";
       const slotNo = `${ROW_LETTERS[r % ROW_LETTERS.length]}-${String(col + 1).padStart(2, "0")}`;
 

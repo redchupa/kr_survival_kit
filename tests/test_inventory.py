@@ -368,3 +368,24 @@ async def test_storage_location_per_lot_survives_restart_and_rejects_bad_text():
     assert store.saved == before
     # Exactly 60 characters is allowed.
     await reloaded.set_item("flashlight", 1, True, 2, [{"lot_id": "a", "quantity": 2, "expires_on": None, "location": "나" * 60}], True, TODAY)
+
+
+@pytest.mark.asyncio
+async def test_restore_keeps_original_inspection_day_and_rejects_future_or_unconfirmed():
+    store = FakeStore()
+    stock = Inventory(store, CATALOG)
+    lot = {"lot_id": "a", "quantity": 2, "expires_on": None}
+    revision = await stock.set_item("flashlight", 0, True, 2, [lot], True, TODAY, verified_on="2026-05-01")
+    assert stock.snapshot["items"]["flashlight"]["verified_on"] == "2026-05-01"
+    # Inspected six months ago with a 30-day cycle: the restored item must still ask for a check.
+    assert summarize(CATALOG, stock.snapshot["items"], TODAY)["items"]["flashlight"]["stale"] is True
+
+    before = deepcopy(store.saved)
+    for bad, confirm in [("2026-11-10", True), ("2026-02-30", True), ("2026-5-1", True), (20260501, True), ("2026-05-01", False)]:
+        with pytest.raises(InventoryError):
+            await stock.set_item("flashlight", revision, True, 2, [lot], confirm, TODAY, verified_on=bad)
+    assert store.saved == before
+    # Same-day and omitted values keep the old behaviour (today).
+    revision = await stock.set_item("flashlight", revision, True, 2, [lot], True, TODAY, verified_on=TODAY)
+    await stock.set_item("flashlight", revision, True, 2, [lot], True, TODAY)
+    assert stock.snapshot["items"]["flashlight"]["verified_on"] == TODAY

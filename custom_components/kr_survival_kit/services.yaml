@@ -35,6 +35,10 @@ set_item:
       name: 입고일과 포장 기한 확인일 적용
       description: 입고일이 비면 오늘로 저장합니다. 포장 기한이 비면 품목별 확인일을 저장합니다.
       example: true
+    verified_on:
+      name: Inspection date
+      description: Optional past inspection date (YYYY-MM-DD) to keep when restoring a backup. Requires confirm; defaults to today.
+      example: "2026-11-01"
 delete_item:
   name: Delete inventory item
   description: Delete a household record using the current revision. Administrator only.

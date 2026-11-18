@@ -247,7 +247,7 @@ class Inventory:
             listener()
         return candidate["revision"]
 
-    async def set_item(self, item_id, revision, applicable, target, lots, confirm, today, review_interval_days=_UNSET, *, apply_date_defaults=False):
+    async def set_item(self, item_id, revision, applicable, target, lots, confirm, today, review_interval_days=_UNSET, *, apply_date_defaults=False, verified_on=None):
         if item_id not in self.catalog:
             raise InventoryError("Unknown item")
         if type(confirm) is not bool:
@@ -258,6 +258,10 @@ class Inventory:
         if review_interval_days is not _UNSET:
             _review_days(review_interval_days)
         today = _date(today).isoformat()
+        if verified_on is not None:
+            # Restoring a backup keeps the original inspection day instead of claiming "checked today".
+            if not confirm or _date(verified_on).isoformat() > today:
+                raise InventoryError("verified_on must be a past or current date and requires confirm")
         if apply_date_defaults:
             lots = deepcopy(lots)
             for lot in lots:
@@ -276,7 +280,7 @@ class Inventory:
             updated = {
                 "applicable": applicable,
                 "target": target,
-                "verified_on": today if confirm else previous.get("verified_on"),
+                "verified_on": (verified_on or today) if confirm else previous.get("verified_on"),
                 "confirmed": confirm,
                 "lots": deepcopy(lots),
             }
