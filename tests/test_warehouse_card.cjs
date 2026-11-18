@@ -11,7 +11,7 @@ class MockElement {
   attachShadow() { this.shadowRoot = { querySelector: (selector) => elements[selector] }; }
 }
 const context = { HTMLElement: MockElement, customElements: { define() {}, get() {} }, window: { customCards: [], requestAnimationFrame: (callback) => callback() }, Intl, Date };
-vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse; globalThis.daysUntil = krDaysUntil; globalThis.addMonths = krAddMonths; globalThis.survivalDays = krSurvivalDays; globalThis.urgentQuests = krUrgentQuests; globalThis.expiringStrip = krExpiringStrip; globalThis.quickPlan = krQuickPlan; globalThis.quickStep = krQuickStep; globalThis.lotTotal = krLotTotal;", context);
+vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse; globalThis.daysUntil = krDaysUntil; globalThis.addMonths = krAddMonths; globalThis.survivalDays = krSurvivalDays; globalThis.urgentQuests = krUrgentQuests; globalThis.expiringStrip = krExpiringStrip; globalThis.quickPlan = krQuickPlan; globalThis.quickStep = krQuickStep; globalThis.lotTotal = krLotTotal; globalThis.dateLabel = krDateLabel; globalThis.expiryPresets = krExpiryPresets;", context);
 
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -181,3 +181,16 @@ console.log("Inventory grid, catalog pictograms, L units, escaping, weather fres
   assert.doesNotMatch(tile, /data-quick="spam-canned-ham:-1"[^>]*disabled/, "−1 is enabled while any lot holds stock");
 }
 console.log("quick ±1 scenarios passed");
+
+// Use-by dates: batteries, medicine and hygiene items show their own date wording and presets.
+{
+  const battery = catalog.find((entry) => entry.id === "batteries");
+  const medicine = catalog.find((entry) => entry.id === "otc-medicine");
+  assert.equal(context.dateLabel(battery), "사용 권장기한");
+  assert.equal(context.dateLabel(medicine), "사용기한");
+  assert.equal(context.dateLabel({ id: "x", date_label: "<b>" }), "유통기한 또는 소비기한", "unknown labels fall back");
+  assert.equal(context.expiryPresets(battery).map(([months]) => months).join(","), "36,60,120");
+  assert.equal(context.expiryPresets(medicine).map(([months]) => months).join(","), "12,24,36");
+  assert.equal(context.expiryPresets({ id: "spam-canned-ham" }).map(([months]) => months).join(","), "6,12,24");
+}
+console.log("use-by date labels passed");

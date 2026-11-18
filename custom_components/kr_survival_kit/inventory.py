@@ -30,6 +30,8 @@ LABEL_CHECK_DAYS = {
     "ready-to-feed-formula": 1, "masks": 14, "rice": 7,
     "spam-canned-ham": 14, "canned-tuna": 14, "honey-gift-set": 14,
     "water-purification-tablets": 7, "toilet-coagulant": 14, "gas-mask-filter": 3,
+    "batteries": 14, "batteries-aaa": 14, "batteries-special": 14, "first-aid-kit": 14,
+    "wet-wipes": 14, "water-sanitation-kit": 14, "prescription-preparedness": 7, "infant-supplies": 3,
 }
 
 

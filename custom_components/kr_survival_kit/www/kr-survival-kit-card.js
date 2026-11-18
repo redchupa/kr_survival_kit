@@ -35,8 +35,15 @@ function krStockText(item, stored) {
 
 function krDateLabel(item) {
   if (item.id === "drinking-water") return "유통기한";
-  return ["소비기한", "유통기한", "교체 점검일"].includes(item.date_label)
+  return ["소비기한", "유통기한", "교체 점검일", "사용기한", "사용 권장기한"].includes(item.date_label)
     ? item.date_label : "유통기한 또는 소비기한";
+}
+
+/** Quick expiry buttons sized to the product: batteries last years, medicine and food months to a few years. */
+function krExpiryPresets(item) {
+  if (item.date_label === "사용 권장기한") return [[36, "+3년"], [60, "+5년"], [120, "+10년"]];
+  if (item.date_label === "사용기한") return [[12, "+1년"], [24, "+2년"], [36, "+3년"]];
+  return [[6, "+6개월"], [12, "+1년"], [24, "+2년"]];
 }
 
 function krStockParse(item, shown, allowBlank = false) {
@@ -482,7 +489,7 @@ function krExpiringStrip(snapshot, escape) {
     return active && st && (st.expired_quantity > 0 || st.expiring_quantity > 0);
   });
   if (!alerts.length) return "";
-  return `<div class="expiring-banner" role="region" aria-label="유통기한 순환 소비 알림"><strong>🔥 유통기한 임박·경과 — 버리기 전에 먼저 소비하세요</strong><div class="expiring-chips">${alerts.slice(0, 6).map((item) => {
+  return `<div class="expiring-banner" role="region" aria-label="기한 임박 순환 알림"><strong>🔥 기한 임박·경과 — 기한이 지나기 전에 먼저 쓰고 새로 채우세요</strong><div class="expiring-chips">${alerts.slice(0, 6).map((item) => {
     const st = snapshot.summary.items[item.id];
     const name = KR_READY_SHORT_NAMES[item.id] || item.name;
     const dDay = st.next_expiry_on && snapshot.today ? krDaysUntil(st.next_expiry_on, snapshot.today) : null;
@@ -957,14 +964,14 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
           : `<label>${draftItem.id === "drinking-water" ? "보유량 합계 (L)" : `보유 수량 (${escape(krStockUnit(draftItem))})`}<div class="qty-row"><input class="quantity" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(lot.quantity)}" required><button type="button" class="step-btn" data-step="-1" aria-label="1 빼기">−1</button><button type="button" class="step-btn" data-step="1" aria-label="1 더하기">+1</button><button type="button" class="step-btn" data-step="5" aria-label="5 더하기">+5</button></div></label>`) +
         `<div class="field-pair"><label>입고일<input class="received-on" type="date" value="${escape(lot.received_on || snapshot.today || "")}"></label>` +
         (draftItem.date_kind === "expiry" ? `<label>${escape(krDateLabel(draftItem))}<input class="expiry" type="date" value="${escape(lot.expires_on || "")}" aria-describedby="expiry-help"></label>` : `<div></div>`) + `</div>` +
-        (draftItem.date_kind === "expiry" ? `<div class="preset-row" role="group" aria-label="기한 빠른 설정"><button type="button" class="preset-btn" data-exp-months="6">+6개월</button><button type="button" class="preset-btn" data-exp-months="12">+1년</button><button type="button" class="preset-btn" data-exp-months="24">+2년</button></div>` : "") +
+        (draftItem.date_kind === "expiry" ? `<div class="preset-row" role="group" aria-label="${escape(krDateLabel(draftItem))} 빠른 설정">${krExpiryPresets(draftItem).map(([months, text]) => `<button type="button" class="preset-btn" data-exp-months="${months}">${text}</button>`).join("")}</div>` : "") +
         (lot.label_check_on ? `<small class="label-check">포장 기한 확인일 ${escape(lot.label_check_on)}</small>` : "") +
         `<label class="loc-field">보관 위치 <small>(선택)</small><input class="location" type="text" maxlength="${KR_LOCATION_MAX}" list="kr-location-options" autocomplete="off" value="${escape(lot.location || "")}" placeholder="예: 주방 팬트리 3층 선반"></label>` +
         `<div class="preset-row loc-chips" role="group" aria-label="자주 쓰는 보관 위치">${(knownPlaces.length ? knownPlaces : KR_LOCATION_EXAMPLES).slice(0, 5).map((place) => `<button type="button" class="preset-btn" data-loc="${escape(place)}">${KR_PIN_SVG}${escape(place)}</button>`).join("")}</div>` +
         `</fieldset>`
       ).join("") +
       (this._draft.lots.length < 20 ? `<button type="button" id="add-lot" class="add-lot">＋ 다른 위치에 보관 중인 재고 추가</button>` : "") +
-      (draftItem.date_kind === "expiry" ? `<p id="expiry-help" class="item-note">포장 기한이 여러 개면 가장 빠른 날짜를 입력하세요. 비우면 ${labelCheckDays}일 뒤 확인 알림이 뜹니다.</p>` : `<p class="item-note">저장한 날을 마지막 실사일로 기록합니다.</p>`) +
+      (draftItem.date_kind === "expiry" ? `<p id="expiry-help" class="item-note">${escape(krDateLabel(draftItem))}이 여러 개면 가장 빠른 날짜를 입력하세요. 비우면 ${labelCheckDays}일 뒤 확인 알림이 뜹니다.</p>` : `<p class="item-note">저장한 날을 마지막 실사일로 기록합니다.</p>`) +
       `<label for="target">목표량 (${escape(krStockUnit(draftItem))})</label><input id="target" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(this._draft.target)}" placeholder="${draftItem.status.recommended_target == null ? "미설정" : escape(krStockText(draftItem, draftItem.status.recommended_target)) + " 자동"}">` +
       `<details id="item-settings" ${this._draft.settingsOpen ? "open" : ""}><summary>점검 및 관리 설정</summary>` +
       `<label class="check-row"><input id="applicable" type="checkbox" ${this._draft.applicable ? "checked" : ""}> 우리 집에서 관리</label>` +
@@ -1379,7 +1386,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       const saveEnv = () => {
         try { window.localStorage?.setItem("kr_survival_kit_3d_env", JSON.stringify(envPrefs)); } catch { /* private mode */ }
       };
-      import(`${base}kr-warehouse-3d.js?v=0.9.1`).then(({ KrWarehouseThreeEngine }) => {
+      import(`${base}kr-warehouse-3d.js?v=0.9.2`).then(({ KrWarehouseThreeEngine }) => {
         if (!this.shadowRoot.contains(canvas3d)) return;
         this._engine3d = new KrWarehouseThreeEngine(
           canvas3d, tooltip3d,

@@ -389,3 +389,38 @@ async def test_restore_keeps_original_inspection_day_and_rejects_future_or_uncon
     revision = await stock.set_item("flashlight", revision, True, 2, [lot], True, TODAY, verified_on=TODAY)
     await stock.set_item("flashlight", revision, True, 2, [lot], True, TODAY)
     assert stock.snapshot["items"]["flashlight"]["verified_on"] == TODAY
+
+
+@pytest.mark.asyncio
+async def test_batteries_medicine_and_hygiene_track_use_by_dates():
+    kinds = {item["id"]: (item["date_kind"], item.get("date_label")) for item in CATALOG}
+    for item_id in ("batteries", "batteries-aaa", "batteries-special"):
+        assert kinds[item_id] == ("expiry", "사용 권장기한")
+    for item_id in ("otc-medicine", "first-aid-kit", "prescription-preparedness", "wet-wipes",
+                    "water-sanitation-kit", "infant-supplies"):
+        assert kinds[item_id] == ("expiry", "사용기한")
+    # Items without a meaningful printed date stay inspection-only.
+    for item_id in ("hygiene", "candles", "lighter", "salt-jar", "flashlight"):
+        assert kinds[item_id][0] == "inspection"
+
+    stock = Inventory(FakeStore(), CATALOG)
+    revision = await stock.set_item("batteries", 0, True, 8, [
+        {"lot_id": "old", "quantity": 4, "expires_on": "2026-11-01"},
+        {"lot_id": "soon", "quantity": 2, "expires_on": "2026-12-01"},
+        {"lot_id": "unknown", "quantity": 2, "expires_on": None},
+    ], True, TODAY, apply_date_defaults=True)
+    status = summarize(CATALOG, stock.snapshot["items"], TODAY)["items"]["batteries"]
+    assert (status["expired_quantity"], status["expiring_quantity"], status["unknown_date_quantity"]) == (4, 2, 2)
+    assert status["usable"] == 2 and status["state"] == "shortage"
+    assert status["next_label_check_on"] == "2026-11-23", "batteries get a 14-day label check reminder"
+    # Records saved before the switch (no dates) still load and simply ask for a date.
+    legacy = {"schema_version": 1, "revision": 3, "household_size": 4, "items": {"batteries-aaa": {
+        "applicable": True, "target": 4, "verified_on": TODAY, "confirmed": True,
+        "lots": [{"lot_id": "lot-1", "quantity": 4, "expires_on": None}]}}}
+    store = FakeStore()
+    store.saved = legacy
+    reloaded = Inventory(store, CATALOG)
+    await reloaded.load()
+    status = summarize(CATALOG, reloaded.snapshot["items"], TODAY)["items"]["batteries-aaa"]
+    assert (status["state"], status["unknown_date_quantity"]) == ("needs_check", 4)
+    assert revision == 1
