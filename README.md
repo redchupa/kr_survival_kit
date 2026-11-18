@@ -2,9 +2,14 @@
 
 > **평소엔 유통기한 낭비 없는 스마트 순환 재고 관리, 비상시엔 생존 확률을 높이는 한국형 쉘터 대시보드**
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/redchupa/kr_survival_kit/main/docs/images/warehouse-3d-night.jpg" alt="밤 조명이 켜진 3D 비축 창고. 랙 위에 생수·즉석밥·컵라면·통조림이 놓여 있고 품목마다 이름표가 떠 있다" width="100%">
+  <br><sub>3D 입체 창고 · 밤 모드 (합성 데모 데이터로 촬영한 화면입니다)</sub>
+</p>
+
 생수·식량·상비약·배터리 등 가정의 비상 물품을 **버리지 않고 평소 생활 속에서 순환 소비**할 수 있도록 돕고, 정전·단수·통신 두절·민방공 경보 시 즉시 꺼내 쓸 수 있는 행동 안내와 오프라인 인쇄물을 제공하는 Home Assistant 통합입니다.
 
-[설치 방법](#설치) · [주요 기능](#주요-기능) · [비축 관리 가이드](#비축-관리) · [상황 안내와 경보음](#상황-안내와-경보음) · [프로젝트 후원하기](#후원)
+[스크린샷](#스크린샷) · [설치 방법](#설치) · [주요 기능](#주요-기능) · [비축 관리 가이드](#비축-관리) · [상황 안내와 경보음](#상황-안내와-경보음) · [프로젝트 후원하기](#후원)
 
 ---
 
@@ -16,13 +21,30 @@
 
 ---
 
+## 스크린샷
+
+모든 화면은 실제 가구 재고가 아닌 **합성 데모 데이터**로 촬영했습니다.
+
+| 3D 창고 · 눈 오는 낮 | 3D 창고 · 비 오는 밤 |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/redchupa/kr_survival_kit/main/docs/images/warehouse-3d-snow.jpg" alt="눈 내리는 3D 창고. 선택 물품 랙 위층 철망에 눈이 쌓이고 천장 조명이 랙을 비춘다" width="100%"> | <img src="https://raw.githubusercontent.com/redchupa/kr_survival_kit/main/docs/images/warehouse-3d-rain.jpg" alt="비 오는 밤의 3D 창고. 빗줄기 사이로 조명 빛줄기가 무전기·현금·곰인형 등 품목을 비춘다" width="100%"> |
+| **3D 창고 · 낮 근접 시점** | **2D 선반 대시보드** |
+| <img src="https://raw.githubusercontent.com/redchupa/kr_survival_kit/main/docs/images/warehouse-3d-closeup.jpg" alt="낮 시간 3D 창고를 낮은 시점에서 본 모습. 휴지·통조림·컵라면이 선반 위에 실제 모양으로 놓여 있다" width="100%"> | <img src="https://raw.githubusercontent.com/redchupa/kr_survival_kit/main/docs/images/dashboard-2d.jpg" alt="2D 대시보드. 생존 일수, 쉘터 등급 챌린저, 긴급 퀘스트, 유통기한 임박 배너, 19종 기본 비축 물품 타일" width="100%"> |
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/redchupa/kr_survival_kit/main/docs/images/quick-adjust-white.jpg" alt="화이트 테마에서 빠른 ±1 모드를 켠 기본 비축 물품 선반. 타일마다 −1과 +1 버튼이 있다" width="100%">
+  <br><sub>⚡ 빠른 ±1 모드 (화이트 테마) — 모달 없이 타일에서 바로 소비·보충</sub>
+</p>
+
+---
+
 ## 주요 기능
 
 - **실시간 생존 일수 HUD**: 현재 보유한 생수와 식량으로 우리 가족이 며칠을 버틸 수 있는지(`생수 X.X일분 · 식량 X.X일분`) 상단에 실시간 표시합니다.
 - **원터치 빠른 ±1 순환 소비**: `⚡ 빠른 ±1` 모드를 켜면 모달을 열지 않고 카드 위에서 바로 `−1` / `+1`로 소비·보충할 수 있습니다.
 - **JSON 백업 저장/복원 & 앱 코어 분리**: 대시보드 하단에서 내 재고 데이터를 JSON으로 백업·복원할 수 있으며, 순수 계산 엔진([kr-survival-core.js](custom_components/kr_survival_kit/www/kr-survival-core.js))이 분리되어 추후 모바일 앱 확장에 대비했습니다.
 - **주간 알림 자동화 Blueprint**: [weekly_rotation_alert.yaml](custom_components/kr_survival_kit/blueprints/automation/weekly_rotation_alert.yaml)을 통해 매주 유통기한 임박·부족 품목을 스마트폰으로 푸시 알림 받을 수 있습니다.
-- **2D 선반 & 3D WebGL 입체 창고**: 88종 세부 품목을 88개 커스텀 SVG 아이콘이 담긴 **2D 선반**과 실제 조명·그림자·레이캐스팅 클릭·카테고리 필터가 동작하는 **3D 창고**로 오가며 관리합니다.
+- **2D 선반 & 3D WebGL 입체 창고**: 88종 세부 품목을 88개 커스텀 SVG 아이콘이 담긴 **2D 선반**과 실제 조명·그림자·레이캐스팅 클릭·카테고리 필터가 동작하는 **3D 창고**로 오가며 관리합니다. 3D 창고는 품목마다 고유한 입체 모형(테이프 롤, 무전기, 태양광 패널, 흔들리는 촛불 등)과 천장 조명·랙 번호표를 갖추고, Home Assistant의 `sun.sun`·`weather.*` 상태를 따라 **낮/밤과 비·눈·뇌우**가 실시간으로 바뀝니다(직접 선택도 가능).
 - **세부 품목 & 분산 평가**: 통조림(스팸·참치·번데기·골뱅이·과일캔), 간편식(즉석밥·컵라면·레토르트), 건전지(AA·AAA·특수), 위생(휴지·물티슈), 의료(응급처치·상비약) 등 88종을 세부 관리합니다.
 - **유통기한 임박·경과 원클릭 알림**: 만료 또는 임박 품목을 상단 배너로 띄워 클릭 한 번으로 즉시 수량·날짜를 수정할 수 있습니다.
 - **긴급 퀘스트 시스템**: 현재 재고 상태에서 가장 시급한 과제(만료 교체, 생수 확보, 미실사 확인 등)부터 우선 제시하고 클릭 시 바로 입력 창을 열어줍니다.
