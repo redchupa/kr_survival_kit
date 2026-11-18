@@ -41,7 +41,7 @@ def main():
     (TARGET / "SHA256SUMS.txt").write_text("\n".join(hashes) + "\n", encoding="ascii")
     (TARGET / "REVIEW-ONLY.txt").write_text(
         f"KR Survival Kit {version}\nDRAFT REVIEW ONLY - DO NOT PUBLISH\n"
-        "See docs/p5-validation.md for release blockers.\n", encoding="utf-8"
+        "Check the content review status before publishing.\n", encoding="utf-8"
     )
     print(TARGET)
 
