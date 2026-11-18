@@ -18,6 +18,9 @@ from homeassistant.util import dt as dt_util
 
 DOMAIN = "kr_survival_kit"
 SOURCE = Path(__file__).resolve().parents[1] / "custom_components" / DOMAIN
+# Derive expected counts from the catalog so adding items does not silently break this smoke test.
+CATALOG_ITEMS = json.loads((SOURCE / "content" / "catalog.ko.json").read_text(encoding="utf-8"))["items"]
+CORE_ITEM_COUNT = sum(item["tier"] not in ("household", "optional") for item in CATALOG_ITEMS)
 
 
 async def start_ha(config_dir):
@@ -79,7 +82,8 @@ async def main():
         }
         assert len(inventory_states) == 3, states
         assert inventory_states["부족한 품목"].state == "0"
-        assert inventory_states["확인할 품목"].state == "9"
+        # Fresh install: every core item is applicable but unverified.
+        assert inventory_states["확인할 품목"].state == str(CORE_ITEM_COUNT)
         admin = await hass.auth.async_create_user("Test Admin", group_ids=["system-admin"])
         context = Context(user_id=admin.id)
         before = await hass.services.async_call(
@@ -179,7 +183,8 @@ async def main():
         assert after["summary"]["items"]["drinking-water"]["state"] == "shortage"
         await hass.async_block_till_done()
         assert hass.states.get(inventory_states["부족한 품목"].entity_id).state == "1"
-        assert hass.states.get(inventory_states["확인할 품목"].entity_id).state == "8"
+        # Drinking water moved from "needs check" to "shortage".
+        assert hass.states.get(inventory_states["확인할 품목"].entity_id).state == str(CORE_ITEM_COUNT - 1)
         expiring_date = (dt_util.now().date() + timedelta(days=7)).isoformat()
         updated = await hass.services.async_call(
             DOMAIN, "set_item",
@@ -331,7 +336,7 @@ async def main():
         stocked = await restarted.services.async_call(
             DOMAIN, "get_inventory", {}, blocking=True, return_response=True, context=context,
         )
-        assert len(stocked["items"]) == len(stocked["catalog"]) == 56
+        assert len(stocked["items"]) == len(stocked["catalog"]) == len(CATALOG_ITEMS)
         assert all(status["state"] == "sufficient" for status in stocked["summary"]["items"].values())
         assert all(record["verified_on"] == today.isoformat() and record["lots"][0]["received_on"] == today.isoformat()
                    for record in stocked["items"].values())
