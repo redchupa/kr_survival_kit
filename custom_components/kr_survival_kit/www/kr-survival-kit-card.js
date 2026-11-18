@@ -255,17 +255,27 @@ function krStockScore(snapshot) {
   return possible ? Math.floor(earned * 100 / possible + 1e-9) : 0;
 }
 
+const KR_PERCENTILE_LABELS = [
+  "대비 시작", "상위 82%", "상위 68%", "상위 52%", "상위 38%",
+  "상위 25%", "상위 15%", "상위 7%", "상위 3%", "상위 1%",
+];
+
+function krRankShieldSvg(color) {
+  return `<svg class="rank-shield" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 2L4 5.5v6c0 5.2 3.4 9.7 8 11 4.6-1.3 8-5.8 8-11v-6L12 2z" fill="${color}" fill-opacity=".28" stroke="${color}" stroke-width="2"/><path d="M9 12l2 2 4-4" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
 function krStockRankView(snapshot, open = false) {
   if (!snapshot) return "";
   const score = krStockScore(snapshot);
   const index = Math.min(KR_STOCK_RANKS.length - 1, Math.floor(score / 10));
   const [rank, color] = KR_STOCK_RANKS[index];
+  const pct = KR_PERCENTILE_LABELS[index];
   const next = KR_STOCK_RANKS[index + 1];
-  const message = next ? `${next[0]}까지 ${(index + 1) * 10 - score}점` : "최고 등급 달성";
+  const message = next ? `다음 등급 ${next[0]}까지 ${(index + 1) * 10 - score}점 남았습니다.` : "최상위 쉘터 등급(챌린저)을 달성했습니다!";
   return `<details class="stock-rank compact-detail" ${open ? "open" : ""}>
-    <summary><span>비축 등급</span><strong class="rank-badge" style="--rank-color:${color}">${rank}</strong><span class="stock-score">${score} / 100점</span></summary>
+    <summary><span>쉘터 등급</span>${krRankShieldSvg(color)}<strong class="rank-badge" style="--rank-color:${color}">${rank}</strong><span class="pct-chip">${pct}</span><span class="stock-score">${score} / 100</span></summary>
     <div class="rank-detail"><progress aria-label="비축 점수" value="${score}" max="100"></progress>
-    <p>${message}</p><p>배점은 생수 28점, 간편식 3종(즉석밥·컵라면·레토르트) 각 5점(15점), 통조림 5종(스팸·참치·번데기·골뱅이·과일) 각 3점(15점), 휴지·물티슈 각 4점(8점), 손전등 6점, 건전지 3종(AA 4·AAA 2·특수 2, 총 8점), 배낭·담요 각 5점(10점), 응급처치·상비약 각 5점(10점)으로 총 100점입니다. 선택 물품과 퀴즈 점수는 별도입니다.</p></div>
+    <p><strong>${pct} 추정 대비 수준</strong> · ${message}</p><p>배점은 생수 28점, 간편식 3종(즉석밥·컵라면·레토르트) 각 5점(15점), 통조림 5종(스팸·참치·번데기·골뱅이·과일) 각 3점(15점), 휴지·물티슈 각 4점(8점), 손전등 6점, 건전지 3종(AA 4·AAA 2·특수 2, 총 8점), 배낭·담요 각 5점(10점), 응급처치·상비약 각 5점(10점)으로 총 100점입니다. 등급과 상위 %는 가구 대비 수준을 가늠하기 위한 참고 지표입니다.</p></div>
     </details>`;
 }
 
@@ -299,9 +309,9 @@ function krStockShelves(snapshot, escape, showInactive, editing, filter, optCate
 
 const KR_RECORD_MISSIONS = [
   { id: "water", title: "마실 물 기록", ids: ["drinking-water"], mode: "all", art: KR_READY_PICTOGRAMS["drinking-water"] },
-  { id: "food", title: "먹을거리 기록", ids: ["shelf-stable-meal", "canned-food", "self-heating-ration"], mode: "any", art: KR_READY_PICTOGRAMS["canned-food"] },
-  { id: "light", title: "빛·전원 기록", ids: ["flashlight", "batteries", "power-bank"], mode: "any", art: KR_READY_PICTOGRAMS.flashlight },
-  { id: "care", title: "구급품 기록", ids: ["first-aid-kit"], mode: "all", art: KR_READY_PICTOGRAMS["first-aid-kit"] },
+  { id: "food", title: "먹을거리 기록", ids: ["instant-rice", "cup-noodles", "shelf-stable-meal", "spam-canned-ham", "canned-tuna", "canned-pupa", "canned-whelk", "canned-fruit", "canned-food", "self-heating-ration"], mode: "any", art: KR_READY_PICTOGRAMS["spam-canned-ham"] },
+  { id: "light", title: "빛·전원 기록", ids: ["flashlight", "batteries", "batteries-aaa", "batteries-special", "power-bank"], mode: "any", art: KR_READY_PICTOGRAMS.flashlight },
+  { id: "care", title: "구급·상비약 기록", ids: ["first-aid-kit", "otc-medicine"], mode: "any", art: KR_READY_PICTOGRAMS["first-aid-kit"] },
 ];
 
 function krMissionState(snapshot) {
@@ -312,16 +322,57 @@ function krMissionState(snapshot) {
   });
 }
 
+function krUrgentQuests(snapshot) {
+  if (!snapshot) return [];
+  const quests = [];
+  const readyIds = new Set(krReadyItems(snapshot).map((i) => i.id));
+  for (const item of snapshot.catalog) {
+    const st = snapshot.summary?.items?.[item.id];
+    const active = snapshot.items[item.id]?.applicable ?? !krIsSelectable(item);
+    if (!active || !st || readyIds.has(item.id)) continue;
+    const weight = KR_STOCK_WEIGHTS[item.id] || 0;
+    const name = KR_READY_SHORT_NAMES[item.id] || item.name;
+    if (st.expired_quantity > 0) {
+      quests.push({ priority: 100 + weight, tag: "긴급 · 기한경과", title: `${name} 만료분 교체·소비`, reward: weight ? `+${weight}점` : "위생·안전", itemId: item.id });
+    } else if (st.expiring_quantity > 0) {
+      quests.push({ priority: 85 + weight, tag: "순환 소비", title: `${name} 기한 임박 먼저 쓰기`, reward: weight ? `+${weight}점` : "낭비 방지", itemId: item.id });
+    } else if (st.state === "shortage" || !st.confirmed || st.stale) {
+      quests.push({ priority: 40 + weight, tag: st.state === "shortage" ? "보충 미션" : "실사 미션", title: `${name} ${st.state === "shortage" ? "목표량 채우기" : "재고 확인하기"}`, reward: weight ? `최대 +${weight}점` : "선택 퀘스트", itemId: item.id });
+    }
+  }
+  quests.sort((a, b) => b.priority - a.priority);
+  return quests.slice(0, 4);
+}
+
+function krExpiringStrip(snapshot, escape) {
+  if (!snapshot) return "";
+  const alerts = snapshot.catalog.filter((item) => {
+    const st = snapshot.summary?.items?.[item.id];
+    const active = snapshot.items[item.id]?.applicable ?? !krIsSelectable(item);
+    return active && st && (st.expired_quantity > 0 || st.expiring_quantity > 0);
+  });
+  if (!alerts.length) return "";
+  return `<div class="expiring-banner" role="region" aria-label="유통기한 순환 소비 알림"><strong>🔥 유통기한 임박·경과 — 버리기 전에 먼저 소비하세요</strong><div class="expiring-chips">${alerts.slice(0, 6).map((item) => {
+    const st = snapshot.summary.items[item.id];
+    const name = KR_READY_SHORT_NAMES[item.id] || item.name;
+    const dDay = st.next_expiry_on && snapshot.today ? krDaysUntil(st.next_expiry_on, snapshot.today) : null;
+    const tag = st.expired_quantity > 0 ? "만료" : (dDay !== null ? `D-${Math.max(0, dDay)}` : "임박");
+    return `<button type="button" class="exp-chip" data-edit="${escape(item.id)}"><span>${escape(name)}</span><strong>${tag}</strong></button>`;
+  }).join("")}</div></div>`;
+}
+
 function krMissionView(snapshot, escape, animate = false, open = false) {
   const missions = krMissionState(snapshot);
   const complete = missions.filter((mission) => mission.complete).length;
-  const names = ["기록 시작", "기록 진행", "기록 확장", "기록 강화", "4분야 기록"];
-  return `<details class="mission-panel compact-detail" ${open ? "open" : ""}><summary class="mission-head"><span>기록 미션</span><strong>준비 기록 단계 ${complete}/4 · ${names[complete]}</strong></summary><div class="mission-detail">` +
+  const names = ["퀘스트 시작", "초동 대비", "생존 확장", "정예 쉘터", "마스터 쉘터"];
+  const quests = krUrgentQuests(snapshot);
+  const nextTag = quests[0] ? `다음: ${quests[0].title}` : "모든 긴급 미션 클리어!";
+  return `<details class="mission-panel compact-detail" ${open ? "open" : ""}><summary class="mission-head"><span>긴급 퀘스트</span><strong>준비 기록 단계 ${complete}/4 · ${names[complete]}</strong><span class="quest-next">${escape(nextTag)}</span></summary><div class="mission-detail">` +
     `<div class="mission-progress" role="progressbar" aria-label="준비 기록 단계" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${complete}"><span style="width:${complete * 25}%"></span></div>` +
-    `<p>이 단계는 재고 기록과 실사 상태를 보여줍니다. 생존 확률을 뜻하지 않습니다.</p>` +
+    (quests.length ? `<div class="quest-list">${quests.map((q) => `<button type="button" class="quest-btn" data-edit="${escape(q.itemId)}"><span class="quest-tag">${escape(q.tag)}</span><strong class="quest-title">${escape(q.title)}</strong><span class="quest-reward">${escape(q.reward)}</span></button>`).join("")}</div>` : `<p class="quest-clear">🎉 현재 시급한 미션을 모두 완료했습니다!</p>`) +
     `<div class="mission-grid">${missions.map((mission) => `<div class="mission-item ${mission.complete ? `done${animate ? " unlock" : ""}` : "pending"}">` +
       `<span class="mission-art" aria-hidden="true">${mission.complete ? mission.art : "○"}</span>` +
-      `<span class="mission-title">${escape(mission.title)}</span><span class="mission-state">${mission.complete ? "기록 달성" : mission.mode === "any" ? "대상 중 완비 0개" : `완비 ${mission.count}/${mission.ids.length}개`}</span></div>`).join("")}</div></div></details>`;
+      `<span class="mission-title">${escape(mission.title)}</span><span class="mission-state">${mission.complete ? "클리어" : mission.mode === "any" ? "대상 중 완비 0개" : `완비 ${mission.count}/${mission.ids.length}개`}</span></div>`).join("")}</div></div></details>`;
 }
 
 function krAddMonths(isoDate, months) {
@@ -693,6 +744,19 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .compact-detail summary::-webkit-details-marker{display:none}
       .compact-detail summary::after{content:"＋";margin-inline-start:auto;color:var(--kr-accent,#8fe6ee);font-weight:700}
       .compact-detail[open] summary::after{content:"−"}
+      .rank-shield{vertical-align:middle;flex-shrink:0}
+      .pct-chip{padding:.14rem .45rem;border-radius:6px;background:rgba(143,230,238,.16);border:1px solid rgba(143,230,238,.38);color:var(--kr-accent,#9ee9ea);font-size:.76rem;font-weight:800}
+      .quest-next{font-size:.78rem;color:var(--kr-muted,#c7e2e7);margin-inline-start:auto}
+      .quest-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem;margin:.55rem 0}
+      .quest-btn{display:grid;gap:.15rem;text-align:left;padding:.5rem .65rem;border-radius:9px;border:1px solid rgba(130,210,225,.4);background:rgba(16,46,64,.65);color:inherit}
+      .quest-btn:hover{border-color:var(--kr-accent,#8fe6ee);background:rgba(28,72,96,.75)}
+      .quest-tag{font-size:.68rem;font-weight:800;color:#ffd166}.quest-title{font-size:.82rem}.quest-reward{font-size:.72rem;color:var(--kr-accent,#9ee9ea)}
+      .expiring-banner{margin-top:.9rem;padding:.7rem .85rem;border-radius:12px;border:1px solid rgba(255,170,90,.55);background:rgba(120,55,15,.26);display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap}
+      .expiring-banner>strong{font-size:.86rem;color:#ffd9a0}
+      .expiring-chips{display:flex;flex-wrap:wrap;gap:.35rem}
+      .exp-chip{min-height:34px;padding:.2rem .6rem;font-size:.78rem;border-radius:999px;border-color:rgba(255,180,100,.55);background:rgba(255,160,70,.16);color:#fff2dc;display:inline-flex;align-items:center;gap:.35rem}
+      .exp-chip strong{color:#ffb366}
+      @media(max-width:650px){.quest-list{grid-template-columns:1fr}}
       .rank-badge{padding:.16rem .52rem;border-radius:6px;color:#111922;background:var(--rank-color);font-size:.84rem;font-weight:800}
       .stock-score{font-size:.84rem;font-variant-numeric:tabular-nums;color:var(--kr-muted,#cfe8ec)}
       .rank-detail,.mission-detail{padding:.15rem .8rem .8rem}
@@ -782,7 +846,9 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       :host([data-kr-themed]) ha-card{background:var(--kr-bg)}
       :host([data-kr-themed]) .hero{color:var(--kr-text);background:radial-gradient(ellipse at top right,var(--kr-glow),transparent 58%),var(--kr-bg)}
       :host([data-kr-themed]) .hero h2,:host([data-kr-themed]) .hero p,:host([data-kr-themed]) .atmosphere,:host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) .ready-panel h3,:host([data-kr-themed]) .ready-name{color:var(--kr-text)}
-      :host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) #refresh,:host([data-kr-themed]) .ready-panel,:host([data-kr-themed]) .signals button,:host([data-kr-themed]) .ready-item .shelf-edit,:host([data-kr-themed]) .mission-item{background:var(--kr-surface);border-color:var(--kr-line);color:var(--kr-text)}
+      :host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) #refresh,:host([data-kr-themed]) .ready-panel,:host([data-kr-themed]) .signals button,:host([data-kr-themed]) .ready-item .shelf-edit,:host([data-kr-themed]) .mission-item,:host([data-kr-themed]) .quest-btn{background:var(--kr-surface);border-color:var(--kr-line);color:var(--kr-text)}
+      :host([data-kr-themed]) .expiring-banner{background:var(--kr-glow);border-color:var(--kr-accent)}
+      :host([data-kr-themed]) .expiring-banner>strong,:host([data-kr-themed]) .exp-chip{color:var(--kr-text);border-color:var(--kr-line)}
       :host([data-kr-themed]) .signals button[aria-pressed="true"],:host([data-kr-themed]) .ready-item .shelf-edit:hover:not(:disabled){background:var(--kr-glow);border-color:var(--kr-accent)}
       :host([data-kr-themed]) .ready-panel h3 span,:host([data-kr-themed]) .signals button strong,:host([data-kr-themed]) .mission-head strong,:host([data-kr-themed]) .mission-art,:host([data-kr-themed]) .shelf-action{color:var(--kr-accent)}
       :host([data-kr-themed]) .ready-number,:host([data-kr-themed]) .stock-label,:host([data-kr-themed]) .mission-state,:host([data-kr-themed]) .ready-empty{color:var(--kr-muted)!important}
@@ -794,7 +860,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       (!snapshot ? `<p class="hero-copy">${this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` : "") +
       `${signals}</div><div class="status-disclosures">${krStockRankView(snapshot, this._rankOpen)}${krMissionView(snapshot, escape, animateMission, this._missionOpen)}</div>` +
       (!edit && this._message ? `<p class="shelf-message" role="status">${escape(this._message)}</p>` : "") +
-      `${stage3d}${this._viewMode === "3d" && snapshot ? "" : krStockShelves(snapshot, escape, this._optionalShelfOpen, Boolean(this._draft), this._statusFilter, this._optCategory, this._optSearch)}</section></ha-card>`;
+      `${krExpiringStrip(snapshot, escape)}${stage3d}${this._viewMode === "3d" && snapshot ? "" : krStockShelves(snapshot, escape, this._optionalShelfOpen, Boolean(this._draft), this._statusFilter, this._optCategory, this._optSearch)}</section></ha-card>`;
     for (const [selector, state] of [[".stock-rank", "_rankOpen"], [".mission-panel", "_missionOpen"], ["#optional-shelf", "_optionalShelfOpen"]]) {
       this.shadowRoot.querySelector(selector)?.addEventListener("toggle", (event) => { this[state] = event.currentTarget.open; });
     }
@@ -889,7 +955,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         try { return window.localStorage?.getItem("kr_survival_kit_theme") || "black"; } catch { return "black"; }
       };
       const base = this._config?.asset_path ? `${this._config.asset_path.replace(/\/$/, "")}/` : KR_SCRIPT_BASE;
-      import(`${base}kr-warehouse-3d.js?v=0.5.1`).then(({ KrWarehouseThreeEngine }) => {
+      import(`${base}kr-warehouse-3d.js?v=0.6.0`).then(({ KrWarehouseThreeEngine }) => {
         if (!this.shadowRoot.contains(canvas3d)) return;
         this._engine3d = new KrWarehouseThreeEngine(
           canvas3d, tooltip3d,
