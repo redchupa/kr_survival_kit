@@ -93,7 +93,7 @@ function krIsSelectable(item) {
 }
 
 function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item) =>
-  !krIsSelectable(item) && snapshot.items[item.id]?.applicable !== false)) {
+  !krIsSelectable(item) && snapshot.items[item.id]?.applicable !== false), editing = false) {
   if (!snapshot) return `<p class="ready-empty">재고를 불러오는 중입니다.</p>`;
   if (!visible.length) return `<p class="ready-empty">활성화한 물품이 없습니다.</p>`;
   const readyIds = new Set(krReadyItems(snapshot).map((item) => item.id));
@@ -108,8 +108,9 @@ function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item)
       status.expiring_quantity > 0 ? "기한 임박" : status.expired_quantity > 0 ? "기한 경과" :
       status.unknown_date_quantity > 0 ? "기한 확인" : status.state === "shortage" ? "부족" : "";
     const percent = status.target > 0 ? Math.floor(Math.min(1, current / status.target) * 100) : 0;
-    return `<div class="ready-item" data-item="${escape(item.id)}" data-complete="${ready}" role="listitem" aria-label="${escape([item.name, quantity, label].filter(Boolean).join(" · "))}"><span class="ready-art" aria-hidden="true">${pictogram}</span>` +
-      `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(quantity)}</span><span aria-hidden="true" class="stock-meter"><span style="width:${percent}%"></span></span>${label ? `<span class="stock-label">${label}</span>` : ""}${inactive ? `<button type="button" data-edit="${escape(item.id)}" aria-label="${escape(item.name)} 설정">설정</button>` : ""}</div>`;
+    const action = inactive ? "설정" : "수정";
+    return `<div class="ready-item" data-item="${escape(item.id)}" data-complete="${ready}" role="listitem"><button type="button" class="shelf-edit" data-edit="${escape(item.id)}" aria-label="${escape([`${item.name} ${action}`, quantity, label].filter(Boolean).join(" · "))}" ${editing ? "disabled" : ""}><span class="shelf-action">${action}</span><span class="ready-art" aria-hidden="true">${pictogram}</span>` +
+      `<span class="ready-name">${escape(KR_READY_SHORT_NAMES[item.id] || item.name)}</span><span class="ready-number">${escape(quantity)}</span><span aria-hidden="true" class="stock-meter"><span style="width:${percent}%"></span></span>${label ? `<span class="stock-label">${label}</span>` : ""}</button></div>`;
   }).join("")}</div>`;
 }
 
@@ -148,16 +149,16 @@ function krStockRankView(snapshot) {
     </section>`;
 }
 
-function krStockShelves(snapshot, escape, showInactive) {
+function krStockShelves(snapshot, escape, showInactive, editing) {
   const optional = snapshot?.catalog.filter(krIsSelectable) ?? [];
   const active = optional.filter((item) => snapshot.items[item.id]?.applicable);
   const inactive = optional.filter((item) => !snapshot.items[item.id]?.applicable);
   const ready = krReadyItems(snapshot);
-  const shelves = `<section class="ready-panel" aria-labelledby="essentials-shelf"><h3 id="essentials-shelf">기본 비축 물품 <span>완비 ${ready.filter((item) => !krIsSelectable(item)).length}종</span></h3>${krReadyGrid(snapshot, escape)}</section>`;
+  const shelves = `<section class="ready-panel" aria-labelledby="essentials-shelf"><h3 id="essentials-shelf" tabindex="-1">기본 비축 물품 <span>완비 ${ready.filter((item) => !krIsSelectable(item)).length}종</span></h3>${krReadyGrid(snapshot, escape, undefined, editing)}</section>`;
   if (!optional.length) return shelves;
   return shelves + `<section class="ready-panel" aria-labelledby="optional-shelf-title"><h3 id="optional-shelf-title">선택 물품 <span>사용 중 ${active.length}종 · 완비 ${ready.filter(krIsSelectable).length}종</span></h3>
-    ${active.length ? krReadyGrid(snapshot, escape, active) : '<p class="ready-empty">아래 목록에서 우리 집에 필요한 물품을 고르세요.</p>'}
-    ${inactive.length ? `<details id="optional-shelf" ${showInactive ? "open" : ""}><summary>아직 사용하지 않는 물품 ${inactive.length}종 보기</summary>${krReadyGrid(snapshot, escape, inactive)}</details>` : ""}</section>`;
+    ${active.length ? krReadyGrid(snapshot, escape, active, editing) : '<p class="ready-empty">아래 목록에서 우리 집에 필요한 물품을 고르세요.</p>'}
+    ${inactive.length ? `<details id="optional-shelf" ${showInactive ? "open" : ""}><summary>아직 사용하지 않는 물품 ${inactive.length}종 보기</summary>${krReadyGrid(snapshot, escape, inactive, editing)}</details>` : ""}</section>`;
 }
 
 const KR_RECORD_MISSIONS = [
@@ -329,7 +330,10 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       ...(item.id === "drinking-water" ? { capacity: "2", count: "0" } : {}) });
   }
 
-  _edit(item) {
+  _edit(item, fromShelf) {
+    if (this._draft || this._saving) return;
+    this._shelfEditId = fromShelf ? item.id : null;
+    this._focusOptionalSearch = false;
     const saved = this._snapshot.items[item.id];
     if (item.tier === "optional") this._optionalOpen = true;
     this._draft = {
@@ -345,7 +349,19 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     if (!this._draft.lots.length) this._addLot(item);
     this._message = "";
     this._render();
-    this.shadowRoot.querySelector(".lot-edit input")?.focus();
+    const editor = this.shadowRoot.querySelector("#editor");
+    (editor?.querySelector(".lot-edit input") || editor?.querySelector("h3"))?.focus({ preventScroll: true });
+    editor?.scrollIntoView({ block: "start" });
+  }
+
+  _returnToShelf() {
+    if (!this._shelfEditId) return;
+    const selector = `.shelf-edit[data-edit="${CSS.escape(this._shelfEditId)}"]`;
+    const trigger = this.shadowRoot.querySelector(selector);
+    const details = trigger?.closest("details");
+    const target = details && !details.open ? details.querySelector("summary") : trigger;
+    (target || this.shadowRoot.querySelector("#essentials-shelf"))?.focus();
+    this._shelfEditId = null;
   }
 
   _captureDraft() {
@@ -420,6 +436,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     }
     this._saving = false;
     this._render();
+    if (!this._draft) this._returnToShelf();
   }
 
   async _delete() {
@@ -439,6 +456,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       await this._load();
     }
     this._render();
+    if (!this._draft) this._returnToShelf();
   }
 
   _filterOptionalItems() {
@@ -524,7 +542,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const draftItem = items.find((item) => item.id === this._draft?.id);
     const draftRecommendation = recommendations.get(this._draft?.id);
     const noteCoveredByBasis = draftItem?.note && draftRecommendation?.basis?.includes(draftItem.note);
-    const edit = this._draft && draftItem ? `<form id="editor"><h3>${escape(draftItem.name)} 수정</h3>` +
+    const edit = this._draft && draftItem ? `<form id="editor"><h3 tabindex="-1">${escape(draftItem.name)} 수정</h3>` +
       (draftItem.examples ? `<p class="item-note">${escape(draftItem.examples)}</p>` : "") +
       (draftItem.note && !noteCoveredByBasis ? `<p class="item-note">${escape(draftItem.note)}</p>` : "") +
       `<p>현재 기록 ${escape(krStockText(draftItem, draftItem.status.usable))} · ${states[draftItem.status.state]} · 마지막 실사 ${escape(draftItem.status.verified_on || "기록 없음")}</p>` +
@@ -553,7 +571,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       `<button type="button" data-category="${group}" aria-pressed="${this._categoryFilter === group}">${label}</button>`
     ).join("");
     const counts = snapshot?.summary;
-    const signals = counts ? `<div class="signals" aria-label="재고 점검 현황">` +
+    const signals = counts && !this._draft ? `<div class="signals" aria-label="재고 점검 현황">` +
       `<button type="button" data-status="shortage"><span>부족</span><strong>${counts.shortage_count}</strong></button>` +
       `<button type="button" data-status="needs_check"><span>확인 필요</span><strong>${counts.needs_check_count}</strong></button>` +
       `<button type="button" data-status="expiring"><span>기한 임박</span><strong>${counts.expiring_count}</strong></button></div>` : "";
@@ -610,14 +628,16 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .atmosphere{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.atmosphere span{display:inline-flex;min-height:35px;align-items:center;padding:5px 10px;border:1px solid #79b3c082;border-radius:8px;background:#07192768;color:#d9f1f4;font-size:.84rem;font-variant-numeric:tabular-nums}
       .atmosphere-note{font-size:.76rem!important;color:#accbd5!important;margin-top:0!important}
       .rotation-meta{font-size:.83rem;color:#8b5c0b;font-weight:650}
-      .stock-rank{margin-top:1.25rem;padding:1rem;border:1px solid var(--rank-color);border-radius:14px;background:#122e40;color:#f0f9fa}.stock-rank-head{display:flex;justify-content:space-between;align-items:end;gap:.5rem;flex-wrap:wrap}.stock-rank h3{margin:0 0 .2rem;font-size:.92rem}.stock-rank-head strong{font-size:clamp(1.25rem,4vw,2rem);color:var(--rank-color)}.stock-score{font-variant-numeric:tabular-nums;color:#dceff1}.stock-score b{font-size:clamp(1.4rem,5vw,2.4rem);color:var(--rank-color)}.stock-rank progress{display:block;width:100%;height:.7rem;margin:.7rem 0;accent-color:var(--rank-color)}.stock-rank p{margin:.45rem 0;line-height:1.5}.stock-rank summary,#optional-shelf summary{cursor:pointer;color:#c5eff2;padding:.4rem 0}.stock-rank details p{font-size:.83rem}.ready-item button{margin-top:.3rem;min-height:44px;padding:.35rem .6rem}.ready-panel details .ready-grid{margin-top:.65rem}
+      .stock-rank{margin-top:1.25rem;padding:1rem;border:1px solid var(--rank-color);border-radius:14px;background:#122e40;color:#f0f9fa}.stock-rank-head{display:flex;justify-content:space-between;align-items:end;gap:.5rem;flex-wrap:wrap}.stock-rank h3{margin:0 0 .2rem;font-size:.92rem}.stock-rank-head strong{font-size:clamp(1.25rem,4vw,2rem);color:var(--rank-color)}.stock-score{font-variant-numeric:tabular-nums;color:#dceff1}.stock-score b{font-size:clamp(1.4rem,5vw,2.4rem);color:var(--rank-color)}.stock-rank progress{display:block;width:100%;height:.7rem;margin:.7rem 0;accent-color:var(--rank-color)}.stock-rank p{margin:.45rem 0;line-height:1.5}.stock-rank summary,#optional-shelf summary{cursor:pointer;color:#c5eff2;padding:.4rem 0}.stock-rank details p{font-size:.83rem}.ready-panel details .ready-grid{margin-top:.65rem}
       .ready-panel{margin-top:1.5rem;padding:1rem;border:1px solid #719aaa80;border-radius:12px;background:#102b3aab}
       .ready-panel h3{margin:0 0 .85rem;color:#ecf8f9;font-size:1.03rem}.ready-panel h3 span{color:#a9dce2;font-variant-numeric:tabular-nums}
       .ready-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:.5rem}
-      .ready-item{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:start;gap:.27rem;min-width:0;padding:.72rem .3rem .64rem;border:1px solid #547d8e;border-radius:9px;background:#25485b;color:#f4fafa;text-align:center}
-      .ready-art{display:grid;place-items:center;min-height:3rem;font-size:2.35rem;line-height:1;filter:none}.ready-name{font-size:.76rem;font-weight:750;line-height:1.25;overflow-wrap:anywhere}.ready-number{font-size:.66rem;color:#d3e9ec;line-height:1.25;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+      .ready-item{min-width:0}.ready-item .shelf-edit{position:relative;display:flex;flex-direction:column;align-items:center;gap:.34rem;width:100%;height:100%;min-width:0;padding:.56rem .4rem .72rem;border:1px solid #6f9ca9;border-radius:10px;background:#25485b;color:#f4fafa;text-align:center}
+      .ready-item .shelf-edit:hover:not(:disabled){border-color:#abdfe9;background:#30586b}.ready-item .shelf-edit:focus-visible{outline:3px solid #ffd899;outline-offset:3px}.shelf-edit:disabled{cursor:default}.shelf-action{align-self:end;padding:.13rem .35rem;border:1px solid #7ea7b4;border-radius:4px;color:#f0f8fb;font-size:.72rem;line-height:1.3}
+      .ready-art{display:grid;place-items:center;min-height:3rem;font-size:2.35rem;line-height:1;filter:none}.ready-name{font-size:.86rem;font-weight:750;line-height:1.25;overflow-wrap:anywhere}.ready-number{font-size:.8rem;font-weight:650;color:#e6f5f7;line-height:1.3;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+      .editing-panel{margin:0 0 1rem}#editor{scroll-margin-top:12px}
       .ready-empty{margin:.15rem 0!important;padding:.7rem 0;color:#d9e9eb!important;line-height:1.55}
-      .ready-item[data-complete="true"]{border-color:#8bd8bb;background:#23564f}.stock-meter{display:block;width:80%;height:4px;border-radius:999px;background:#18303d;overflow:hidden}.stock-meter span{display:block;height:100%;background:#8ed4df;border-radius:inherit}.ready-item[data-complete="true"] .stock-meter span{background:#9de8be}.stock-label{font-size:.65rem;color:#e1eff2}
+      .ready-item[data-complete="true"] .shelf-edit{border-color:#8bd8bb;background:#23564f}.stock-meter{display:block;width:80%;height:4px;border-radius:999px;background:#18303d;overflow:hidden}.stock-meter span{display:block;height:100%;background:#8ed4df;border-radius:inherit}.ready-item[data-complete="true"] .stock-meter span{background:#9de8be}.stock-label{font-size:.75rem;color:#e1eff2}
       .ready-art svg{display:block;width:44px;height:44px}
       @keyframes krSkyDrift{from{background-position:0 0}to{background-position:100px 180px}}
       @media(prefers-reduced-motion:reduce){.hero,.mission-progress span{transition:none!important}.hero[data-weather]::after,.mission-item.unlock .mission-art{animation:none!important}}
@@ -632,17 +652,17 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
 
       @media(max-width:650px){.mission-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
       @media(max-width:400px){.mission-item{grid-template-columns:1fr;text-align:center}.mission-art{grid-row:auto}}
-    </style><ha-card><section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨"><span id="local-clock">--:--</span><span id="local-weather">날씨 연동 안 됨</span></div></div><p class="atmosphere-note" id="time-source">HA 시간대 · 시각 기준 주야 테마</p>` +
-      `<p class="hero-copy">${snapshot ? Object.keys(snapshot.items).length ? "기록된 품목의 상태를 살펴보고 필요한 것부터 점검하세요." : "저장된 재고 기록이 없습니다. 품목을 열어 실제 수량과 목표를 확인하세요." : this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` +
+    </style><ha-card>${edit ? `<section class="inventory-panel editing-panel" aria-label="품목 수정">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit}</section>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨"><span id="local-clock">--:--</span><span id="local-weather">날씨 연동 안 됨</span></div></div><p class="atmosphere-note" id="time-source">HA 시간대 · 시각 기준 주야 테마</p>` +
+      `<p class="hero-copy">${snapshot ? Object.keys(snapshot.items).length ? "품목 그림을 누르면 수량과 기한을 바로 수정할 수 있습니다." : "품목 그림을 눌러 실제 수량과 목표를 기록하세요." : this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` +
       (snapshot ? `<div class="household-strip"><div><strong>${people}인 가구 · 3일</strong><p>생수 ${people * 6} L · 식사 ${people * 9}인분</p></div><form id="household-form"><label>가구 인원 (명)<input id="household-size" type="number" required min="1" max="99" value="${escape(people)}" ${this._draft ? "disabled" : ""}></label><button type="submit" ${this._draft || this._saving ? "disabled" : ""}>인원 적용</button></form>${this._householdMessage ? `<p role="status">${escape(this._householdMessage)}</p>` : ""}</div>` : "") +
       `${signals}` +
       (counts ? `<p class="filter-note">부족·확인 필요·기한 임박 수치는 서로 겹칠 수 있습니다. 부족 0건이 준비 완료를 뜻하지 않습니다.</p>` : "") +
-      `</div>${krStockRankView(snapshot)}${krMissionView(snapshot, escape, animateMission)}${krStockShelves(snapshot, escape, this._optionalShelfOpen)}</section>` +
-      `<section class="inventory-panel" id="inventory-list"><div class="inventory-heading"><h2>${listTitle} <span>${filteredItems.length}개</span></h2><button type="button" id="refresh">새로고침</button></div>` +
+      `</div>${krStockRankView(snapshot)}${krMissionView(snapshot, escape, animateMission)}${krStockShelves(snapshot, escape, this._optionalShelfOpen, Boolean(this._draft))}</section>` +
+      (edit ? "" : `<section class="inventory-panel" id="inventory-list"><div class="inventory-heading"><h2 tabindex="-1">${listTitle} <span>${filteredItems.length}개</span></h2><button type="button" id="refresh">새로고침</button></div>` +
       `<div class="filter-bar" aria-label="품목 분류 필터">${categoryButtons}</div><div class="filter-bar" aria-label="품목 상태 필터">${statusButtons}</div>` +
       `<p class="filter-note">인원을 바꾸면 기본 목표가 갱신됩니다. 직접 저장한 목표는 품목의 목표 설정에서 비우면 기본값을 다시 따릅니다.</p>` +
       (this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : "") +
-      `<div class="items">${snapshot ? (edit || (filteredItems.length ? rows : `<p class="empty">조건에 맞는 품목이 없습니다. 다른 필터를 선택하세요.</p>`) + optionalRows) : `<p class="empty">${this._loading ? "재고를 불러오는 중입니다." : "재고를 표시할 수 없습니다."}</p>`}</div></section></ha-card>`;
+      `<div class="items">${snapshot ? ((filteredItems.length ? rows : `<p class="empty">조건에 맞는 품목이 없습니다. 다른 필터를 선택하세요.</p>`) + optionalRows) : `<p class="empty">${this._loading ? "재고를 불러오는 중입니다." : "재고를 표시할 수 없습니다."}</p>`}</div></section>`) + `</ha-card>`;
     this.shadowRoot.querySelector("#optional-items")?.addEventListener("toggle", (event) => {
       this._optionalOpen = event.currentTarget.open;
     });
@@ -694,7 +714,11 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       this._statusFilter = status;
       this._optionalOpen ||= this._statusFilter === "optional";
       this._render();
-      window.requestAnimationFrame(() => this.shadowRoot.querySelector(`[data-status="${status}"]`)?.focus({ preventScroll: true }));
+      if (button.closest(".signals")) {
+        this.shadowRoot.querySelector("#inventory-list h2")?.focus();
+      } else {
+        this.shadowRoot.querySelector(`.filter-bar [data-status="${status}"]`)?.focus({ preventScroll: true });
+      }
     }));
     this.shadowRoot.querySelector("#show-all-optional")?.addEventListener("click", () => {
       this._categoryFilter = "all";
@@ -707,14 +731,15 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       this._optionalShelfOpen = event.currentTarget.open;
     });
     this.shadowRoot.querySelectorAll("[data-edit]").forEach((button) => button.addEventListener("click", () =>
-      this._edit(snapshot.catalog.find((item) => item.id === button.dataset.edit))));
+      this._edit(snapshot.catalog.find((item) => item.id === button.dataset.edit), button.classList.contains("shelf-edit"))));
     this.shadowRoot.querySelector("#editor")?.addEventListener("submit", (event) => { event.preventDefault(); this._save(); });
     this.shadowRoot.querySelector("#cancel")?.addEventListener("click", () => {
       const wasOptional = draftItem?.tier === "optional";
       this._draft = null;
       this._message = "";
-      this._focusOptionalSearch = wasOptional;
+      this._focusOptionalSearch = wasOptional && !this._shelfEditId;
       this._render();
+      this._returnToShelf();
     });
     this.shadowRoot.querySelector("#delete")?.addEventListener("click", () => this._delete());
     this.shadowRoot.querySelector("#add-lot")?.addEventListener("click", () => {

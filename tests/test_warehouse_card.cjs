@@ -83,13 +83,13 @@ const handlers = {};
 const focus = [];
 let scrolled = 0;
 const categoryButton = { dataset: { category: "water" }, addEventListener: (_type, handler) => { handlers.category = handler; } };
-const statusButton = { dataset: { status: "shortage" }, addEventListener: (_type, handler) => { handlers.status = handler; } };
+const statusButton = { closest: () => null, dataset: { status: "shortage" }, addEventListener: (_type, handler) => { handlers.status = handler; } };
 card.shadowRoot = {
   activeElement: null,
   innerHTML: "",
   querySelector: (selector) => {
     if (selector === '[data-category="water"]') return { focus: () => focus.push("category") };
-    if (selector === '[data-status="shortage"]') return { focus: () => focus.push("status") };
+    if (selector === '.filter-bar [data-status="shortage"]') return { focus: () => focus.push("status") };
     if (selector === "#refresh") return { focus: () => focus.push("refresh"), addEventListener() {} };
     if (selector === "#inventory-list") return { scrollIntoView: () => { scrolled += 1; } };
     return elements[selector] || null;

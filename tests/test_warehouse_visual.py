@@ -207,8 +207,13 @@ def main():
         render(mixed)
         assert ready.count() == 0
 
+        shelf.locator('[data-item="self-heating-ration"] .ready-art').click()
+        assert page.locator("kr-survival-kit-inventory-card #editor h3").inner_text().endswith("수정")
+        page.locator("kr-survival-kit-inventory-card #cancel").click()
+        assert shelf.locator('[data-item="self-heating-ration"] button').evaluate("el => el.getRootNode().activeElement === el")
+
         render(make_snapshot(2))
-        page.locator('kr-survival-kit-inventory-card button[data-edit="drinking-water"]').click()
+        water_tile.locator(".ready-art").click()
         target = page.locator("kr-survival-kit-inventory-card #editor #target")
         quantity = page.locator("kr-survival-kit-inventory-card #editor .quantity")
         received_on = page.locator("kr-survival-kit-inventory-card #editor .received-on")
@@ -266,7 +271,7 @@ def main():
         card.locator("#household-size").fill("5")
         card.locator("#household-form button").click()
         assert "생수 30 L · 식사 45인분" in card.locator(".household-strip").inner_text()
-        card.locator('[data-edit="drinking-water"]').click()
+        card.locator('.shelf-edit[data-edit="drinking-water"]').click()
         assert card.locator(".capacity").input_value() == "2"
         card.locator(".bottle-count").fill("12")
         assert "24 L" in card.locator(".lot-total").inner_text()
@@ -281,6 +286,12 @@ def main():
         card.locator("#editor button.primary").click()
         saved_bottle = page.evaluate("window.savedBottle")["lots"][0]
         assert (saved_bottle["quantity"], saved_bottle["bottle_ml"], saved_bottle["bottle_count"]) == (24000, 2000, 12)
+        water_button = card.locator('.shelf-edit[data-edit="drinking-water"]')
+        assert water_button.evaluate("el => el.getRootNode().activeElement === el")
+        water_button.press("Enter")
+        assert card.locator("#editor h3").inner_text() == "생수 수정"
+        card.locator("#cancel").click()
+        assert water_button.evaluate("el => el.getRootNode().activeElement === el")
 
         page.evaluate("""({guide, quiz, snapshot}) => {
             const panel = document.createElement('kr-survival-kit-panel');
