@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
-      - run: python -m pip install -r requirements-dev.txt homeassistant==2026.2.3
+      - run: python -m pip install -r requirements-dev.txt homeassistant==2026.2.3 home-assistant-frontend==20260128.6
       - run: python -m playwright install --with-deps chromium
       - run: python -m unittest discover -s tests -p test_guides.py -q
       - run: python tests/test_household.py
