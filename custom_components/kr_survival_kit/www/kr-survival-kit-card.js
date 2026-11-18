@@ -1,3 +1,7 @@
+const KR_SCRIPT_BASE = (typeof document !== "undefined" && document.currentScript?.src)
+  ? new URL(".", document.currentScript.src).href
+  : "/kr_survival_kit_assets/";
+
 const KR_SURVIVAL_GROUPS = {
   water: new Set(["drinking-water", "water-container", "insulated-bottle", "portable-water-filter", "water-sanitation-kit"]),
   food: new Set(["shelf-stable-meal", "canned-food", "self-heating-ration", "portable-stove", "butane-canister", "lighter", "solid-fuel", "manual-can-opener", "cooler-ice-pack", "long-storage-snacks", "infant-formula", "ready-to-feed-formula", "infant-feeding-supplies"]),
@@ -275,325 +279,6 @@ function krAddMonths(isoDate, months) {
   if (Number.isNaN(base.getTime())) return "";
   base.setUTCMonth(base.getUTCMonth() + months);
   return base.toISOString().slice(0, 10);
-}
-
-// Real-time interactive 3D perspective warehouse renderer (zero external dependencies).
-class KrWarehouse3DEngine {
-  constructor(canvas, tooltipEl, getSnapshot, getFilter, onSelectItem, getTheme) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext("2d");
-    this.tooltip = tooltipEl;
-    this.getSnapshot = getSnapshot;
-    this.getFilter = getFilter;
-    this.onSelectItem = onSelectItem;
-    this.getTheme = getTheme;
-    this.yaw = -0.58;
-    this.pitch = -0.48;
-    this.zoom = 1.25;
-    this.autoRotate = true;
-    this.zone = "all";
-    this.hoveredId = null;
-    this.hitBoxes = [];
-    this.dragging = false;
-    this.dragMoved = false;
-    this.lastX = 0;
-    this.lastY = 0;
-    this.rafId = null;
-    this.particles = Array.from({ length: 45 }, () => ({
-      x: (Math.random() - 0.5) * 12, y: Math.random() * 6, z: (Math.random() - 0.5) * 10,
-      speed: 0.03 + Math.random() * 0.04,
-    }));
-    this._bindEvents();
-    this._resize();
-    this._startLoop();
-  }
-
-  _bindEvents() {
-    this._onPointerDown = (e) => {
-      this.dragging = true;
-      this.dragMoved = false;
-      this.autoRotate = false;
-      this.lastX = e.clientX;
-      this.lastY = e.clientY;
-      this.canvas.setPointerCapture?.(e.pointerId);
-    };
-    this._onPointerMove = (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-      if (this.dragging) {
-        const dx = e.clientX - this.lastX;
-        const dy = e.clientY - this.lastY;
-        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) this.dragMoved = true;
-        this.yaw += dx * 0.008;
-        this.pitch = Math.max(-1.15, Math.min(-0.15, this.pitch + dy * 0.007));
-        this.lastX = e.clientX;
-        this.lastY = e.clientY;
-      } else {
-        this._updateHover(px, py);
-      }
-    };
-    this._onPointerUp = (e) => {
-      if (this.dragging && !this.dragMoved) {
-        const rect = this.canvas.getBoundingClientRect();
-        this._updateHover(e.clientX - rect.left, e.clientY - rect.top);
-        if (this.hoveredId) {
-          const item = this.getSnapshot()?.catalog?.find((c) => c.id === this.hoveredId);
-          if (item) this.onSelectItem(item);
-        }
-      }
-      this.dragging = false;
-    };
-    this._onWheel = (e) => {
-      e.preventDefault();
-      this.zoom = Math.max(0.6, Math.min(1.9, this.zoom - e.deltaY * 0.0009));
-    };
-    this._onResize = () => this._resize();
-    this.canvas.addEventListener("pointerdown", this._onPointerDown);
-    this.canvas.addEventListener("pointermove", this._onPointerMove);
-    this.canvas.addEventListener("pointerup", this._onPointerUp);
-    this.canvas.addEventListener("pointerleave", () => { this.dragging = false; this.hoveredId = null; if (this.tooltip) this.tooltip.hidden = true; });
-    this.canvas.addEventListener("wheel", this._onWheel, { passive: false });
-    window.addEventListener("resize", this._onResize);
-  }
-
-  destroy() {
-    if (this.rafId) cancelAnimationFrame(this.rafId);
-    window.removeEventListener("resize", this._onResize);
-  }
-
-  _resize() {
-    const rect = this.canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.w = Math.max(280, Math.floor(rect.width));
-    this.h = Math.max(340, Math.floor(rect.height));
-    this.canvas.width = this.w * dpr;
-    this.canvas.height = this.h * dpr;
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-
-  _project(x, y, z) {
-    const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
-    const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
-    const rx = x * cy - z * sy;
-    const rz1 = x * sy + z * cy;
-    const ry = y * cp - rz1 * sp;
-    const rz = y * sp + rz1 * cp;
-    const camDist = 8.2 / this.zoom;
-    const depth = camDist + rz;
-    if (depth < 0.5) return null;
-    const scale = (Math.min(this.w, this.h) * 0.96) / depth;
-    return { x: this.w * 0.5 + rx * scale, y: this.h * 0.58 - ry * scale, depth };
-  }
-
-  _drawPoly(pts, fill, stroke, lineWidth = 1) {
-    if (pts.some((p) => !p)) return;
-    const c = this.ctx;
-    c.beginPath();
-    c.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
-    c.closePath();
-    if (fill) { c.fillStyle = fill; c.fill(); }
-    if (stroke) { c.strokeStyle = stroke; c.lineWidth = lineWidth; c.stroke(); }
-  }
-
-  _addBox(faces, x, y, z, w, h, d, colors, meta = null) {
-    const hw = w / 2, hd = d / 2;
-    const v = [
-      [x - hw, y, z - hd], [x + hw, y, z - hd], [x + hw, y, z + hd], [x - hw, y, z + hd],
-      [x - hw, y + h, z - hd], [x + hw, y + h, z - hd], [x + hw, y + h, z + hd], [x - hw, y + h, z + hd],
-    ].map(([vx, vy, vz]) => this._project(vx, vy, vz));
-    if (v.some((p) => !p)) return;
-    const quadDefs = [
-      { idx: [4, 5, 6, 7], fill: colors.top },
-      { idx: [0, 1, 5, 4], fill: colors.front },
-      { idx: [2, 3, 7, 6], fill: colors.front },
-      { idx: [1, 2, 6, 5], fill: colors.side },
-      { idx: [3, 0, 4, 7], fill: colors.side },
-    ];
-    for (const q of quadDefs) {
-      const pts = q.idx.map((i) => v[i]);
-      const avgDepth = pts.reduce((s, p) => s + p.depth, 0) / 4;
-      faces.push({ pts, depth: avgDepth, fill: q.fill, stroke: colors.stroke, lineWidth: colors.lw || 1, meta });
-    }
-  }
-
-  _updateHover(px, py) {
-    let found = null;
-    let bestDepth = Infinity;
-    for (const hit of this.hitBoxes) {
-      if (px >= hit.minX && px <= hit.maxX && py >= hit.minY && py <= hit.maxY && hit.depth < bestDepth) {
-        bestDepth = hit.depth;
-        found = hit;
-      }
-    }
-    this.hoveredId = found ? found.id : null;
-    this.canvas.style.cursor = found ? "pointer" : this.dragging ? "grabbing" : "grab";
-    if (this.tooltip) {
-      if (found) {
-        this.tooltip.hidden = false;
-        this.tooltip.style.left = `${Math.min(this.w - 190, Math.max(10, px + 14))}px`;
-        this.tooltip.style.top = `${Math.max(10, py - 18)}px`;
-        this.tooltip.innerHTML = `<strong>${found.name}</strong><span>${found.qty} · ${found.statusLabel}</span><small>클릭하여 수정</small>`;
-      } else {
-        this.tooltip.hidden = true;
-      }
-    }
-  }
-
-  _startLoop() {
-    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    const tick = () => {
-      if (this.autoRotate && !this.dragging && !reduced) this.yaw += 0.0028;
-      this._draw();
-      this.rafId = requestAnimationFrame(tick);
-    };
-    this.rafId = requestAnimationFrame(tick);
-  }
-
-  _draw() {
-    const c = this.ctx;
-    const theme = this.getTheme();
-    const isLight = theme === "white" || theme === "ivory";
-    const bgGrad = c.createRadialGradient(this.w * 0.5, this.h * 0.35, 30, this.w * 0.5, this.h * 0.5, this.w * 0.75);
-    bgGrad.addColorStop(0, isLight ? "#dce9ef" : "#122f42");
-    bgGrad.addColorStop(1, isLight ? "#c6d7e0" : "#07121c");
-    c.fillStyle = bgGrad;
-    c.fillRect(0, 0, this.w, this.h);
-
-    // Tactical floor grid
-    c.lineWidth = 1;
-    c.strokeStyle = isLight ? "rgba(25,75,95,0.14)" : "rgba(115,220,235,0.14)";
-    for (let i = -5; i <= 5; i++) {
-      const a = this._project(i * 0.9, 0, -4), b = this._project(i * 0.9, 0, 4);
-      if (a && b) { c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); }
-    }
-    for (let j = -4; j <= 4; j++) {
-      const a = this._project(-4.5, 0, j), b = this._project(4.5, 0, j);
-      if (a && b) { c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); }
-    }
-
-    const snapshot = this.getSnapshot();
-    if (!snapshot) return;
-    const filter = this.getFilter();
-    const readyIds = new Set(krReadyItems(snapshot).map((i) => i.id));
-    const faces = [];
-
-    const essentials = snapshot.catalog.filter((i) => !krIsSelectable(i));
-    const activeOpt = snapshot.catalog.filter((i) => krIsSelectable(i) && snapshot.items[i.id]?.applicable);
-    const itemsToShow = this.zone === "essentials" ? essentials : this.zone === "optional" ? activeOpt : [...essentials, ...activeOpt];
-
-    // Build 3D warehouse rack decks & items
-    const cols = 5;
-    const rows = Math.max(1, Math.ceil(itemsToShow.length / cols));
-    const shelfW = 6.2, shelfD = 1.6;
-    for (let r = 0; r < rows; r++) {
-      const zPos = (r - (rows - 1) / 2) * 2.1;
-      const tierY = 0.14;
-      // Steel rack base deck
-      this._addBox(faces, 0, 0, zPos, shelfW, tierY, shelfD, {
-        top: isLight ? "#7a97a6" : "#1c3f52", front: isLight ? "#5a7685" : "#122a38",
-        side: isLight ? "#4a6573" : "#0e222e", stroke: isLight ? "#3d5866" : "#42778c",
-      });
-      // Corner rack pillars
-      for (const px of [-shelfW / 2 + 0.12, shelfW / 2 - 0.12]) {
-        for (const pz of [zPos - shelfD / 2 + 0.1, zPos + shelfD / 2 - 0.1]) {
-          this._addBox(faces, px, tierY, pz, 0.1, 1.45, 0.1, {
-            top: "#7ab0c2", front: "#4b7b8c", side: "#3a6270", stroke: "#89cad9", lw: 0.6,
-          });
-        }
-      }
-      // Top frame rail
-      this._addBox(faces, 0, tierY + 1.45, zPos, shelfW, 0.07, shelfD, {
-        top: isLight ? "#6c8c9c" : "#1a3c4f", front: "#2d5c70", side: "#214657", stroke: "#5da0b5", lw: 0.7,
-      });
-    }
-
-    const hitMap = new Map();
-    const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.004);
-    itemsToShow.forEach((item, idx) => {
-      const r = Math.floor(idx / cols);
-      const col = idx % cols;
-      const xPos = (col - (cols - 1) / 2) * 1.16;
-      const zPos = (r - (rows - 1) / 2) * 2.1;
-      const status = snapshot.summary.items[item.id];
-      const matchesFilter = filter === "all" || (filter === "expiring" ? status.expiring_quantity > 0 : status.state === filter);
-      const ready = readyIds.has(item.id);
-      const ratio = status.target > 0 ? Math.min(1, (status.usable || 0) / status.target) : (ready ? 1 : 0.15);
-      const boxH = 0.24 + ratio * 0.88;
-      const isHovered = this.hoveredId === item.id;
-      const alpha = matchesFilter ? 1 : 0.22;
-
-      let palette;
-      if (ready) {
-        palette = {
-          top: `rgba(105,245,190,${0.92 * alpha})`, front: `rgba(45,185,140,${0.9 * alpha})`,
-          side: `rgba(28,135,105,${0.9 * alpha})`, stroke: isHovered ? "#ffffff" : `rgba(160,255,220,${alpha})`,
-        };
-      } else if (status.state === "shortage" || status.expired_quantity > 0) {
-        palette = {
-          top: `rgba(255,135,135,${(0.75 + 0.2 * pulse) * alpha})`, front: `rgba(205,72,78,${0.88 * alpha})`,
-          side: `rgba(155,48,54,${0.88 * alpha})`, stroke: isHovered ? "#ffffff" : `rgba(255,185,185,${alpha})`,
-        };
-      } else {
-        palette = {
-          top: `rgba(255,212,115,${0.9 * alpha})`, front: `rgba(208,152,55,${0.88 * alpha})`,
-          side: `rgba(165,115,38,${0.88 * alpha})`, stroke: isHovered ? "#ffffff" : `rgba(255,232,165,${alpha})`,
-        };
-      }
-      palette.lw = isHovered ? 2.2 : 1;
-
-      const labelText = KR_READY_SHORT_NAMES[item.id] || item.name;
-      const statusLabel = ready ? "완비" : status.state === "shortage" ? "부족" : status.expiring_quantity > 0 ? "기한 임박" : "실사 필요";
-      const meta = {
-        id: item.id, name: labelText,
-        qty: `${krStockText(item, status.usable ?? 0)} / ${status.target == null ? "미설정" : krStockText(item, status.target)}`,
-        statusLabel, x: xPos, y: 0.14 + boxH, z: zPos,
-      };
-      this._addBox(faces, xPos, 0.14, zPos, 0.78, boxH, 0.84, palette, meta);
-    });
-
-    // Painter's algorithm depth sort (back-to-front)
-    faces.sort((a, b) => b.depth - a.depth);
-    for (const f of faces) {
-      this._drawPoly(f.pts, f.fill, f.stroke, f.lineWidth);
-      if (f.meta) {
-        const xs = f.pts.map((p) => p.x), ys = f.pts.map((p) => p.y);
-        const prev = hitMap.get(f.meta.id);
-        const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-        if (!prev) {
-          hitMap.set(f.meta.id, { ...f.meta, minX, maxX, minY, maxY, depth: f.depth });
-        } else {
-          prev.minX = Math.min(prev.minX, minX); prev.maxX = Math.max(prev.maxX, maxX);
-          prev.minY = Math.min(prev.minY, minY); prev.maxY = Math.max(prev.maxY, maxY);
-          prev.depth = Math.min(prev.depth, f.depth);
-        }
-      }
-    }
-    this.hitBoxes = [...hitMap.values()];
-
-    // Floating crisp labels above crates
-    c.font = '700 11px "Malgun Gothic", system-ui, sans-serif';
-    c.textAlign = "center";
-    for (const box of this.hitBoxes) {
-      const topPt = this._project(box.x, box.y + 0.16, box.z);
-      if (!topPt) continue;
-      c.fillStyle = isLight ? "rgba(255,255,255,0.82)" : "rgba(6,18,28,0.75)";
-      const tw = c.measureText(box.name).width + 10;
-      c.beginPath();
-      c.roundRect?.(topPt.x - tw / 2, topPt.y - 12, tw, 17, 4);
-      if (!c.roundRect) c.rect(topPt.x - tw / 2, topPt.y - 12, tw, 17);
-      c.fill();
-      c.fillStyle = this.hoveredId === box.id ? "#ffd166" : (isLight ? "#102838" : "#e8f8fa");
-      c.fillText(box.name, topPt.x, topPt.y);
-    }
-
-    // Subtle HUD hint
-    c.font = '600 11px "Malgun Gothic", system-ui, sans-serif';
-    c.textAlign = "left";
-    c.fillStyle = isLight ? "rgba(20,50,70,0.65)" : "rgba(180,235,245,0.65)";
-    c.fillText("드래그: 360° 회전 · 휠: 확대/축소 · 박스 클릭: 수량 수정", 14, this.h - 12);
-  }
 }
 
 class KrSurvivalKitInventoryCard extends HTMLElement {
@@ -1153,14 +838,24 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       const getTheme = () => {
         try { return window.localStorage?.getItem("kr_survival_kit_theme") || "black"; } catch { return "black"; }
       };
-      this._engine3d = new KrWarehouse3DEngine(
-        canvas3d, tooltip3d,
-        () => this._snapshot, () => this._statusFilter,
-        (item) => this._edit(item, false), getTheme,
-      );
+      const base = this._config?.asset_path ? `${this._config.asset_path.replace(/\/$/, "")}/` : KR_SCRIPT_BASE;
+      import(`${base}kr-warehouse-3d.js`).then(({ KrWarehouseThreeEngine }) => {
+        if (!this.shadowRoot.contains(canvas3d)) return;
+        this._engine3d = new KrWarehouseThreeEngine(
+          canvas3d, tooltip3d,
+          () => this._snapshot, () => this._statusFilter,
+          (item) => this._edit(item, false), getTheme,
+        );
+      }).catch((err) => {
+        if (tooltip3d) {
+          tooltip3d.hidden = false;
+          tooltip3d.textContent = `3D 엔진 로드 실패: ${err.message || "브라우저가 WebGL을 지원하지 않습니다."}`;
+        }
+      });
       this.shadowRoot.querySelectorAll("[data-3d-zone]").forEach((btn) => btn.addEventListener("click", () => {
         if (!this._engine3d) return;
         this._engine3d.zone = btn.dataset["3dZone"];
+        this._engine3d.rebuild();
         this.shadowRoot.querySelectorAll("[data-3d-zone]").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
       }));
       this.shadowRoot.querySelector("#toggle-3d-spin")?.addEventListener("click", (e) => {
@@ -1169,10 +864,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
         e.currentTarget.setAttribute("aria-pressed", String(this._engine3d.autoRotate));
       });
       this.shadowRoot.querySelector("#reset-3d-cam")?.addEventListener("click", () => {
-        if (!this._engine3d) return;
-        this._engine3d.yaw = -0.58;
-        this._engine3d.pitch = -0.48;
-        this._engine3d.zoom = 1.25;
+        this._engine3d?.resetCamera();
       });
     }
     this._updateAtmosphere();
