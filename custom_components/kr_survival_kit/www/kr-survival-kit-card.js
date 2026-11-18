@@ -357,11 +357,16 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
   _returnToShelf() {
     if (!this._shelfEditId) return;
     const selector = `.shelf-edit[data-edit="${CSS.escape(this._shelfEditId)}"]`;
-    const trigger = this.shadowRoot.querySelector(selector);
-    const details = trigger?.closest("details");
-    const target = details && !details.open ? details.querySelector("summary") : trigger;
-    (target || this.shadowRoot.querySelector("#essentials-shelf"))?.focus();
     this._shelfEditId = null;
+    window.requestAnimationFrame(() => {
+      if (this._draft) return;
+      const trigger = this.shadowRoot.querySelector(selector);
+      const details = trigger?.closest("details");
+      const target = (details && !details.open ? details.querySelector("summary") : trigger)
+        || this.shadowRoot.querySelector("#essentials-shelf");
+      target?.scrollIntoView({ block: "center", inline: "nearest" });
+      target?.focus({ preventScroll: true });
+    });
   }
 
   _captureDraft() {

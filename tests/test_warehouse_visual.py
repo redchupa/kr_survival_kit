@@ -94,6 +94,10 @@ def main():
             window.demoCard._hass = {config: {time_zone: 'Asia/Seoul'}, states: {}};
         }""")
 
+        def assert_focused(locator):
+            locator.evaluate("el => new Promise(resolve => requestAnimationFrame(() => resolve()))")
+            assert locator.evaluate("el => el.getRootNode().activeElement === el")
+
         def render(snapshot):
             page.evaluate("snapshot => { window.demoCard._snapshot = snapshot; window.demoCard._render(); }", snapshot)
 
@@ -210,7 +214,7 @@ def main():
         shelf.locator('[data-item="self-heating-ration"] .ready-art').click()
         assert page.locator("kr-survival-kit-inventory-card #editor h3").inner_text().endswith("수정")
         page.locator("kr-survival-kit-inventory-card #cancel").click()
-        assert shelf.locator('[data-item="self-heating-ration"] button').evaluate("el => el.getRootNode().activeElement === el")
+        assert_focused(shelf.locator('[data-item="self-heating-ration"] button'))
 
         render(make_snapshot(2))
         water_tile.locator(".ready-art").click()
@@ -287,11 +291,11 @@ def main():
         saved_bottle = page.evaluate("window.savedBottle")["lots"][0]
         assert (saved_bottle["quantity"], saved_bottle["bottle_ml"], saved_bottle["bottle_count"]) == (24000, 2000, 12)
         water_button = card.locator('.shelf-edit[data-edit="drinking-water"]')
-        assert water_button.evaluate("el => el.getRootNode().activeElement === el")
+        assert_focused(water_button)
         water_button.press("Enter")
         assert card.locator("#editor h3").inner_text() == "생수 수정"
         card.locator("#cancel").click()
-        assert water_button.evaluate("el => el.getRootNode().activeElement === el")
+        assert_focused(water_button)
 
         page.evaluate("""({guide, quiz, snapshot}) => {
             const panel = document.createElement('kr-survival-kit-panel');
