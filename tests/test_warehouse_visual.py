@@ -262,6 +262,24 @@ def main():
         saved_bottle = page.evaluate("window.savedBottle")["lots"][0]
         assert (saved_bottle["quantity"], saved_bottle["bottle_ml"], saved_bottle["bottle_count"]) == (24000, 2000, 12)
 
+        guide = json.loads((ROOT / "custom_components/kr_survival_kit/content/guide.ko.json").read_text(encoding="utf-8"))
+        page.evaluate("""({guide, quiz, snapshot}) => {
+            const panel = document.createElement('kr-survival-kit-panel');
+            panel.route = {path: '/home'};
+            panel.panel = {config: {guide, quiz, asset_path: '/kr_survival_kit_assets'}};
+            document.body.replaceChildren(panel);
+            panel.hass = {config: {time_zone: 'Asia/Seoul'}, states: {}, user: {is_admin: true},
+                connection: {sendMessagePromise: async () => ({response: snapshot})}};
+        }""", {"guide": guide, "quiz": QUIZ, "snapshot": make_snapshot(24)})
+        panel = page.locator("kr-survival-kit-panel")
+        assert panel.locator("a[aria-current='page']").inner_text() == "비축 관리"
+        assert panel.locator("kr-survival-kit-panel-inventory .ready-item").count() == 1
+        panel.evaluate("element => element.route = {path: '/guide'}")
+        assert panel.locator("a[aria-current='page']").inner_text() == "상황 안내"
+        assert panel.get_by_role("link", name="A4 행동 카드 열기").get_attribute("href") == "/kr_survival_kit_assets/kr-survival-kit-a4.pdf"
+        assert panel.get_by_role("link", name="오프라인 안내 열기").get_attribute("href") == "/kr_survival_kit_assets/kr-survival-kit-offline.html"
+        assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth")
+
         browser.close()
     print("Synthetic complete-only 2D transitions, 10/2-column layouts, 200% zoom, L/ml edit/conflict, and screenshots passed")
 

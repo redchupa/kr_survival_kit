@@ -750,7 +750,9 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
   }
 }
 
-customElements.define("kr-survival-kit-inventory-card", KrSurvivalKitInventoryCard);
+if (!customElements.get("kr-survival-kit-inventory-card")) {
+  customElements.define("kr-survival-kit-inventory-card", KrSurvivalKitInventoryCard);
+}
 window.customCards = window.customCards || [];
 window.customCards.push({ type: "kr-survival-kit-inventory-card", name: "KR Survival Kit 재고", description: "가구 비상 물품 재고" });
 
@@ -765,6 +767,7 @@ class KrSurvivalKitGuideCard extends HTMLElement {
   }
 
   setConfig(config) {
+    this._assetPath = config.asset_path || "/local";
     this._guide = typeof config.guide_data === "string" ? JSON.parse(config.guide_data) : config.guide_data;
     if (!this._guide?.scenarios?.length || !this._guide?.playbook?.length) throw new Error("상황 안내 자료가 없습니다.");
     this._render();
@@ -809,7 +812,7 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       .reference-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.reference-item{padding:18px;border:1px solid #466b7d;border-radius:12px;background:#1e3949}.reference-item span{color:#b4e5ea;font-size:.84rem;font-weight:700}.reference-item h4{margin:8px 0;color:#f2f8f9}.reference-item p{margin:0;line-height:1.7;color:#c5d8df}@media(max-width:700px){.reference-grid{grid-template-columns:1fr}}
       .references{padding:20px 25px;margin-top:24px}.references summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:700}.references p{color:var(--muted);line-height:1.6}.references ul{columns:2;column-gap:30px;padding-left:1.2rem}.references li{break-inside:avoid;line-height:1.6;margin:0 0 10px}.references a{color:#a9e1ec}.references a:hover{text-decoration:none}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #f3c77b;outline-offset:3px}
       @media(max-width:760px){.hero{grid-template-columns:1fr;min-height:0}.orb{display:none}.layout{grid-template-columns:1fr}.rail{padding:18px}.nav-items{grid-template-columns:repeat(auto-fit,minmax(125px,1fr))}.references ul{columns:1}}@media(max-width:420px){.shell{padding:12px}.hero{padding:22px;border-radius:15px}.layout{gap:12px;margin-top:12px}.action-top,.action-body,.timeline{padding:20px}.timeline{margin-top:12px}.time-row{grid-template-columns:80px minmax(0,1fr);gap:13px}.time-rail{padding-right:12px}.time-when{font-size:.82rem}.time-copy{padding-bottom:22px}.rail{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:14px}.rail h2{grid-column:1/-1;margin:0 0 4px}.nav-group,.nav-items{display:contents}.nav-group h3{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.nav-items button{min-height:42px;text-align:center;font-size:.84rem;padding:8px 2px}.references{margin-top:12px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
-    </style><ha-card><main class="shell"><header class="hero"><div class="hero-content"><h2>상황 안내</h2><p><strong>${esc(guide.official_first)}</strong> 받은 경보를 선택하면 첫 행동을 바로 확인할 수 있습니다.</p><div class="hero-actions"><a href="/local/kr-survival-kit-a4.pdf" target="_blank" rel="noopener">A4 행동 카드 열기</a><a class="secondary" href="/local/kr-survival-kit-offline.html" target="_blank" rel="noopener">오프라인 안내 열기</a><a class="secondary" href="/kr-survival-kit/home">비축 관리로</a></div></div><div class="orb" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 8 82 21v25c0 23-13 36-32 47C31 82 18 69 18 46V21z" fill="#7bc8d9" stroke="#dafaff" stroke-width="2"/><path d="M50 18 73 27v19c0 17-8 28-23 37-15-9-23-20-23-37V27z" fill="#22506a"/><path d="M50 30v34M33 47h34" stroke="#bbf1f3" stroke-width="7" stroke-linecap="round"/></svg></div></header>
+    </style><ha-card><main class="shell"><header class="hero"><div class="hero-content"><h2>상황 안내</h2><p><strong>${esc(guide.official_first)}</strong> 받은 경보를 선택하면 첫 행동을 바로 확인할 수 있습니다.</p><div class="hero-actions"><a href="${esc(this._assetPath)}/kr-survival-kit-a4.pdf" target="_blank" rel="noopener">A4 행동 카드 열기</a><a class="secondary" href="${esc(this._assetPath)}/kr-survival-kit-offline.html" target="_blank" rel="noopener">오프라인 안내 열기</a><a class="secondary" href="/kr-survival-kit/home">비축 관리로</a></div></div><div class="orb" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 8 82 21v25c0 23-13 36-32 47C31 82 18 69 18 46V21z" fill="#7bc8d9" stroke="#dafaff" stroke-width="2"/><path d="M50 18 73 27v19c0 17-8 28-23 37-15-9-23-20-23-37V27z" fill="#22506a"/><path d="M50 30v34M33 47h34" stroke="#bbf1f3" stroke-width="7" stroke-linecap="round"/></svg></div></header>
     <div class="layout"><nav class="rail" aria-label="상황 선택"><h2>상황별 첫 행동</h2>${scenarioNav}</nav><section class="action" aria-live="polite"><div class="action-top"><p class="kind">${esc(scenario.kind)}</p><h2>${esc(scenario.title)}</h2><h3>먼저 할 일</h3><p class="first-action">${esc(scenario.first_action)}</p></div><div class="action-body"><h3>이어 확인할 일</h3>${detail}${household}<div class="comms"><strong>전화·인터넷이 끊기면</strong>${esc(guide.communication_loss.first_action)} ${esc(guide.communication_loss.paper_note)}</div></div></section></div>
     <section class="timeline" aria-labelledby="timeline-title"><div class="section-head"><h2 id="timeline-title">${sheetHeading}</h2><p>${sheetSummary}</p></div><div class="sheet-tabs" role="tablist" aria-label="상세 행동 안내">${sheetNav}</div><div id="sheet-panel" role="tabpanel" aria-labelledby="tab-${esc(sheet.id)}" tabindex="0"><h3>${esc(sheet.title)}</h3><p class="sheet-intro">${esc(sheet.intro)}</p>${sheet.layout === "reference" ? `<div class="reference-grid">${rows}</div>` : `<ol class="time-list">${rows}</ol>`}</div></section>
     <details class="references"><summary>공식 참고 자료와 파일 보관 방법</summary><p>외부 출처는 인터넷 연결이 필요합니다. PDF는 열린 화면에서 인쇄·다운로드하고, HTML은 브라우저의 ‘다른 이름으로 저장’으로 미리 보관하세요.</p><ul>${uniqueSources.map((source) => `<li><a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.publisher)} · ${esc(source.title)}</a></li>`).join("")}</ul></details></main></ha-card>`;
@@ -835,5 +838,73 @@ class KrSurvivalKitGuideCard extends HTMLElement {
   }
 }
 
-customElements.define("kr-survival-kit-guide-card", KrSurvivalKitGuideCard);
+if (!customElements.get("kr-survival-kit-guide-card")) {
+  customElements.define("kr-survival-kit-guide-card", KrSurvivalKitGuideCard);
+}
 window.customCards.push({ type: "kr-survival-kit-guide-card", name: "KR Survival Kit 상황 안내", description: "경보별 첫 행동과 시간순 안내" });
+
+class KrSurvivalKitPanel extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" }).innerHTML = `
+      <style>
+        :host { display: block; color: var(--primary-text-color); }
+        header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px;
+          padding: 8px 16px; background: var(--card-background-color); }
+        nav { display: flex; flex-wrap: wrap; gap: 8px; }
+        a { color: inherit; padding: 10px 12px; border-radius: 8px; text-decoration: none; }
+        a[aria-current="page"] { color: var(--primary-text-color); font-weight: 700;
+          box-shadow: inset 0 -3px var(--primary-color); }
+        a:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+        main { padding: clamp(4px, 2vw, 20px); }
+      </style>
+      <header>
+        <ha-menu-button></ha-menu-button>
+        <strong>KR Survival Kit</strong>
+        <nav aria-label="KR Survival Kit 메뉴">
+          <a href="/kr-survival-kit/home">비축 관리</a>
+          <a href="/kr-survival-kit/guide">상황 안내</a>
+        </nav>
+      </header>
+      <main></main>`;
+  }
+
+  set hass(value) {
+    this._hass = value;
+    if (this._card) this._card.hass = value;
+  }
+
+  set route(value) {
+    this._route = value;
+    this._renderView();
+  }
+
+  set panel(value) {
+    this._config = value.config;
+    this._renderView();
+  }
+
+  _renderView() {
+    if (!this._config || !this._route) return;
+    const view = this._route.path === "/guide" ? "guide" : "home";
+    if (view === this._view) return;
+    this._view = view;
+    const isGuide = view === "guide";
+    const { guide, quiz, asset_path } = this._config;
+    const card = document.createElement(isGuide ? "kr-survival-kit-panel-guide" : "kr-survival-kit-panel-inventory");
+    card.setConfig(isGuide
+      ? { guide_data: guide, asset_path }
+      : { quiz_data: quiz, quiz_sources: guide.sources });
+    this.shadowRoot.querySelector("main").replaceChildren(card);
+    this._card = card;
+    if (this._hass) card.hass = this._hass;
+    for (const link of this.shadowRoot.querySelectorAll("nav a")) {
+      if (link.pathname.endsWith(`/${view}`)) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
+    }
+  }
+}
+
+customElements.define("kr-survival-kit-panel-guide", class extends KrSurvivalKitGuideCard {});
+customElements.define("kr-survival-kit-panel-inventory", class extends KrSurvivalKitInventoryCard {});
+customElements.define("kr-survival-kit-panel", KrSurvivalKitPanel);

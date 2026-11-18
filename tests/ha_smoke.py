@@ -9,6 +9,7 @@ from datetime import timedelta
 from importlib.metadata import version
 from pathlib import Path
 
+from homeassistant.components import frontend
 from homeassistant.core import Context, HomeAssistant
 from homeassistant import bootstrap, loader
 from homeassistant.exceptions import HomeAssistantError, Unauthorized
@@ -64,6 +65,12 @@ async def main():
         assert flow["type"] == "create_entry", flow
         entry = flow["result"]
         await hass.async_block_till_done()
+        panel = hass.data[frontend.DATA_PANELS]["kr-survival-kit"]
+        assert panel.sidebar_title == "KR Survival Kit"
+        assert panel.require_admin
+        assert panel.config["guide"]["scenarios"]
+        assert panel.config["quiz"]["questions"]
+        assert panel.config["_panel_custom"]["module_url"].startswith("/kr_survival_kit_assets/")
         states = hass.states.async_all("sensor")
         inventory_states = {
             state.attributes.get("friendly_name"): state
@@ -296,6 +303,13 @@ async def main():
         final_ha = await start_ha(config_dir)
         final_entry = final_ha.config_entries.async_get_entry(entry.entry_id)
         assert final_entry.runtime_data.snapshot["household_size"] == 5
+        assert await final_ha.config_entries.async_unload(entry.entry_id)
+        assert "kr-survival-kit" not in final_ha.data[frontend.DATA_PANELS]
+        frontend.async_register_built_in_panel(final_ha, "lovelace", frontend_url_path="kr-survival-kit")
+        existing_panel = final_ha.data[frontend.DATA_PANELS]["kr-survival-kit"]
+        assert await final_ha.config_entries.async_setup(entry.entry_id)
+        assert await final_ha.config_entries.async_unload(entry.entry_id)
+        assert final_ha.data[frontend.DATA_PANELS]["kr-survival-kit"] is existing_panel
         await final_ha.async_stop()
         print(json.dumps({"ha_core": version("homeassistant"), "entry": "created_and_restarted", "sensors": 3,
                           "saved_revision": 7, "household": "4_to_5_and_restored", "stale_revision": "rejected", "save_failure": "rejected",

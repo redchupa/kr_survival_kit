@@ -21,13 +21,16 @@ def main():
         assert key in manifest, key
     assert manifest["domain"] == INTEGRATION.name
     assert re.fullmatch(r"\d+\.\d+\.\d+", manifest["version"])
-    for name in ("catalog", "household", "guide"):
+    for name in ("catalog", "household", "guide", "quiz"):
         assert json.loads((INTEGRATION / "content" / f"{name}.ko.json").read_text(encoding="utf-8"))
     for locale in ("ko", "en"):
         strings = json.loads((INTEGRATION / "translations" / f"{locale}.json").read_text(encoding="utf-8"))
         assert strings["config"]["step"]["user"]["data"]["inspection_days"] == "기본 재고 점검 주기 (일)"
         assert strings["config"]["abort"]["incomplete_install"]
     assert (INTEGRATION / "www" / "kr-survival-kit-card.js").is_file()
+    assert (INTEGRATION / "www" / "kr-survival-kit-a4.pdf").read_bytes().startswith(b"%PDF-")
+    guide = json.loads((INTEGRATION / "content/guide.ko.json").read_text(encoding="utf-8"))
+    assert guide["content_version"] in (INTEGRATION / "www" / "kr-survival-kit-offline.html").read_text(encoding="utf-8")
     assert (ROOT / "LICENSE").is_file()
     print("HACS layout and manifest checks passed")
 

@@ -10,7 +10,7 @@ const elements = Object.fromEntries([".hero", "#local-clock", "#local-weather", 
 class MockElement {
   attachShadow() { this.shadowRoot = { querySelector: (selector) => elements[selector] }; }
 }
-const context = { HTMLElement: MockElement, customElements: { define() {} }, window: { customCards: [], requestAnimationFrame: (callback) => callback() }, Intl, Date };
+const context = { HTMLElement: MockElement, customElements: { define() {}, get() {} }, window: { customCards: [], requestAnimationFrame: (callback) => callback() }, Intl, Date };
 vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse;", context);
 
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({

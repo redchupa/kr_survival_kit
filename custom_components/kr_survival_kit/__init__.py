@@ -12,6 +12,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PLATFORMS
+from .dashboard import async_register_dashboard
 from .inventory import MAX_AMOUNT, MAX_REVIEW_DAYS, Inventory, InventoryError, RevisionConflict, summarize
 from .mqtt_publish import MqttPublisher, async_remove_discovery
 
@@ -60,7 +61,7 @@ GET_SCHEMA = vol.Schema({vol.Optional("entry_id"): str})
 async def async_setup_entry(hass, entry):
     """Load the private snapshot before creating sensors."""
     try:
-        catalog_data, household = await hass.async_add_executor_job(_load_content)
+        catalog_data, household, guide, quiz = await hass.async_add_executor_job(_load_content)
     except (OSError, ValueError) as error:
         raise ConfigEntryError(
             f"설치 자료를 읽을 수 없습니다 ({error}). 전체 통합 폴더를 다시 설치하고 Home Assistant를 재시작하세요."
@@ -96,6 +97,7 @@ async def async_setup_entry(hass, entry):
             DOMAIN, "get_inventory", _get_inventory(hass), schema=GET_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
+    await async_register_dashboard(hass, entry, household, guide, quiz)
     return True
 
 
@@ -202,5 +204,5 @@ def _load_content():
     content_path = Path(__file__).parent / "content"
     return tuple(
         json.loads((content_path / name).read_text(encoding="utf-8"))
-        for name in ("catalog.ko.json", "household.ko.json")
+        for name in ("catalog.ko.json", "household.ko.json", "guide.ko.json", "quiz.ko.json")
     )
