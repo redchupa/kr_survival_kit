@@ -3,17 +3,15 @@
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers.selector import NumberSelector, NumberSelectorConfig, NumberSelectorMode
 
 from . import _load_content
-from .const import DOMAIN
-from .inventory import DEFAULT_HOUSEHOLD_SIZE
-
-MIN_HOUSEHOLD_SIZE = 1
-MAX_HOUSEHOLD_SIZE = 99
-DEFAULT_INSPECTION_DAYS = 90
-MIN_INSPECTION_DAYS = 7
-MAX_INSPECTION_DAYS = 365
+from .const import (
+    DEFAULT_INSPECTION_DAYS, DOMAIN, MAX_HOUSEHOLD_SIZE, MAX_INSPECTION_DAYS, MIN_HOUSEHOLD_SIZE,
+    MIN_INSPECTION_DAYS, entry_inspection_days,
+)
+from .inventory import DEFAULT_HOUSEHOLD_SIZE, Inventory, InventoryError
 
 
 class _WholeNumberBox(NumberSelector):
@@ -68,24 +66,55 @@ class KrSurvivalKitConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class KrSurvivalKitOptionsFlow(config_entries.OptionsFlow):
-    """Opt in to publishing aggregate MQTT sensors."""
+    """Change household size, default inspection interval and MQTT after setup."""
 
     def __init__(self, config_entry):
+        self._entry = config_entry
         self._saved_options = dict(config_entry.options)
 
+    def _inventory(self):
+        inventory = getattr(self._entry, "runtime_data", None)
+        if self._entry.state is not ConfigEntryState.LOADED or not isinstance(inventory, Inventory):
+            return None
+        return inventory
+
     async def async_step_init(self, user_input=None):
+        inventory = self._inventory()
+        if inventory is None:
+            return self.async_abort(reason="not_loaded")
+        errors = {}
         if user_input is not None:
-            enabled = user_input["mqtt_enabled"]
-            pending = not enabled and self._saved_options.get("mqtt_enabled", False)
-            return self.async_create_entry(data={
-                "mqtt_enabled": enabled,
-                "mqtt_cleanup_pending": not enabled and (
-                    pending or self._saved_options.get("mqtt_cleanup_pending", False)
-                ),
-            })
+            people = user_input["household_size"]
+            try:
+                if people != inventory.snapshot["household_size"]:
+                    await inventory.set_household_size(inventory.snapshot["revision"], people)
+            except (InventoryError, OSError):
+                errors["base"] = "save_failed"
+            else:
+                enabled = user_input["mqtt_enabled"]
+                pending = not enabled and self._saved_options.get("mqtt_enabled", False)
+                return self.async_create_entry(data={
+                    **{key: value for key, value in self._saved_options.items()
+                       if key not in ("mqtt_enabled", "mqtt_cleanup_pending", "inspection_days")},
+                    "inspection_days": user_input["inspection_days"],
+                    "mqtt_enabled": enabled,
+                    "mqtt_cleanup_pending": not enabled and (
+                        pending or self._saved_options.get("mqtt_cleanup_pending", False)
+                    ),
+                })
+        current = user_input or {
+            "household_size": inventory.snapshot["household_size"],
+            "inspection_days": entry_inspection_days(self._entry),
+            "mqtt_enabled": self._saved_options.get("mqtt_enabled", False),
+        }
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                vol.Required("mqtt_enabled", default=self._saved_options.get("mqtt_enabled", False)): bool
+                vol.Required("household_size", default=current["household_size"]): _number_box(
+                    MIN_HOUSEHOLD_SIZE, MAX_HOUSEHOLD_SIZE, "명"),
+                vol.Required("inspection_days", default=current["inspection_days"]): _number_box(
+                    MIN_INSPECTION_DAYS, MAX_INSPECTION_DAYS, "일"),
+                vol.Required("mqtt_enabled", default=current["mqtt_enabled"]): bool,
             }),
+            errors=errors,
         )

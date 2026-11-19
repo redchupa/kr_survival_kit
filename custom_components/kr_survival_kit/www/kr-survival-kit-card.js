@@ -235,6 +235,36 @@ function krCleanText(value, max) {
   return String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(KR_FORBIDDEN_TEXT, "").replace(/\s+/g, " ").trim().slice(0, max).trim();
 }
 
+const KR_TITLE_MAX = 30;
+const KR_NICKNAME_MAX = 20;
+const KR_DEFAULT_TITLE = "우리 집 비축 관리";
+const KR_DISPLAY_TOGGLES = [
+  ["show_survival", "생수·식량 며칠분 표시", "제목 옆의 '생수 ○일분 · 식량 ○일분'을 보여 줍니다."],
+  ["show_clock", "시계·날씨 표시", "제목 옆의 현재 시각과 날씨를 보여 줍니다."],
+  ["show_expiring", "기한 임박 알림 띠 표시", "기한이 다가온 물품을 위쪽 노란 띠로 알려 줍니다."],
+  ["show_rank", "쉘터 등급 표시", "비축 점수와 등급(아이언 → 챌린저)을 보여 줍니다."],
+  ["show_missions", "긴급 퀘스트 표시", "지금 채우면 좋은 물품을 퀘스트로 알려 줍니다."],
+];
+
+/** Display settings with defaults for anything the server did not send (older versions). */
+function krDisplay(snapshot) {
+  const stored = snapshot?.display && typeof snapshot.display === "object" ? snapshot.display : {};
+  const result = {
+    title: krCleanText(stored.title, KR_TITLE_MAX) || KR_DEFAULT_TITLE,
+    nickname: krCleanText(stored.nickname, KR_NICKNAME_MAX),
+  };
+  for (const [key] of KR_DISPLAY_TOGGLES) result[key] = stored[key] !== false;
+  return result;
+}
+
+/** Whole number inside [min, max] from a typed value, or null. */
+function krBoundedInt(value, min, max) {
+  const text = String(value ?? "").trim();
+  if (!/^\d+$/.test(text)) return null;
+  const number = Number(text);
+  return number >= min && number <= max ? number : null;
+}
+
 function krCleanLocation(value) {
   return krCleanText(value, KR_LOCATION_MAX);
 }
@@ -596,6 +626,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._optSearch = "";
     this._quickMode = false;
     this._customDraft = null;
+    this._settingsDraft = null;
     let savedView;
     try { savedView = window.localStorage?.getItem("kr_survival_kit_view"); } catch { /* optional */ }
     this._viewMode = savedView === "3d" ? "3d" : "2d";
@@ -613,7 +644,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
   }
 
   connectedCallback() {
-    this._timer = window.setInterval(() => { if (!this._draft && !this._customDraft) this._load(); }, 30000);
+    this._timer = window.setInterval(() => { if (!this._draft && !this._customDraft && !this._settingsDraft) this._load(); }, 30000);
     this._clockTimer = window.setInterval(() => this._updateAtmosphere(), 30000);
   }
 
@@ -689,6 +720,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
   async _load() {
     if (!this._hass || this._loading) return;
     if (this._draft) this._captureDraft();
+    if (this._settingsDraft) this._captureSettings();
     this._loading = true;
     try {
       this._snapshot = await this._call("get_inventory");
@@ -862,6 +894,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       exported_at: new Date().toISOString(),
       household_size: this._snapshot.household_size ?? 4,
       custom_items: this._snapshot.custom_items ?? {},
+      display: krDisplay(this._snapshot),
       items: this._snapshot.items ?? {},
     }, null, 2);
     const blob = new Blob([payload], { type: "application/json" });
@@ -935,6 +968,19 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
           failed.push(`가구 인원(${error.message || "오류"})`);
         }
       }
+      if (parsed.display && typeof parsed.display === "object" && !Array.isArray(parsed.display)) {
+        const restoredDisplay = krDisplay({ display: parsed.display });
+        const current = krDisplay(this._snapshot);
+        const changes = Object.fromEntries(Object.entries(restoredDisplay).filter(([key, value]) => current[key] !== value));
+        if (changes.title === KR_DEFAULT_TITLE) changes.title = "";
+        if (Object.keys(changes).length) {
+          try {
+            revision = (await this._call("set_display", { revision, ...changes })).revision;
+          } catch (error) {
+            failed.push(`화면 설정(${error.message || "오류"})`);
+          }
+        }
+      }
       const idMap = new Map();
       for (const plan of customPlan) {
         const existing = this._snapshot.catalog.find((item) => item.custom && item.name.toLowerCase() === plan.name.toLowerCase());
@@ -982,6 +1028,80 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     this._message = failed.length
       ? `백업에서 ${restored}개 품목을 복원했고, ${failed.length}건은 값이 올바르지 않아 건너뛰었습니다: ${failed.slice(0, 8).join(", ")}${failed.length > 8 ? " 외" : ""}`
       : `백업에서 ${restored}개 품목${restorePeople ? `과 가구 인원 ${people}명` : ""}을 복원했습니다.`;
+    this._render();
+  }
+
+  _openSettings() {
+    if (this._draft || this._customDraft || this._saving || !this._snapshot) return;
+    const display = krDisplay(this._snapshot);
+    this._settingsDraft = {
+      ...display,
+      title: display.title === KR_DEFAULT_TITLE ? "" : display.title,
+      household_size: String(this._snapshot.household_size ?? 4),
+      inspection_days: String(this._snapshot.default_review_interval_days ?? 90),
+    };
+    this._message = "";
+    this._render();
+  }
+
+  _captureSettings() {
+    const form = this.shadowRoot.querySelector("#settings-editor");
+    if (!form || !this._settingsDraft) return;
+    this._settingsDraft.title = form.querySelector("#set-title").value;
+    this._settingsDraft.nickname = form.querySelector("#set-nickname").value;
+    this._settingsDraft.household_size = form.querySelector("#set-people").value;
+    this._settingsDraft.inspection_days = form.querySelector("#set-days").value;
+    for (const [key] of KR_DISPLAY_TOGGLES) this._settingsDraft[key] = form.querySelector(`[data-toggle="${key}"]`).checked;
+  }
+
+  async _saveSettings() {
+    if (this._saving || !this._settingsDraft) return;
+    this._captureSettings();
+    const draft = this._settingsDraft;
+    const people = krBoundedInt(draft.household_size, 1, 99);
+    const days = krBoundedInt(draft.inspection_days, 7, 365);
+    if (people === null || days === null) {
+      this._message = people === null ? "가구 인원은 1~99 사이의 정수로 입력하세요." : "점검 주기는 7~365 사이의 정수(일)로 입력하세요.";
+      this._settingsInvalid = people === null ? "set-people" : "set-days";
+      this._render();
+      const field = this.shadowRoot.querySelector(`#${this._settingsInvalid}`);
+      field?.focus({ preventScroll: false });
+      field?.select?.();
+      return;
+    }
+    this._settingsInvalid = null;
+    const current = krDisplay(this._snapshot);
+    const wanted = { title: krCleanText(draft.title, KR_TITLE_MAX) || KR_DEFAULT_TITLE, nickname: krCleanText(draft.nickname, KR_NICKNAME_MAX) };
+    for (const [key] of KR_DISPLAY_TOGGLES) wanted[key] = Boolean(draft[key]);
+    const changes = Object.fromEntries(Object.entries(wanted).filter(([key, value]) => current[key] !== value));
+    if (changes.title === KR_DEFAULT_TITLE) changes.title = "";
+    this._saving = true;
+    this._message = "설정을 저장하는 중입니다…";
+    this._render();
+    try {
+      let revision = this._snapshot.revision;
+      if (Object.keys(changes).length) revision = (await this._call("set_display", { revision, ...changes })).revision;
+      if (people !== this._snapshot.household_size) revision = (await this._call("set_household_size", { revision, household_size: people })).revision;
+      if (days !== this._snapshot.default_review_interval_days) await this._call("set_inspection_days", { inspection_days: days });
+      this._settingsDraft = null;
+      this._saving = false;
+      await this._load();
+      this._message = "설정을 저장했습니다. 이 Home Assistant를 쓰는 모든 기기에 함께 적용됩니다.";
+      this._render();
+      this.shadowRoot.querySelector("#open-settings")?.focus({ preventScroll: true });
+      return;
+    } catch (error) {
+      const conflict = /changed|revision/i.test(error.message || "");
+      this._message = conflict ? "다른 기기에서 먼저 저장했습니다. 최신 내용을 불러왔으니 다시 저장해 주세요." : `설정을 저장하지 못했습니다. ${error.message || ""}`;
+      this._saving = false;
+      if (conflict) {
+        await this._load();
+        this._message = "다른 기기에서 먼저 저장했습니다. 최신 내용을 불러왔으니 다시 저장해 주세요.";
+        this._render();
+        return;
+      }
+    }
+    this._saving = false;
     this._render();
   }
 
@@ -1097,6 +1217,19 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       `<label for="custom-unit">단위</label><select id="custom-unit">${KR_CUSTOM_UNITS.map((unit) => `<option value="${unit}" ${custom.unit === unit ? "selected" : ""}>${unit}</option>`).join("")}</select>` +
       `<label for="custom-date">기한 관리</label><select id="custom-date">${KR_CUSTOM_DATES.map(([value, text]) => `<option value="${value}" ${custom.date === value ? "selected" : ""}>${text}</option>`).join("")}</select>` +
       `<div class="actions"><button type="submit" class="primary" ${this._saving ? "disabled" : ""}>추가하고 수량 입력</button><button type="button" id="custom-cancel">취소</button></div></form>` : "";
+    const settings = this._settingsDraft && !this._draft && !custom ? this._settingsDraft : null;
+    const settingsForm = settings ? `<form id="settings-editor" novalidate><div class="dialog-head"><span class="dialog-art settings-art" aria-hidden="true">⚙️</span><div><h3 id="item-dialog-title" tabindex="-1">대시보드 설정</h3><p class="dialog-status">이 Home Assistant를 쓰는 모든 기기에 함께 적용됩니다.</p></div></div>` +
+      `<fieldset class="settings-group"><legend>이름</legend>` +
+      `<label for="set-title">대시보드 제목 <small>(최대 ${KR_TITLE_MAX}자)</small></label><input id="set-title" type="text" maxlength="${KR_TITLE_MAX}" autocomplete="off" placeholder="${KR_DEFAULT_TITLE}" value="${escape(settings.title)}"><p class="item-note">비워 두면 "${KR_DEFAULT_TITLE}"로 표시됩니다.</p>` +
+      `<label for="set-nickname">집 이름·닉네임 <small>(선택, 최대 ${KR_NICKNAME_MAX}자)</small></label><input id="set-nickname" type="text" maxlength="${KR_NICKNAME_MAX}" autocomplete="off" placeholder="예: 행복한 우리집, 민준이네" value="${escape(settings.nickname)}"><p class="item-note">제목 위에 작게 표시됩니다. 특수문자(&lt; &gt; " ' &amp; 등)는 자동으로 빠집니다.</p></fieldset>` +
+      `<fieldset class="settings-group"><legend>우리 집 기준</legend><div class="field-pair">` +
+      `<label>가구 인원 (명)<input id="set-people" ${this._settingsInvalid === "set-people" ? 'aria-invalid="true"' : ""} type="number" inputmode="numeric" min="1" max="99" step="1" required value="${escape(settings.household_size)}"></label>` +
+      `<label>기본 점검 주기 (일)<input id="set-days" ${this._settingsInvalid === "set-days" ? 'aria-invalid="true"' : ""} type="number" inputmode="numeric" min="7" max="365" step="1" required value="${escape(settings.inspection_days)}"></label></div>` +
+      `<p class="item-note">가구 인원은 1~99명, 점검 주기는 7~365일까지 입력할 수 있습니다. 인원을 바꾸면 며칠분 계산과 목표량이 바로 바뀌고, 품목마다 따로 정한 점검 주기는 그대로 유지됩니다.</p>${this._message && this._settingsInvalid ? `<p class="message settings-message" role="alert">${escape(this._message)}</p>` : ""}</fieldset>` +
+      `<fieldset class="settings-group"><legend>화면에 보일 항목</legend>${KR_DISPLAY_TOGGLES.map(([key, label, help]) =>
+        `<label class="check-row toggle-row"><input type="checkbox" data-toggle="${key}" ${settings[key] ? "checked" : ""}><span><strong>${label}</strong><small>${help}</small></span></label>`).join("")}</fieldset>` +
+      (this._message && !this._settingsInvalid ? `<p class="message settings-message" role="alert">${escape(this._message)}</p>` : "") +
+      `<div class="actions"><button type="submit" class="primary" ${this._saving ? "disabled" : ""}>저장</button><button type="button" id="settings-cancel">취소</button><button type="button" id="settings-reset">기본값으로</button></div></form>` : "";
     const edit = this._draft && draftItem ? `<form id="editor"><div class="dialog-head"><span class="dialog-art" aria-hidden="true">${draftIcon}</span><div><h3 id="item-dialog-title" tabindex="-1">${escape(draftItem.name)} 수정</h3><p class="dialog-status">현재 ${escape(krStockText(draftItem, (draftItem.status.usable ?? 0) + (draftItem.status.unknown_date_quantity ?? 0)))} · ${states[draftItem.status.state]} · 실사 ${escape(draftItem.status.verified_on || "없음")}${draftItem.status.next_review_on ? ` · 다음 ${escape(draftItem.status.next_review_on)}` : ""}</p></div></div>` +
       (draftItem.status.target != null ? `<p class="recommendation">${people}인 가구 목표 <strong>${escape(krStockText(draftItem, draftItem.status.target))}</strong></p>` : "") +
       (draftItem.examples ? `<p class="item-note">${escape(draftItem.examples)}</p>` : "") +
@@ -1140,7 +1273,8 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const optCatSelect = `<select id="zone-3d-cat" data-3d-cat aria-label="3D 선택 물품 분류">${KR_OPTIONAL_CATEGORIES.map((c) => `<option value="${c.id}">${c.label}</option>`).join("")}</select>`;
     const stage3d = this._viewMode === "3d" && snapshot ? `<section class="warehouse-3d-stage" aria-label="3D 입체 창고 뷰"><div class="warehouse-3d-bar"><div class="controls" role="group" aria-label="창고 구역"><button type="button" data-3d-zone="essentials" aria-pressed="true">기본 비축 랙</button><button type="button" data-3d-zone="optional" aria-pressed="false">선택 물품 랙</button>${optCatSelect}<button type="button" id="toggle-3d-active" aria-pressed="false">사용 중만</button></div><div class="controls" role="group" aria-label="창고 환경"><select data-3d-time aria-label="시간대"><option value="auto">시간 자동</option><option value="day">낮</option><option value="night">밤</option></select><select data-3d-weather aria-label="날씨"><option value="auto">날씨 자동</option><option value="clear">맑음</option><option value="rain">비</option><option value="snow">눈</option><option value="storm">뇌우</option></select><span class="env-chip" id="env-3d-chip" role="status"></span></div><div class="controls"><button type="button" id="toggle-3d-spin" aria-pressed="true">자동 회전</button><button type="button" id="reset-3d-cam">시점 초기화</button></div></div><canvas id="warehouse-3d-canvas"></canvas><div id="warehouse-3d-tooltip" role="status" hidden></div></section>` : "";
     const surv = krSurvivalDays(snapshot);
-    const survChip = snapshot ? `<span class="survival-chip" title="${people}인 가구 기준 예상 생존 가능 일수">💧 생수 ${surv.waterDays}일분 · 🍱 식량 ${surv.foodDays}일분</span>` : "";
+    const display = krDisplay(snapshot);
+    const survChip = snapshot && display.show_survival ? `<span class="survival-chip" title="${people}인 가구 기준 예상 생존 가능 일수">💧 생수 ${surv.waterDays}일분 · 🍱 식량 ${surv.foodDays}일분</span>` : "";
     // Keep the live 3D stage (WebGL context, camera, weather particles) across re-renders such as the 30s inventory poll.
     const keptStage = this._viewMode === "3d" && snapshot && this._engine3d ? this.shadowRoot.querySelector(".warehouse-3d-stage") : null;
     if (!keptStage) this._stop3D();
@@ -1182,6 +1316,13 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       .hero p{color:#c6d9df;max-width:40rem}.hero .hero-copy{font-size:.98rem;line-height:1.55;margin-top:.5rem}
       .atmosphere{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.atmosphere span{display:inline-flex;min-height:36px;align-items:center;padding:4px 11px;border:1px solid rgba(130,205,220,.38);border-radius:8px;background:rgba(7,22,34,.62);color:#dcf3f7;font-size:.86rem;font-weight:700;font-variant-numeric:tabular-nums}
       .atmosphere span[hidden]{display:none}
+      .hero-title{display:flex;flex-direction:column;gap:2px;min-width:0}.hero-title h2{overflow-wrap:anywhere}.nickname{font-size:.82rem;font-weight:800;opacity:.85;overflow-wrap:anywhere}
+      .atmosphere.no-clock #local-clock,.atmosphere.no-clock #local-weather{display:none !important}
+      #open-settings{min-width:44px;min-height:36px;padding:0 .5rem;font-size:1.15rem;color:inherit;border-color:var(--kr-line,rgba(130,205,220,.45));background:rgba(7,22,34,.5)}
+      .settings-group{margin:12px 0 0;padding:10px 12px 12px;border:1px solid rgba(130,170,190,.35);border-radius:10px}.settings-group legend{padding:0 6px;font-weight:800}
+      .toggle-row{display:flex;align-items:flex-start;gap:10px;margin:8px 0;cursor:pointer}.toggle-row input{width:20px;height:20px;margin-top:2px;flex:none}.toggle-row span{display:flex;flex-direction:column;gap:2px}.toggle-row small{opacity:.75;font-size:.8rem}
+      .settings-message{margin:12px 0 0}#settings-editor input[aria-invalid="true"]{border-color:#ff8a80;box-shadow:0 0 0 2px rgba(255,138,128,.35)}
+      .settings-art{display:grid;place-items:center;font-size:1.8rem}
       #refresh{min-width:44px;min-height:36px;padding:0 .5rem;font-size:1.15rem;color:inherit;border-color:var(--kr-line,rgba(130,205,220,.45));background:rgba(7,22,34,.5)}
 
       .signals{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem}
@@ -1331,7 +1472,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       :host([data-kr-themed]) ha-card{background:var(--kr-bg)}
       :host([data-kr-themed]) .hero{color:var(--kr-text);background:radial-gradient(ellipse at top right,var(--kr-glow),transparent 58%),var(--kr-bg)}
       :host([data-kr-themed]) .hero h2,:host([data-kr-themed]) .hero p,:host([data-kr-themed]) .atmosphere,:host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) .ready-panel h3,:host([data-kr-themed]) .ready-name{color:var(--kr-text)}
-      :host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) #refresh,:host([data-kr-themed]) .ready-panel,:host([data-kr-themed]) .signals button,:host([data-kr-themed]) .ready-item .shelf-edit,:host([data-kr-themed]) .mission-item,:host([data-kr-themed]) .quest-btn{background:var(--kr-surface);border-color:var(--kr-line);color:var(--kr-text)}
+      :host([data-kr-themed]) .atmosphere span,:host([data-kr-themed]) #refresh,:host([data-kr-themed]) #open-settings,:host([data-kr-themed]) .ready-panel,:host([data-kr-themed]) .signals button,:host([data-kr-themed]) .ready-item .shelf-edit,:host([data-kr-themed]) .mission-item,:host([data-kr-themed]) .quest-btn{background:var(--kr-surface);border-color:var(--kr-line);color:var(--kr-text)}
       :host([data-kr-themed]) .expiring-banner{background:var(--kr-glow);border-color:var(--kr-accent)}
       :host([data-kr-themed]) .expiring-banner>strong,:host([data-kr-themed]) .exp-chip{color:var(--kr-text);border-color:var(--kr-line)}
       :host([data-kr-themed]) .signals button[aria-pressed="true"],:host([data-kr-themed]) .ready-item .shelf-edit:hover:not(:disabled){background:var(--kr-glow);border-color:var(--kr-accent)}
@@ -1349,11 +1490,11 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     :host([data-kr-themed]) .add-lot{border-color:var(--kr-accent);color:var(--kr-accent)}
     :host([data-kr-themed]) .quick-bar .qbtn[data-dir="up"]{color:var(--kr-accent)}
     :host([data-kr-themed]) .quick-bar .qbtn:hover:not(:disabled){background:var(--kr-glow);border-color:var(--kr-accent)}
-    </style><ha-card>${edit || customForm ? `<dialog id="item-dialog" aria-labelledby="item-dialog-title">${this._message ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit || customForm}</dialog>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><h2>우리 집 비축 관리</h2><div class="atmosphere" aria-label="시각과 날씨">${survChip}<span id="local-clock">--:--</span><span id="local-weather" hidden></span><div class="view-switch" role="group" aria-label="창고 보기"><button type="button" data-view-mode="2d" aria-pressed="${this._viewMode === "2d"}">2D 선반</button><button type="button" data-view-mode="3d" aria-pressed="${this._viewMode === "3d"}">3D 창고</button></div><button type="button" id="refresh" aria-label="재고 새로고침" title="재고 새로고침">↻</button></div></div>` +
+    </style><ha-card>${edit || customForm || settingsForm ? `<dialog id="item-dialog" aria-labelledby="item-dialog-title">${this._message && !settingsForm ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit || customForm || settingsForm}</dialog>` : ""}<section class="hero" aria-label="비축 관리 개요"><div class="hero-intro"><div class="hero-head"><div class="hero-title">${display.nickname ? `<span class="nickname">🏠 ${escape(display.nickname)}</span>` : ""}<h2>${escape(display.title)}</h2></div><div class="atmosphere${display.show_clock ? "" : " no-clock"}" aria-label="시각과 날씨">${survChip}<span id="local-clock">--:--</span><span id="local-weather" hidden></span><div class="view-switch" role="group" aria-label="창고 보기"><button type="button" data-view-mode="2d" aria-pressed="${this._viewMode === "2d"}">2D 선반</button><button type="button" data-view-mode="3d" aria-pressed="${this._viewMode === "3d"}">3D 창고</button></div><button type="button" id="refresh" aria-label="재고 새로고침" title="재고 새로고침">↻</button><button type="button" id="open-settings" aria-label="대시보드 설정" title="대시보드 설정" ${snapshot ? "" : "disabled"}>⚙</button></div></div>` +
       (!snapshot ? `<p class="hero-copy">${this._loadError ? "재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요." : "재고를 불러오는 중입니다."}</p>` : "") +
-      `${signals}</div><div class="status-disclosures">${krStockRankView(snapshot, this._rankOpen)}${krMissionView(snapshot, escape, animateMission, this._missionOpen)}</div>` +
+      `${signals}</div><div class="status-disclosures">${display.show_rank ? krStockRankView(snapshot, this._rankOpen) : ""}${display.show_missions ? krMissionView(snapshot, escape, animateMission, this._missionOpen) : ""}</div>` +
       (!edit && this._message ? `<p class="shelf-message" role="status">${escape(this._message)}</p>` : "") +
-      `${krExpiringStrip(snapshot, escape)}${stage3d}${this._viewMode === "3d" && snapshot ? "" : krStockShelves(snapshot, escape, this._optionalShelfOpen, Boolean(this._draft), this._statusFilter, this._optCategory, this._optSearch, this._quickMode, this._locationOpen)}</section></ha-card>`;
+      `${display.show_expiring ? krExpiringStrip(snapshot, escape) : ""}${stage3d}${this._viewMode === "3d" && snapshot ? "" : krStockShelves(snapshot, escape, this._optionalShelfOpen, Boolean(this._draft), this._statusFilter, this._optCategory, this._optSearch, this._quickMode, this._locationOpen)}</section></ha-card>`;
     for (const [selector, state] of [[".stock-rank", "_rankOpen"], [".mission-panel", "_missionOpen"], ["#optional-shelf", "_optionalShelfOpen"], ["#location-panel", "_locationOpen"]]) {
       this.shadowRoot.querySelector(selector)?.addEventListener("toggle", (event) => { this[state] = event.currentTarget.open; });
     }
@@ -1364,7 +1505,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       if (!previousDialog) dialog.querySelector("h3")?.focus({ preventScroll: true });
       dialog.addEventListener("cancel", (event) => {
         event.preventDefault();
-        (dialog.querySelector("#cancel") || dialog.querySelector("#custom-cancel"))?.click();
+        (dialog.querySelector("#cancel") || dialog.querySelector("#custom-cancel") || dialog.querySelector("#settings-cancel"))?.click();
       });
     }
     this.shadowRoot.querySelectorAll(".lot-edit").forEach((row) => {
@@ -1538,6 +1679,40 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       this._message = "";
       this._render();
       this.shadowRoot.querySelector("#add-custom")?.focus({ preventScroll: true });
+    });
+    this.shadowRoot.querySelector("#open-settings")?.addEventListener("click", () => this._openSettings());
+    this.shadowRoot.querySelector("#settings-editor")?.addEventListener("submit", (event) => { event.preventDefault(); this._saveSettings(); });
+    this.shadowRoot.querySelectorAll("#set-title, #set-nickname").forEach((input) => input.addEventListener("input", () => {
+      const cleaned = input.value.replace(/[\u0000-\u001f\u007f]/g, "").replace(KR_FORBIDDEN_TEXT, "");
+      if (cleaned !== input.value) {
+        const pos = Math.max(0, (input.selectionStart ?? cleaned.length) - (input.value.length - cleaned.length));
+        input.value = cleaned;
+        input.setSelectionRange?.(pos, pos);
+      }
+    }));
+    this.shadowRoot.querySelectorAll("#set-people, #set-days").forEach((input) => input.addEventListener("input", () => {
+      if (!this._settingsInvalid) return;
+      // Typing a new value clears the old error without redrawing the dialog.
+      this._settingsInvalid = null;
+      this._message = "";
+      input.closest("form")?.querySelectorAll('[aria-invalid="true"]').forEach((field) => field.removeAttribute("aria-invalid"));
+      input.closest("fieldset")?.querySelector(".settings-message")?.remove();
+    }));
+    this.shadowRoot.querySelector("#settings-cancel")?.addEventListener("click", () => {
+      if (this._saving) return;
+      this._settingsDraft = null;
+      this._settingsInvalid = null;
+      this._message = "";
+      this._render();
+      this.shadowRoot.querySelector("#open-settings")?.focus({ preventScroll: true });
+    });
+    this.shadowRoot.querySelector("#settings-reset")?.addEventListener("click", () => {
+      if (this._saving || !this._settingsDraft) return;
+      this._captureSettings();
+      Object.assign(this._settingsDraft, { title: "", nickname: "", household_size: "4", inspection_days: "90" },
+        Object.fromEntries(KR_DISPLAY_TOGGLES.map(([key]) => [key, true])));
+      this._message = "기본값을 채웠습니다. 저장을 눌러야 적용됩니다.";
+      this._render();
     });
     this.shadowRoot.querySelectorAll("input.location").forEach((input) => input.addEventListener("input", () => {
       const cleaned = input.value.replace(KR_FORBIDDEN_TEXT, "");

@@ -10,7 +10,7 @@ from homeassistant.components.mqtt.const import DEFAULT_PREFIX
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import DOMAIN, entry_inspection_days
 from .inventory import summarize
 
 _LOGGER = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class MqttPublisher:
                     return
                 counts = summarize(
                     self.inventory.catalog.values(), self.inventory.snapshot["items"],
-                    dt_util.now().date(), self.entry.data["inspection_days"],
+                    dt_util.now().date(), entry_inspection_days(self.entry),
                     household_size=self.inventory.snapshot["household_size"],
                 )
                 if not self._discovery_sent:

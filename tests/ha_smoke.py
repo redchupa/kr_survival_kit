@@ -363,10 +363,87 @@ async def main():
         assert all(status["state"] == "sufficient" for status in stocked["summary"]["items"].values())
         assert all(record["verified_on"] == today.isoformat() and record["lots"][0]["received_on"] == today.isoformat()
                    for record in stocked["items"].values())
+        # Dashboard gear dialog: display settings and inspection interval change without a reload.
+        live_entry = restarted.config_entries.async_get_entry(entry.entry_id)
+        live_inventory = live_entry.runtime_data
+        shown = await restarted.services.async_call(
+            DOMAIN, "set_display", {"revision": stocked["revision"], "title": "민준이네 비상창고",
+                                    "nickname": "민준이네", "show_survival": False},
+            blocking=True, return_response=True, context=context,
+        )
+        assert shown["revision"] == stocked["revision"] + 1
+        for bad in ({"title": "<script>"}, {"show_rank": "no"}, {"title": "가" * 31}):
+            try:
+                await restarted.services.async_call(
+                    DOMAIN, "set_display", {"revision": shown["revision"], **bad},
+                    blocking=True, return_response=True, context=context,
+                )
+            except (HomeAssistantError, vol.Invalid):
+                pass
+            else:
+                raise AssertionError(f"accepted bad display setting {bad}")
+        viewer = await restarted.auth.async_create_user("Viewer")
+        for service, data in (("set_display", {"revision": shown["revision"], "show_rank": False}),
+                              ("set_inspection_days", {"inspection_days": 30})):
+            try:
+                await restarted.services.async_call(DOMAIN, service, data, blocking=True,
+                                                    return_response=True, context=Context(user_id=viewer.id))
+            except Unauthorized:
+                pass
+            else:
+                raise AssertionError(f"non-admin could call {service}")
+        await restarted.services.async_call(
+            DOMAIN, "set_inspection_days", {"inspection_days": 120},
+            blocking=True, return_response=True, context=context,
+        )
+        await restarted.async_block_till_done()
+        for bad_days in (6, 366):
+            try:
+                await restarted.services.async_call(
+                    DOMAIN, "set_inspection_days", {"inspection_days": bad_days},
+                    blocking=True, return_response=True, context=context,
+                )
+            except vol.Invalid:
+                pass
+            else:
+                raise AssertionError(f"accepted inspection interval {bad_days}")
+        assert live_entry.runtime_data is live_inventory, "inspection change must not reload the entry"
+        settings = await restarted.services.async_call(
+            DOMAIN, "get_inventory", {}, blocking=True, return_response=True, context=context,
+        )
+        assert settings["default_review_interval_days"] == 120
+        assert settings["display"]["title"] == "민준이네 비상창고"
+        assert settings["display"]["show_survival"] is False and settings["display"]["show_rank"] is True
+        assert settings["mqtt_enabled"] is False
+        # Settings > Integrations > gear (options flow) changes the same values after setup.
+        options = await restarted.config_entries.options.async_init(entry.entry_id)
+        assert options["type"] == "form", options
+        assert options["data_schema"]({}) == {"household_size": 5, "inspection_days": 120, "mqtt_enabled": False}
+        try:
+            options["data_schema"]({"household_size": 100})
+        except vol.Invalid:
+            pass
+        else:
+            raise AssertionError("options accepted 100 people")
+        done = await restarted.config_entries.options.async_configure(
+            options["flow_id"], {"household_size": 6, "inspection_days": 60, "mqtt_enabled": False},
+        )
+        assert done["type"] == "create_entry", done
+        await restarted.async_block_till_done()
+        assert live_entry.runtime_data is live_inventory, "non-MQTT options must not reload the entry"
+        assert live_inventory.snapshot["household_size"] == 6
+        assert live_entry.options["inspection_days"] == 60 and live_entry.options["mqtt_enabled"] is False
+        after_options = await restarted.services.async_call(
+            DOMAIN, "get_inventory", {}, blocking=True, return_response=True, context=context,
+        )
+        assert after_options["default_review_interval_days"] == 60
+        assert after_options["summary"]["items"]["drinking-water"]["recommended_target"] == 36000
         await restarted.async_stop()
         final_ha = await start_ha(config_dir)
         final_entry = final_ha.config_entries.async_get_entry(entry.entry_id)
-        assert final_entry.runtime_data.snapshot["household_size"] == 5
+        assert final_entry.runtime_data.snapshot["household_size"] == 6
+        assert final_entry.runtime_data.snapshot["display"]["nickname"] == "민준이네"
+        assert final_entry.options["inspection_days"] == 60
         assert final_entry.runtime_data.snapshot["items"] == stocked["items"]
         assert await final_ha.config_entries.async_unload(entry.entry_id)
         assert "kr-survival-kit" not in final_ha.data[frontend.DATA_PANELS]

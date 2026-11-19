@@ -69,6 +69,45 @@ def safe_text(value, max_length):
             and not any(ord(char) < 32 or ord(char) == 127 or char in FORBIDDEN_TEXT_CHARS for char in value))
 
 
+MAX_TITLE_LENGTH = 30
+MAX_NICKNAME_LENGTH = 20
+DISPLAY_TEXT = {"title": MAX_TITLE_LENGTH, "nickname": MAX_NICKNAME_LENGTH}
+DISPLAY_TOGGLES = ("show_survival", "show_clock", "show_rank", "show_missions", "show_expiring")
+DISPLAY_DEFAULTS = {"title": "우리 집 비축 관리", "nickname": "",
+                    **{key: True for key in DISPLAY_TOGGLES}}
+
+
+def display_settings(stored):
+    """Complete display settings; stored values that are missing or damaged fall back to defaults."""
+    result = dict(DISPLAY_DEFAULTS)
+    if not isinstance(stored, dict):
+        return result
+    for key, limit in DISPLAY_TEXT.items():
+        if isinstance(stored.get(key), str):
+            text = clean_text(stored[key])[:limit].strip()
+            result[key] = text or DISPLAY_DEFAULTS[key]
+    for key in DISPLAY_TOGGLES:
+        if type(stored.get(key)) is bool:
+            result[key] = stored[key]
+    return result
+
+
+def validate_display_changes(changes):
+    """Strictly check a partial display update before it is saved."""
+    if not isinstance(changes, dict) or not changes:
+        raise InventoryError("No display settings to change")
+    for key, value in changes.items():
+        if key in DISPLAY_TEXT:
+            # An empty nickname hides it; an empty title restores the default title.
+            if not isinstance(value, str) or (value != "" and not safe_text(value, DISPLAY_TEXT[key])):
+                raise InventoryError(f"{key} must be up to {DISPLAY_TEXT[key]} characters without markup")
+        elif key in DISPLAY_TOGGLES:
+            if type(value) is not bool:
+                raise InventoryError(f"{key} must be true or false")
+        else:
+            raise InventoryError("Unknown display setting")
+
+
 def custom_catalog_item(item_id, definition):
     """Catalog entry for a user-added item; it behaves like an optional item."""
     entry = {
@@ -291,6 +330,8 @@ class Inventory:
         if type(people) is not int or not 1 <= people <= 99:
             raise InventoryError("Invalid household size")
         self.snapshot = {**data, "household_size": people}
+        if "display" in data:
+            self.snapshot["display"] = display_settings(data["display"])
         self.catalog = catalog
 
     async def set_household_size(self, revision, people):
@@ -305,6 +346,27 @@ class Inventory:
                 return revision
             candidate = deepcopy(self.snapshot)
             candidate["household_size"] = people
+            candidate["revision"] += 1
+            await self.store.async_save(candidate)
+            self.snapshot = candidate
+        for listener in tuple(self.listeners):
+            listener()
+        return candidate["revision"]
+
+    async def set_display(self, revision, changes):
+        """Save dashboard wording and which panels are shown."""
+        if type(revision) is not int or revision < 0:
+            raise InventoryError("revision must be a nonnegative integer")
+        validate_display_changes(changes)
+        async with self.lock:
+            if revision != self.snapshot["revision"]:
+                raise RevisionConflict("Inventory changed. Refresh and retry.")
+            current = display_settings(self.snapshot.get("display"))
+            updated = display_settings({**current, **changes})
+            if "display" in self.snapshot and updated == current:
+                return revision
+            candidate = deepcopy(self.snapshot)
+            candidate["display"] = updated
             candidate["revision"] += 1
             await self.store.async_save(candidate)
             self.snapshot = candidate

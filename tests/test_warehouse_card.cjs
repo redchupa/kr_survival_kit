@@ -11,7 +11,7 @@ class MockElement {
   attachShadow() { this.shadowRoot = { querySelector: (selector) => elements[selector] }; }
 }
 const context = { HTMLElement: MockElement, customElements: { define() {}, get() {} }, window: { customCards: [], requestAnimationFrame: (callback) => callback() }, Intl, Date };
-vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse; globalThis.daysUntil = krDaysUntil; globalThis.addMonths = krAddMonths; globalThis.survivalDays = krSurvivalDays; globalThis.urgentQuests = krUrgentQuests; globalThis.expiringStrip = krExpiringStrip; globalThis.quickPlan = krQuickPlan; globalThis.quickStep = krQuickStep; globalThis.lotTotal = krLotTotal; globalThis.dateLabel = krDateLabel; globalThis.expiryPresets = krExpiryPresets; globalThis.cleanText = krCleanText; globalThis.cleanLocation = krCleanLocation; globalThis.customIcon = KR_CUSTOM_PICTOGRAM; globalThis.optCats = KR_OPTIONAL_CATEGORIES;", context);
+vm.runInNewContext(source + "\nglobalThis.TestCard = KrSurvivalKitInventoryCard; globalThis.testGrid = krReadyGrid; globalThis.stockScore = krStockScore; globalThis.stockRank = krStockRankView; globalThis.readyItems = krReadyItems; globalThis.pictograms = KR_READY_PICTOGRAMS; globalThis.stockFormat = krStockFormat; globalThis.stockParse = krStockParse; globalThis.daysUntil = krDaysUntil; globalThis.addMonths = krAddMonths; globalThis.survivalDays = krSurvivalDays; globalThis.urgentQuests = krUrgentQuests; globalThis.expiringStrip = krExpiringStrip; globalThis.quickPlan = krQuickPlan; globalThis.quickStep = krQuickStep; globalThis.lotTotal = krLotTotal; globalThis.dateLabel = krDateLabel; globalThis.expiryPresets = krExpiryPresets; globalThis.cleanText = krCleanText; globalThis.cleanLocation = krCleanLocation; globalThis.customIcon = KR_CUSTOM_PICTOGRAM; globalThis.optCats = KR_OPTIONAL_CATEGORIES; globalThis.displayOf = krDisplay; globalThis.boundedInt = krBoundedInt;", context);
 
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -209,3 +209,47 @@ console.log("use-by date labels passed");
   assert.ok(customCat.match(custom) && !customCat.match({ id: "radio" }), "the 직접 추가 filter selects only custom items");
 }
 console.log("text filter and custom items passed");
+
+// Dashboard settings (gear): title, nickname, hidden panels, bounded numbers.
+{
+  const defaults = context.displayOf({});
+  assert.equal(defaults.title, "우리 집 비축 관리");
+  assert.equal([defaults.show_survival, defaults.show_clock, defaults.show_rank, defaults.show_missions, defaults.show_expiring].join(","), "true,true,true,true,true");
+  const repaired = context.displayOf({ display: { title: "<img src=x>민준이네", nickname: "가".repeat(30), show_rank: false, show_clock: "no" } });
+  assert.equal(repaired.title, "img src=x민준이네", "markup characters never reach the title");
+  assert.equal(repaired.nickname.length, 20);
+  assert.equal([repaired.show_rank, repaired.show_clock].join(","), "false,true", "only real false hides a panel");
+  assert.equal(context.boundedInt("4", 1, 99), 4);
+  for (const bad of ["0", "100", "2.5", "-1", "", "abc", "1e2", " "]) assert.equal(context.boundedInt(bad, 1, 99), null, bad);
+  assert.equal(context.boundedInt("7", 7, 365), 7);
+  assert.equal(context.boundedInt("366", 7, 365), null);
+
+  const shown = new context.TestCard();
+  shown.shadowRoot = { innerHTML: "", querySelector: () => null, querySelectorAll: () => [] };
+  shown._snapshot = { ...snapshot(base), display: { title: "민준이네 <b>비상창고</b>", nickname: "민준이네", show_survival: false,
+    show_clock: false, show_rank: false, show_missions: false, show_expiring: false } };
+  shown._render();
+  const html = shown.shadowRoot.innerHTML;
+  assert.match(html, /<h2>민준이네 b비상창고\/b<\/h2>/);
+  assert.match(html, /🏠 민준이네/);
+  assert.doesNotMatch(html, /class="survival-chip"/, "water/food days can be hidden");
+  assert.match(html, /class="atmosphere no-clock"/);
+  assert.doesNotMatch(html, /class="stock-rank/, "rank can be hidden");
+  assert.doesNotMatch(html, /mission-panel/, "quests can be hidden");
+  assert.match(html, /id="open-settings"/);
+  shown._openSettings();
+  const dialog = shown.shadowRoot.innerHTML;
+  assert.match(dialog, /id="settings-editor"/);
+  assert.match(dialog, /id="set-people"[^>]*min="1" max="99"/);
+  assert.match(dialog, /id="set-days"[^>]*min="7" max="365"/);
+  assert.match(dialog, /data-toggle="show_survival" >/, "a hidden panel starts unchecked");
+  shown._settingsDraft = null;
+
+  const plain = new context.TestCard();
+  plain.shadowRoot = { innerHTML: "", querySelector: () => null, querySelectorAll: () => [] };
+  plain._snapshot = snapshot(base);
+  plain._render();
+  assert.match(plain.shadowRoot.innerHTML, /<h2>우리 집 비축 관리<\/h2>/, "older servers without display settings keep the default title");
+  assert.match(plain.shadowRoot.innerHTML, /class="survival-chip"/);
+}
+console.log("dashboard settings passed");

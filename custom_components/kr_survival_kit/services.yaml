@@ -124,3 +124,48 @@ remove_custom_item:
       name: Custom item ID
       required: true
       example: custom-1
+set_display:
+  name: Set dashboard display
+  description: Change the dashboard title, household nickname and which panels are shown. Only the fields you pass change. Administrator only.
+  fields:
+    revision:
+      name: Current revision
+      required: true
+      example: 0
+    title:
+      name: Dashboard title
+      description: Up to 30 characters without markup characters. Empty restores the default title.
+      example: 우리 집 비축 관리
+    nickname:
+      name: Household nickname
+      description: Up to 20 characters without markup characters. Empty hides it.
+      example: 행복한 우리집
+    show_survival:
+      name: Show water and food days
+      example: true
+    show_clock:
+      name: Show clock and weather
+      example: true
+    show_rank:
+      name: Show shelter rank
+      example: true
+    show_missions:
+      name: Show quests
+      example: true
+    show_expiring:
+      name: Show expiring banner
+      example: true
+    entry_id:
+      name: Config entry
+      example: 0123456789abcdef
+set_inspection_days:
+  name: Set default inspection interval
+  description: Change how many days after the last check an item is marked as needing a check (7-365). Administrator only.
+  fields:
+    inspection_days:
+      name: Days
+      required: true
+      example: 90
+    entry_id:
+      name: Config entry
+      example: 0123456789abcdef

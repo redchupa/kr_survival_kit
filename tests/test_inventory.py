@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from custom_components.kr_survival_kit.inventory import (
-    Inventory, InventoryError, RevisionConflict, summarize,
+    DISPLAY_DEFAULTS, Inventory, InventoryError, RevisionConflict, display_settings, summarize,
 )
 
 CATALOG = json.loads(
@@ -488,3 +488,50 @@ async def test_markup_characters_are_refused_in_locations_and_repaired_in_old_da
     store.saved["custom_items"] = {"custom-01": {"name": "x", "unit": "개", "date_kind": "inspection"}}
     with pytest.raises(InventoryError):
         await Inventory(store, CATALOG).load()
+
+
+@pytest.mark.asyncio
+async def test_display_settings_save_partially_survive_restart_and_reject_markup():
+    store = FakeStore()
+    stock = Inventory(store, CATALOG)
+    assert display_settings(stock.snapshot.get("display")) == DISPLAY_DEFAULTS
+    revision = await stock.set_display(0, {"title": "민준이네 비상창고", "nickname": "민준이네"})
+    assert revision == 1
+    revision = await stock.set_display(revision, {"show_survival": False})
+    assert stock.snapshot["display"] == {**DISPLAY_DEFAULTS, "title": "민준이네 비상창고",
+                                         "nickname": "민준이네", "show_survival": False}
+    # Saving the same values again does not bump the revision.
+    assert await stock.set_display(revision, {"show_survival": False}) == revision
+    # Empty title restores the default; empty nickname hides it.
+    revision = await stock.set_display(revision, {"title": "", "nickname": ""})
+    assert stock.snapshot["display"]["title"] == DISPLAY_DEFAULTS["title"]
+    assert stock.snapshot["display"]["nickname"] == ""
+    for bad in ({"title": "<script>"}, {"nickname": "a\"b"}, {"title": "가" * 31}, {"nickname": " 앞공백"},
+                {"show_rank": "yes"}, {"show_rank": 1}, {"unknown": True}, {}):
+        with pytest.raises(InventoryError):
+            await stock.set_display(revision, bad)
+    with pytest.raises(RevisionConflict):
+        await stock.set_display(0, {"show_rank": False})
+    store.fail = True
+    with pytest.raises(OSError):
+        await stock.set_display(revision, {"show_rank": False})
+    assert stock.snapshot["display"]["show_rank"] is True
+    store.fail = False
+    await stock.set_display(revision, {"show_missions": False})
+    reloaded = Inventory(store, CATALOG)
+    await reloaded.load()
+    assert reloaded.snapshot["display"]["show_missions"] is False
+    assert reloaded.snapshot["revision"] == stock.snapshot["revision"]
+
+
+@pytest.mark.asyncio
+async def test_damaged_display_settings_are_repaired_on_load():
+    store = FakeStore()
+    store.saved = {"schema_version": 1, "revision": 2, "household_size": 3, "items": {},
+                   "display": {"title": "<b>우리집</b>", "nickname": 7, "show_clock": "no", "show_rank": False}}
+    stock = Inventory(store, CATALOG)
+    await stock.load()
+    assert stock.snapshot["display"] == {**DISPLAY_DEFAULTS, "title": "b우리집/b", "show_rank": False}
+    store.saved["display"] = "garbage"
+    await stock.load()
+    assert stock.snapshot["display"] == DISPLAY_DEFAULTS

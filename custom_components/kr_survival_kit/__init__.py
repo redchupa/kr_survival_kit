@@ -12,9 +12,9 @@ from homeassistant.exceptions import ConfigEntryError, HomeAssistantError, Unaut
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, PLATFORMS
+from .const import DOMAIN, MAX_INSPECTION_DAYS, MIN_INSPECTION_DAYS, MQTT_OPTION_KEYS, PLATFORMS, entry_inspection_days
 from .dashboard import async_register_dashboard
-from .inventory import CUSTOM_UNITS, DATE_LABELS, DEFAULT_HOUSEHOLD_SIZE, LABEL_CHECK_DAYS, MAX_AMOUNT, MAX_REVIEW_DAYS, Inventory, InventoryError, RevisionConflict, summarize
+from .inventory import CUSTOM_UNITS, DATE_LABELS, DEFAULT_HOUSEHOLD_SIZE, LABEL_CHECK_DAYS, MAX_AMOUNT, MAX_REVIEW_DAYS, Inventory, InventoryError, RevisionConflict, display_settings, summarize
 from .mqtt_publish import MqttPublisher, async_remove_discovery
 
 
@@ -72,7 +72,23 @@ REMOVE_CUSTOM_SCHEMA = vol.Schema({
     vol.Required("revision"): _nonnegative_int,
     vol.Required("item_id"): vol.All(str, vol.Length(min=1, max=20)),
 })
-SERVICES = ("set_item", "delete_item", "set_household_size", "get_inventory", "add_custom_item", "remove_custom_item")
+DISPLAY_SCHEMA = vol.Schema({
+    vol.Optional("entry_id"): str,
+    vol.Required("revision"): _nonnegative_int,
+    vol.Optional("title"): vol.All(str, vol.Length(max=30)),
+    vol.Optional("nickname"): vol.All(str, vol.Length(max=20)),
+    vol.Optional("show_survival"): bool,
+    vol.Optional("show_clock"): bool,
+    vol.Optional("show_rank"): bool,
+    vol.Optional("show_missions"): bool,
+    vol.Optional("show_expiring"): bool,
+})
+INSPECTION_SCHEMA = vol.Schema({
+    vol.Optional("entry_id"): str,
+    vol.Required("inspection_days"): vol.All(_nonnegative_int, vol.Range(min=MIN_INSPECTION_DAYS, max=MAX_INSPECTION_DAYS)),
+})
+SERVICES = ("set_item", "delete_item", "set_household_size", "get_inventory", "add_custom_item", "remove_custom_item",
+            "set_display", "set_inspection_days")
 
 
 async def async_setup_entry(hass, entry):
@@ -90,6 +106,7 @@ async def async_setup_entry(hass, entry):
     inventory = Inventory(store, catalog, entry.data.get("household_size", DEFAULT_HOUSEHOLD_SIZE))
     inventory.household = household
     await inventory.load()
+    inventory.mqtt_options = {key: entry.options.get(key, False) for key in MQTT_OPTION_KEYS}
     entry.runtime_data = inventory
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_options_updated))
@@ -122,6 +139,14 @@ async def async_setup_entry(hass, entry):
             DOMAIN, "remove_custom_item", _remove_custom_item(hass), schema=REMOVE_CUSTOM_SCHEMA,
             supports_response=SupportsResponse.OPTIONAL,
         )
+        hass.services.async_register(
+            DOMAIN, "set_display", _set_display(hass), schema=DISPLAY_SCHEMA,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
+        hass.services.async_register(
+            DOMAIN, "set_inspection_days", _set_inspection_days(hass), schema=INSPECTION_SCHEMA,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
     await async_register_dashboard(hass, entry, household, guide, quiz)
     return True
 
@@ -139,6 +164,13 @@ async def async_unload_entry(hass, entry):
 
 
 async def _options_updated(hass, entry):
+    """Reload only when MQTT publishing changes; other options take effect immediately."""
+    inventory = getattr(entry, "runtime_data", None)
+    current = {key: entry.options.get(key, False) for key in MQTT_OPTION_KEYS}
+    if isinstance(inventory, Inventory) and getattr(inventory, "mqtt_options", None) == current:
+        for listener in tuple(inventory.listeners):
+            listener()
+        return
     await hass.config_entries.async_reload(entry.entry_id)
 
 
@@ -162,7 +194,13 @@ async def _admin_inventory(hass, call):
     if (entry is None or entry.domain != DOMAIN or entry.state is not ConfigEntryState.LOADED
             or not isinstance(getattr(entry, "runtime_data", None), Inventory)):
         raise HomeAssistantError("KR Survival Kit entry is unavailable")
-    return entry.runtime_data, entry.data["inspection_days"]
+    return entry.runtime_data, entry
+
+
+def _write_errors(error):
+    if isinstance(error, OSError):
+        return HomeAssistantError("Inventory save failed; previous values are still active")
+    return HomeAssistantError(str(error))
 
 
 def _set_item(hass):
@@ -241,9 +279,32 @@ def _remove_custom_item(hass):
     return handle
 
 
+def _set_display(hass):
+    async def handle(call):
+        inventory, _ = await _admin_inventory(hass, call)
+        changes = {key: value for key, value in call.data.items() if key not in ("entry_id", "revision")}
+        try:
+            revision = await inventory.set_display(call.data["revision"], changes)
+        except (InventoryError, OSError) as error:
+            raise _write_errors(error) from error
+        return {"revision": revision}
+    return handle
+
+
+def _set_inspection_days(hass):
+    async def handle(call):
+        inventory, entry = await _admin_inventory(hass, call)
+        days = call.data["inspection_days"]
+        if entry_inspection_days(entry) != days:
+            hass.config_entries.async_update_entry(entry, options={**entry.options, "inspection_days": days})
+        return {"inspection_days": days, "revision": inventory.snapshot["revision"]}
+    return handle
+
+
 def _get_inventory(hass):
     async def handle(call):
-        inventory, inspection_days = await _admin_inventory(hass, call)
+        inventory, entry = await _admin_inventory(hass, call)
+        inspection_days = entry_inspection_days(entry)
         snapshot = deepcopy(inventory.snapshot)
         today = dt_util.now().date()
         snapshot["today"] = today.isoformat()
@@ -255,6 +316,8 @@ def _get_inventory(hass):
         snapshot["catalog"] = deepcopy(list(inventory.catalog.values()))
         snapshot["household"] = deepcopy(inventory.household)
         snapshot["default_review_interval_days"] = inspection_days
+        snapshot["display"] = display_settings(snapshot.get("display"))
+        snapshot["mqtt_enabled"] = bool(entry.options.get("mqtt_enabled", False))
         return snapshot
     return handle
 

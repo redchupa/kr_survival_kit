@@ -4,7 +4,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import DOMAIN, entry_inspection_days
 from .inventory import summarize
 
 METRICS = {
@@ -40,7 +40,7 @@ class InventoryCountSensor(SensorEntity):
             self._inventory.catalog.values(),
             self._inventory.snapshot["items"],
             dt_util.now().date(),
-            self._entry.data["inspection_days"],
+            entry_inspection_days(self._entry),
             household_size=self._inventory.snapshot["household_size"],
         )[self._metric]
 
