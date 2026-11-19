@@ -9,6 +9,9 @@ from datetime import timedelta
 from importlib.metadata import version
 from pathlib import Path
 
+import voluptuous as vol
+import voluptuous_serialize
+from homeassistant.helpers import config_validation as cv
 from homeassistant.components import frontend
 from homeassistant.core import Context, HomeAssistant
 from homeassistant import bootstrap, loader
@@ -62,6 +65,26 @@ async def main():
             assert not hass.config_entries.async_entries(DOMAIN)
         finally:
             hidden_catalog.rename(catalog)
+        form = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+        assert form["type"] == "form", form
+        schema = form["data_schema"]
+        assert schema({}) == {"household_size": 4, "inspection_days": 90}
+        fields = {f["name"]: f for f in voluptuous_serialize.convert(schema, custom_serializer=cv.custom_serializer)}
+        assert fields["household_size"]["selector"]["number"] | {"unit_of_measurement": None} == {
+            "min": 1, "max": 99, "step": 1, "mode": "box", "unit_of_measurement": None}, fields
+        assert fields["inspection_days"]["selector"]["number"]["mode"] == "box", fields
+        assert (fields["inspection_days"]["selector"]["number"]["min"],
+                fields["inspection_days"]["selector"]["number"]["max"]) == (7, 365), fields
+        assert schema({"household_size": "6", "inspection_days": 120.0}) == {"household_size": 6, "inspection_days": 120}
+        for bad in ({"household_size": 0}, {"household_size": 100}, {"household_size": 2.5},
+                    {"inspection_days": 6}, {"inspection_days": 366}, {"inspection_days": "abc"}):
+            try:
+                schema(bad)
+            except vol.Invalid:
+                pass
+            else:
+                raise AssertionError(f"accepted out-of-range setup value {bad}")
+        hass.config_entries.flow.async_abort(form["flow_id"])
         flow = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": "user"}, data={"inspection_days": 30, "household_size": 4}
         )

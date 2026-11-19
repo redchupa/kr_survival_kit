@@ -3,10 +3,37 @@
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.helpers.selector import NumberSelector, NumberSelectorConfig, NumberSelectorMode
 
 from . import _load_content
 from .const import DOMAIN
 from .inventory import DEFAULT_HOUSEHOLD_SIZE
+
+MIN_HOUSEHOLD_SIZE = 1
+MAX_HOUSEHOLD_SIZE = 99
+DEFAULT_INSPECTION_DAYS = 90
+MIN_INSPECTION_DAYS = 7
+MAX_INSPECTION_DAYS = 365
+
+
+class _WholeNumberBox(NumberSelector):
+    """Number box that also rejects fractions such as 2.5 and returns an int."""
+
+    def __call__(self, data):
+        value = super().__call__(data)
+        if not float(value).is_integer():
+            raise vol.Invalid("whole number required")
+        return int(value)
+
+
+def _number_box(minimum, maximum, unit):
+    """Typed number box (not a slider); bounds are enforced again on the server."""
+    return vol.All(
+        _WholeNumberBox(NumberSelectorConfig(
+            min=minimum, max=maximum, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement=unit,
+        )),
+        vol.Range(min=minimum, max=maximum),
+    )
 
 
 class KrSurvivalKitConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -31,8 +58,10 @@ class KrSurvivalKitConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required("household_size", default=DEFAULT_HOUSEHOLD_SIZE): vol.All(vol.Coerce(int), vol.Range(min=1, max=99)),
-                    vol.Required("inspection_days", default=30): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
+                    vol.Required("household_size", default=DEFAULT_HOUSEHOLD_SIZE): _number_box(
+                        MIN_HOUSEHOLD_SIZE, MAX_HOUSEHOLD_SIZE, "명"),
+                    vol.Required("inspection_days", default=DEFAULT_INSPECTION_DAYS): _number_box(
+                        MIN_INSPECTION_DAYS, MAX_INSPECTION_DAYS, "일"),
                 }
             ),
         )
