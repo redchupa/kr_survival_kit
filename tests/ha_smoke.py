@@ -47,6 +47,49 @@ async def start_ha(config_dir):
     return hass
 
 
+BLUEPRINT = SOURCE / "blueprints" / "automation" / "weekly_rotation_alert.yaml"
+
+
+async def check_weekly_blueprint(hass):
+    """The shipped blueprint validates, and its alert condition reads the real sensors."""
+    from homeassistant.components.automation.config import AUTOMATION_BLUEPRINT_SCHEMA
+    from homeassistant.components.blueprint import models as bp_models
+    from homeassistant.helpers import entity_registry as er
+    from homeassistant.helpers.template import Template
+    from homeassistant.util.yaml import load_yaml_dict
+
+    blueprint = bp_models.Blueprint(
+        load_yaml_dict(str(BLUEPRINT)), expected_domain="automation", schema=AUTOMATION_BLUEPRINT_SCHEMA,
+    )
+    selectors = {name: blueprint.inputs[name]["selector"]["entity"]["filter"]
+                 for name in ("expiring_sensor", "shortage_sensor", "needs_check_sensor")}
+    assert all(f == [{"integration": DOMAIN, "domain": "sensor"}] for f in selectors.values()), selectors
+
+    def evaluate(chosen):
+        inputs = bp_models.BlueprintInputs(blueprint, {"use_blueprint": {"path": BLUEPRINT.name, "input": {
+            "notify_device": "phone", **chosen}}})
+        inputs.validate()
+        config = inputs.async_substitute()
+        values = {}
+        for key, value in config["variables"].items():
+            values[key] = Template(value, hass).async_render(values) if isinstance(value, str) and "{{" in value else value
+        condition = Template(config["conditions"][1]["value_template"], hass).async_render(values)
+        return values, condition
+
+    values, condition = evaluate({})
+    # Fresh install: every core item still needs a first check, so the weekly alert fires.
+    assert values["needs_check"] == CORE_ITEM_COUNT and values["shortage"] == 0, values
+    assert condition is True, condition
+    # Renaming a sensor keeps the blueprint working once the renamed sensor is chosen.
+    registry = er.async_get(hass)
+    registry.async_update_entity(f"sensor.{DOMAIN}_needs_check_count", new_entity_id="sensor.our_home_to_check")
+    await hass.async_block_till_done()
+    values, condition = evaluate({"needs_check_sensor": "sensor.our_home_to_check"})
+    assert values["needs_check"] == CORE_ITEM_COUNT and condition is True, values
+    registry.async_update_entity("sensor.our_home_to_check", new_entity_id=f"sensor.{DOMAIN}_needs_check_count")
+    await hass.async_block_till_done()
+
+
 async def main():
     logging.basicConfig(level=logging.WARNING)
     with tempfile.TemporaryDirectory(prefix="kr-survival-ha-") as config_dir:
@@ -104,6 +147,10 @@ async def main():
             if state.attributes.get("friendly_name") in {"부족한 품목", "확인할 품목", "기한 임박 품목"}
         }
         assert len(inventory_states) == 3, states
+        # New installs get stable ASCII entity ids, not a transliteration of the Korean names.
+        for metric in ("shortage_count", "needs_check_count", "expiring_count"):
+            assert hass.states.get(f"sensor.{DOMAIN}_{metric}") is not None, metric
+        await check_weekly_blueprint(hass)
         assert inventory_states["부족한 품목"].state == "0"
         # Fresh install: every core item is applicable but unverified.
         assert inventory_states["확인할 품목"].state == str(CORE_ITEM_COUNT)

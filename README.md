@@ -121,7 +121,7 @@ MQTT는 **Home Assistant 바깥**에서도 이 숫자를 보고 싶을 때만 �
 <details>
 <summary>매주 알림을 받고 싶어요</summary>
 
-[주간 알림 블루프린트](custom_components/kr_survival_kit/blueprints/automation/weekly_rotation_alert.yaml)를 가져오면 매주 기한 임박·부족 물품을 휴대폰으로 알려 줍니다.
+[주간 알림 블루프린트](custom_components/kr_survival_kit/blueprints/automation/weekly_rotation_alert.yaml)를 가져오면 매주 기한 임박·부족 물품을 휴대폰으로 알려 줍니다. 가져올 때 KR Survival Kit 센서 3개와 알림 받을 휴대폰만 고르면 되고, 센서 이름을 바꿔도 다시 고르면 계속 동작합니다.
 </details>
 
 <details>

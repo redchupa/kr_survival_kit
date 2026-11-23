@@ -33,6 +33,9 @@ class InventoryCountSensor(SensorEntity):
         self._metric = metric
         self._attr_name = METRICS[metric]
         self._attr_unique_id = f"{entry.entry_id}_{metric}"
+        # Stable, ASCII entity ids for new installs (the Korean names would be transliterated).
+        # Existing installs keep whatever id the entity registry already holds.
+        self.entity_id = f"sensor.{DOMAIN}_{metric}"
 
     @property
     def native_value(self):
