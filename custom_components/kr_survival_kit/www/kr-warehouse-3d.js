@@ -1,5 +1,7 @@
 import * as THREE from "./three.module.min.js";
 
+const KR_SPIN_RESUME_MS = 4000;
+
 const SHORT_NAMES = {
   "drinking-water": "생수", "instant-rice": "즉석밥", "cup-noodles": "컵라면", "shelf-stable-meal": "레토르트 간편식",
   "spam-canned-ham": "스팸", "canned-tuna": "참치캔", "canned-pupa": "번데기캔", "canned-whelk": "골뱅이캔", "canned-fruit": "과일캔",
@@ -1121,7 +1123,9 @@ export class KrWarehouseThreeEngine {
     this.yaw = -0.62;
     this.pitch = 0.48;
     this.distance = 8.4;
+    // User preference (the "자동 회전" button). Touching the view only pauses it for a moment.
     this.autoRotate = true;
+    this.pauseUntil = 0;
     this.zone = "essentials";
     this.optCategory = "all";
     this.onlyActive = false;
@@ -1674,7 +1678,7 @@ export class KrWarehouseThreeEngine {
     this._onPointerDown = (e) => {
       this.dragging = true;
       this.dragMoved = false;
-      this.autoRotate = false;
+      this.pauseUntil = Infinity;
       this.lastX = e.clientX;
       this.lastY = e.clientY;
       this.canvas.setPointerCapture?.(e.pointerId);
@@ -1704,8 +1708,10 @@ export class KrWarehouseThreeEngine {
         if (this.hoveredSlot) this.onSelectItem(this.hoveredSlot.userData.item);
       }
       this.dragging = false;
+      this._resumeSoon();
     };
     this._onPointerLeave = () => {
+      if (this.dragging) this._resumeSoon();
       this.dragging = false;
       this.hoveredSlot = null;
       if (this.tooltip) this.tooltip.hidden = true;
@@ -1713,6 +1719,7 @@ export class KrWarehouseThreeEngine {
     this._onWheel = (e) => {
       e.preventDefault();
       this._userZoomed = true;
+      this._resumeSoon();
       this.distance = Math.max(4.5, Math.min(22.0, this.distance + e.deltaY * 0.008));
     };
     this._onResize = () => {
@@ -1760,7 +1767,7 @@ export class KrWarehouseThreeEngine {
       const dt = Math.min(0.05, Math.max(0, (nowMs - last) / 1000));
       last = nowMs;
       const t = nowMs / 1000;
-      if (this.autoRotate && !this.dragging && !this.reducedMotion) this.yaw += 0.15 * dt;
+      if (this.autoRotate && !this.dragging && nowMs >= this.pauseUntil) this.yaw += 0.15 * dt;
 
       const theme = this.getTheme();
       const isLight = theme === "white" || theme === "ivory";
@@ -1789,6 +1796,11 @@ export class KrWarehouseThreeEngine {
       this.renderer.render(this.scene, this.camera);
     };
     animate();
+  }
+
+  /** Resume auto-rotation a few seconds after the user stops touching the view. */
+  _resumeSoon() {
+    this.pauseUntil = performance.now() + KR_SPIN_RESUME_MS;
   }
 
   resetCamera() {

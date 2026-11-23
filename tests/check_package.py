@@ -28,6 +28,9 @@ def main():
         assert strings["config"]["step"]["user"]["data"]["inspection_days"] == "기본 재고 점검 주기 (일)"
         assert strings["config"]["abort"]["incomplete_install"]
     assert (INTEGRATION / "www" / "kr-survival-kit-card.js").is_file()
+    card = (INTEGRATION / "www" / "kr-survival-kit-card.js").read_text(encoding="utf-8")
+    # The 3D module is imported with this cache-busting version; a stale value keeps old 3D code in browsers.
+    assert f'const KR_ASSET_VERSION = "{manifest["version"]}";' in card, "KR_ASSET_VERSION must match manifest version"
     assert (INTEGRATION / "www" / "kr-survival-kit-a4.pdf").read_bytes().startswith(b"%PDF-")
     guide = json.loads((INTEGRATION / "content/guide.ko.json").read_text(encoding="utf-8"))
     assert guide["content_version"] in (INTEGRATION / "www" / "kr-survival-kit-offline.html").read_text(encoding="utf-8")

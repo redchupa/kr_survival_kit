@@ -265,6 +265,16 @@ function krBoundedInt(value, min, max) {
   return number >= min && number <= max ? number : null;
 }
 
+const KR_ASSET_VERSION = "0.11.2";
+
+/** Saved 자동 회전 choice; without one, follow the system "reduce motion" setting. */
+function krSpinPreference() {
+  let saved = null;
+  try { saved = window.localStorage?.getItem("kr_survival_kit_3d_spin"); } catch { /* private mode */ }
+  if (saved === "on" || saved === "off") return saved === "on";
+  return !window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+}
+
 function krCleanLocation(value) {
   return krCleanText(value, KR_LOCATION_MAX);
 }
@@ -1745,13 +1755,16 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       const saveEnv = () => {
         try { window.localStorage?.setItem("kr_survival_kit_3d_env", JSON.stringify(envPrefs)); } catch { /* private mode */ }
       };
-      import(`${base}kr-warehouse-3d.js?v=0.10.0`).then(({ KrWarehouseThreeEngine }) => {
+      const spinButton = this.shadowRoot.querySelector("#toggle-3d-spin");
+      spinButton?.setAttribute("aria-pressed", String(krSpinPreference()));
+      import(`${base}kr-warehouse-3d.js?v=${KR_ASSET_VERSION}`).then(({ KrWarehouseThreeEngine }) => {
         if (!this.shadowRoot.contains(canvas3d)) return;
         this._engine3d = new KrWarehouseThreeEngine(
           canvas3d, tooltip3d,
           () => this._snapshot, () => this._statusFilter,
           (item) => this._edit(item, false), getTheme, getEnv,
         );
+        this._engine3d.autoRotate = krSpinPreference();
         this._engine3d.timeMode = envPrefs.time;
         this._engine3d.weatherMode = envPrefs.weather;
         this._engine3d.onEnvChange = (label) => { if (envChip) envChip.textContent = label; };
@@ -1794,7 +1807,9 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       this.shadowRoot.querySelector("#toggle-3d-spin")?.addEventListener("click", (e) => {
         if (!this._engine3d) return;
         this._engine3d.autoRotate = !this._engine3d.autoRotate;
+        this._engine3d.pauseUntil = 0;
         e.currentTarget.setAttribute("aria-pressed", String(this._engine3d.autoRotate));
+        try { window.localStorage?.setItem("kr_survival_kit_3d_spin", this._engine3d.autoRotate ? "on" : "off"); } catch { /* private mode */ }
       });
       this.shadowRoot.querySelector("#reset-3d-cam")?.addEventListener("click", () => {
         this._engine3d?.resetCamera();
