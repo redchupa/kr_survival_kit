@@ -63,7 +63,9 @@ async def check_weekly_blueprint(hass):
     )
     selectors = {name: blueprint.inputs[name]["selector"]["entity"]["filter"]
                  for name in ("expiring_sensor", "shortage_sensor", "needs_check_sensor")}
-    assert all(f == [{"integration": DOMAIN, "domain": "sensor"}] for f in selectors.values()), selectors
+    # The schema normalises domain to a list; only this integration's sensors may be picked.
+    assert all(len(f) == 1 and f[0]["integration"] == DOMAIN and f[0]["domain"] in ("sensor", ["sensor"])
+               for f in selectors.values()), selectors
 
     def evaluate(chosen):
         inputs = bp_models.BlueprintInputs(blueprint, {"use_blueprint": {"path": BLUEPRINT.name, "input": {
