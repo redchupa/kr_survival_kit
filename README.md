@@ -55,11 +55,18 @@ KR Survival Kit는 **전쟁·재난 때 살아남는 방법**을 알려 드리�
 Home Assistant 2026.11 이상, 관리자 계정이 필요합니다.
 
 **HACS로 설치 (추천)**
-1. Home Assistant에서 **설정 → Marketplace → 링크로 추가**
-2. 주소에 `redchupa/kr_survival_kit` 입력, 유형은 **통합(Integration)**
-3. 다운로드 후 **Home Assistant 재시작**
+
+1. Home Assistant에서 **HACS**를 엽니다.
+2. **KR Survival Kit**를 검색해 선택합니다.
+3. **다운로드**를 누른 뒤 Home Assistant를 재시작합니다.
 4. **설정 → 기기 및 서비스 → 통합 추가 → KR Survival Kit** 선택, 가족 인원 입력
 5. 왼쪽 메뉴에 **KR Survival Kit**가 생기면 끝!
+
+<details>
+<summary>HACS 검색 결과에 보이지 않나요?</summary>
+
+HACS에서 **링크로 추가**를 열고 저장소 주소 `https://github.com/redchupa/kr_survival_kit`을 입력하세요. 유형은 **통합(Integration)**을 선택하고 위 3단계부터 진행하세요.
+</details>
 
 <details>
 <summary>직접 설치하기</summary>
