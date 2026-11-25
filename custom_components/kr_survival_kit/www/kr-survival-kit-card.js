@@ -293,7 +293,7 @@ function krBoundedInt(value, min, max) {
   return number >= min && number <= max ? number : null;
 }
 
-const KR_ASSET_VERSION = "0.13.2";
+const KR_ASSET_VERSION = "0.13.3";
 
 function krGetLang() {
   try { return window.localStorage?.getItem("kr_survival_kit_lang") === "en" ? "en" : "ko"; } catch { return "ko"; }
@@ -2446,7 +2446,6 @@ class KrSurvivalKitPanel extends HTMLElement {
       </style>
       <header>
         <ha-menu-button></ha-menu-button>
-        <strong>KR Survival Kit</strong>
         <nav aria-label="KR Survival Kit 메뉴">
           <a href="/kr-survival-kit/home" data-nav="home">${T("비축 관리", "Stockpile")}</a>
           <a href="/kr-survival-kit/guide" data-nav="guide">${T("상황 안내", "Guide")}</a>
