@@ -293,7 +293,7 @@ function krBoundedInt(value, min, max) {
   return number >= min && number <= max ? number : null;
 }
 
-const KR_ASSET_VERSION = "0.13.1";
+const KR_ASSET_VERSION = "0.13.2";
 
 function krGetLang() {
   try { return window.localStorage?.getItem("kr_survival_kit_lang") === "en" ? "en" : "ko"; } catch { return "ko"; }
@@ -2018,7 +2018,11 @@ class KrSurvivalKitGuideCard extends HTMLElement {
 
   setLang(lang) {
     this._lang = lang === "en" ? "en" : "ko";
-    if (this._guide) this._render();
+    if (this._guideKo) {
+      this._guide = this._lang === "en" && this._guideEn ? this._guideEn : this._guideKo;
+      this._loadQuiz(this._lang === "en" && this._quizEn ? this._quizEn : this._quizKo);
+      this._render();
+    }
   }
 
   connectedCallback() {
@@ -2158,9 +2162,15 @@ class KrSurvivalKitGuideCard extends HTMLElement {
   setConfig(config) {
     this._assetPath = config.asset_path || "/local";
     this._showInventoryLink = config.show_inventory_link !== false;
-    this._guide = typeof config.guide_data === "string" ? JSON.parse(config.guide_data) : config.guide_data;
+    if (config.lang) this._lang = config.lang === "en" ? "en" : "ko";
+    const parseJson = (val) => (typeof val === "string" ? JSON.parse(val) : val);
+    this._guideKo = parseJson(config.guide_data);
+    this._guideEn = config.guide_en_data ? parseJson(config.guide_en_data) : null;
+    this._quizKo = config.quiz_data;
+    this._quizEn = config.quiz_en_data || null;
+    this._guide = this._lang === "en" && this._guideEn ? this._guideEn : this._guideKo;
     if (!this._guide?.scenarios?.length || !this._guide?.playbook?.length) throw new Error("상황 안내 자료가 없습니다.");
-    this._loadQuiz(config.quiz_data);
+    this._loadQuiz(this._lang === "en" && this._quizEn ? this._quizEn : this._quizKo);
     this._render();
   }
 
@@ -2237,35 +2247,26 @@ class KrSurvivalKitGuideCard extends HTMLElement {
     const scenarios = guide.scenarios;
     const scenario = scenarios.find((item) => item.id === this._scenario) || scenarios[0];
     const sheet = guide.playbook.find((item) => item.id === this._sheet) || guide.playbook[0];
+    const civilIds = new Set(["air-raid", "civil-warning", "cbrn-alert", "nuclear-alert"]);
+    const utilityIds = new Set(["power-outage", "water-outage"]);
     const scenarioGroups = [
       [T("평시", "Peacetime"), scenarios.filter((item) => item.id === "prepare")],
-      [T("민방공 경보", "Civil Defense Alerts"), scenarios.filter((item) => item.kind === "민방공 경보")],
-      [T("생활 기반 장애", "Utility Outages"), scenarios.filter((item) => item.kind === "생활 기반 장애")],
+      [T("민방공 경보", "Civil Defense Alerts"), scenarios.filter((item) => civilIds.has(item.id) || item.kind === "민방공 경보")],
+      [T("생활 기반 장애", "Utility Outages"), scenarios.filter((item) => utilityIds.has(item.id) || item.kind === "생활 기반 장애")],
     ];
-    const scenarioTitleEn = {
-      prepare: "Peacetime Prep",
-      "air-raid": "Air Raid Alert",
-      "civil-warning": "Civil Defense Warning",
-      "cbrn-alert": "CBRN Alert",
-      "nuclear-alert": "Nuclear Alert",
-      blackout: "Power Outage",
-      "water-outage": "Water Outage",
-      "winter-heating": "Heating Failure",
-    };
     const scenarioNav = scenarioGroups.map(([title, items]) => `<div class="nav-group"><h3>${esc(title)}</h3><div class="nav-items">${items.map((item) =>
-      `<button type="button" data-scenario="${esc(item.id)}" aria-pressed="${item.id === scenario.id}" class="${item.id === scenario.id ? "active" : ""}">${esc(lang === "en" ? (scenarioTitleEn[item.id] || item.title) : item.title)}</button>`).join("")}</div></div>`).join("");
-    const sheetLabelEn = { "first-day": "First 24 Hours", "first-week": "Days 2–7", "extended": "Extended Stay", "field-skills": "Field Skills", "equipment": "Equipment Check" };
-    const sheetNav = guide.playbook.map((item) => `<button type="button" role="tab" id="tab-${esc(item.id)}" aria-controls="sheet-panel" aria-selected="${item.id === sheet.id}" tabindex="${item.id === sheet.id ? 0 : -1}" data-sheet="${esc(item.id)}">${esc(lang === "en" ? (sheetLabelEn[item.id] || item.label || item.title) : (item.label || item.title))}</button>`).join("");
+      `<button type="button" data-scenario="${esc(item.id)}" aria-pressed="${item.id === scenario.id}" class="${item.id === scenario.id ? "active" : ""}">${esc(item.title)}</button>`).join("")}</div></div>`).join("");
+    const sheetNav = guide.playbook.map((item) => `<button type="button" role="tab" id="tab-${esc(item.id)}" aria-controls="sheet-panel" aria-selected="${item.id === sheet.id}" tabindex="${item.id === sheet.id ? 0 : -1}" data-sheet="${esc(item.id)}">${esc(item.label || item.title)}</button>`).join("");
     const detail = scenario.details?.length ? `<ul>${scenario.details.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : `<p>${esc(scenario.paper_note)}</p>`;
     const household = scenario.id === "prepare" ? `<p class="household">${esc(guide.household_summary)}</p>` : "";
     const rows = sheet.layout === "reference" ? sheet.rows.map((row) =>
       `<article class="reference-item"><span>${esc(row.when)}</span><h4>${esc(row.title)}</h4><p>${esc(row.text)}</p></article>`).join("") :
       sheet.rows.map((row) => `<li class="time-row"><div class="time-rail"><span class="time-dot" aria-hidden="true"></span><span class="time-when">${esc(row.when)}</span></div><div class="time-copy"><h4>${esc(row.title)}</h4><p>${esc(row.text)}</p></div></li>`).join("");
-    const sheetHeading = sheet.id === "field-skills" ? "이동·위생 점검" : sheet.layout === "reference" ? "장비 사용 점검" : "상황이 이어질 때";
-    const sheetSummary = sheet.id === "field-skills" ? "평시에 경로와 시설을 확인하고, 현장에서는 공식 지시를 먼저 따르세요." : sheet.layout === "reference" ? "제품 설명서와 표시를 먼저 확인하세요." : "새 경보와 현장 지시가 나오면 그 안내를 먼저 따르세요.";
+    const sheetHeading = sheet.id === "field-skills" ? T("이동·위생 점검", "Navigation & Hygiene") : sheet.layout === "reference" ? T("장비 사용 점검", "Equipment Check") : T("상황이 이어질 때", "Extended Timeline");
+    const sheetSummary = sheet.id === "field-skills" ? T("평시에 경로와 시설을 확인하고, 현장에서는 공식 지시를 먼저 따르세요.", "Practice routes in peacetime; follow official orders on site.") : sheet.layout === "reference" ? T("제품 설명서와 표시를 먼저 확인하세요.", "Check product manuals and labels first.") : T("새 경보와 현장 지시가 나오면 그 안내를 먼저 따르세요.", "Follow new alerts and on-site instructions first.");
     const sources = Object.values(guide.sources).filter((source) => typeof source.url === "string" && /^https:\/\//i.test(source.url)); // only https links are rendered
     const uniqueSources = [...new Map(sources.map((source) => [source.url.replace("https://www.", "https://"), source])).values()];
-    const alertTone = scenario.kind === "민방공 경보" ? "danger" : scenario.kind === "생활 기반 장애" ? "warn" : "info";
+    const alertTone = civilIds.has(scenario.id) || scenario.kind === "민방공 경보" ? "danger" : utilityIds.has(scenario.id) || scenario.kind === "생활 기반 장애" ? "warn" : "info";
     const haPlayers = Object.entries(this._hass?.states || {})
       .filter(([id, st]) => id.startsWith("media_player.") && st?.state !== "unavailable")
       .map(([id, st]) => ({ value: `ha:${id}`, label: `🏠 [${T("HA 스피커", "HA Speaker")}] ${st?.attributes?.friendly_name || id}` }));
@@ -2560,12 +2561,12 @@ class KrSurvivalKitPanel extends HTMLElement {
     if (view === this._view) return;
     this._view = view;
     const isGuide = view === "guide";
-    const { guide, quiz, asset_path } = this._config;
+    const { guide, guide_en, quiz, quiz_en, asset_path } = this._config;
     const card = document.createElement(isGuide ? "kr-survival-kit-panel-guide" : "kr-survival-kit-panel-inventory");
     card.toggleAttribute("data-kr-themed", true);
     card.setAttribute("data-theme-id", this._theme);
     card.setConfig(isGuide
-      ? { guide_data: guide, asset_path, quiz_data: quiz, show_inventory_link: false, lang: this._lang }
+      ? { guide_data: guide, guide_en_data: guide_en, asset_path, quiz_data: quiz, quiz_en_data: quiz_en, show_inventory_link: false, lang: this._lang }
       : { lang: this._lang });
     this.shadowRoot.querySelector("main").replaceChildren(card);
     this._card = card;

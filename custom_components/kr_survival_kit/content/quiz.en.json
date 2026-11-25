@@ -1,0 +1,254 @@
+{
+  "schema_version": 1,
+  "content_version": "0.1.0-draft.12",
+  "title": "Scenario Judgment Quiz",
+  "intro": "A practice quiz to check your understanding of official emergency guidance. Scores and levels track learning progress only and are not real survival or evacuation ratings. Always follow live alerts and on-site instructions first.",
+  "review_status": "draft",
+  "reviewed_on": null,
+  "levels": [
+    {
+      "id": "first-actions",
+      "title": "Level 1 · First Actions",
+      "description": "Verify what to do immediately when an alert is issued."
+    },
+    {
+      "id": "home-safety",
+      "title": "Level 2 · Home Safety",
+      "description": "Review basics for power outages, water outages, and peacetime prep."
+    },
+    {
+      "id": "changing-situation",
+      "title": "Level 3 · Changing Situations",
+      "description": "Distinguish between alert types and post-evacuation decisions."
+    }
+  ],
+  "questions": [
+    {
+      "id": "air-raid-first",
+      "level_id": "first-actions",
+      "scenario_id": "air-raid",
+      "prompt": "An air raid alert has been issued. What should you do first?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "Evacuate immediately to the nearest civil defense shelter or safe underground facility.",
+          "feedback": "Correct. Move to the nearest protective shelter for the alert first."
+        },
+        {
+          "id": "b",
+          "text": "Drive to pick up family members at another location.",
+          "feedback": "Unsafe. Delay long-distance travel or family meetup plans until after immediate shelter."
+        },
+        {
+          "id": "c",
+          "text": "Wait at home until explosions stop, then move.",
+          "feedback": "Unsafe. Silence does not mean the area is safe or the alert is lifted."
+        }
+      ],
+      "answer_id": "a",
+      "source_ids": [
+        "mois-2026",
+        "civil-preparedness"
+      ]
+    },
+    {
+      "id": "warning-instruction",
+      "level_id": "first-actions",
+      "scenario_id": "civil-warning",
+      "prompt": "A civil defense warning is active, but no evacuation order has been given yet. What should you do?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "Have everyone leave immediately for a distant region.",
+          "feedback": "Unsafe. Do not start long-distance travel on a warning alone without checking routes and official guidance."
+        },
+        {
+          "id": "b",
+          "text": "Monitor the alert type and broadcasts, and prepare to evacuate immediately if ordered.",
+          "feedback": "Correct. Keep monitoring official updates while staying ready to move."
+        },
+        {
+          "id": "c",
+          "text": "Stop checking broadcasts since no evacuation order was issued.",
+          "feedback": "Unsafe. Conditions can change rapidly; keep listening to official broadcasts."
+        }
+      ],
+      "answer_id": "b",
+      "source_ids": [
+        "mois-2026",
+        "civil-alerts"
+      ]
+    },
+    {
+      "id": "nuclear-after-flash",
+      "level_id": "first-actions",
+      "scenario_id": "nuclear-alert",
+      "prompt": "During a nuclear alert, there is no time to reach a shelter right after a flash. What is the first action?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "Drop flat and protect your body until the blast wave and debris pass, then move to fallout shelter.",
+          "feedback": "Correct. Protect yourself from the immediate blast first, then shelter from fallout."
+        },
+        {
+          "id": "b",
+          "text": "Run to a window to see what happened.",
+          "feedback": "Unsafe. Windows pose severe shattering/debris hazards. Take cover away from glass first."
+        },
+        {
+          "id": "c",
+          "text": "Stay in place until a fixed timer expires regardless of conditions.",
+          "feedback": "Unsafe. A fixed time does not guarantee safety. Assess local hazards and official broadcasts."
+        }
+      ],
+      "answer_id": "a",
+      "source_ids": [
+        "mois-2026",
+        "civil-alerts"
+      ]
+    },
+    {
+      "id": "power-outage-light",
+      "level_id": "home-safety",
+      "scenario_id": "power-outage",
+      "prompt": "A power outage occurs. What should you do first for lighting and food safety?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "Open the refrigerator door frequently to check food.",
+          "feedback": "Unsafe. Opening the door lets cold air escape much faster."
+        },
+        {
+          "id": "b",
+          "text": "Run a fuel generator or charcoal stove indoors for light and power.",
+          "feedback": "Unsafe. Burning fuel indoors creates fatal carbon monoxide and fire hazards."
+        },
+        {
+          "id": "c",
+          "text": "Use a flashlight and keep refrigerator and freezer doors closed.",
+          "feedback": "Correct. Use battery lighting and preserve cold air inside appliances."
+        }
+      ],
+      "answer_id": "c",
+      "source_ids": [
+        "power",
+        "cdc-power"
+      ]
+    },
+    {
+      "id": "water-outage-drinking",
+      "level_id": "home-safety",
+      "scenario_id": "water-outage",
+      "prompt": "You found an emergency water station during a water outage. What must you verify before drinking?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "Check operating status and official confirmation that the water is potable.",
+          "feedback": "Correct. Use stored drinking water first and verify potability before drinking station water."
+        },
+        {
+          "id": "b",
+          "text": "Drink it right away since it comes from an emergency station.",
+          "feedback": "Unsafe. Emergency water points may supply non-potable water for washing/sanitation."
+        },
+        {
+          "id": "c",
+          "text": "Drink any water as long as it has no odor.",
+          "feedback": "Unsafe. Microbial or chemical contamination cannot be detected by smell alone."
+        }
+      ],
+      "answer_id": "a",
+      "source_ids": [
+        "water",
+        "facilities",
+        "cdc-water"
+      ]
+    },
+    {
+      "id": "prepare-before-alert",
+      "level_id": "home-safety",
+      "scenario_id": "prepare",
+      "prompt": "What is most helpful in peacetime for preparing your family's evacuation plan?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "Plan to shop at pharmacies and stores after an alert sounds.",
+          "feedback": "Unsafe. Never delay evacuation to buy supplies during an alert; prepare in peacetime."
+        },
+        {
+          "id": "b",
+          "text": "Write down two shelter locations/entrances and an out-of-contact meetup plan on paper.",
+          "feedback": "Correct. Verify locations in person and keep a shared written record."
+        },
+        {
+          "id": "c",
+          "text": "Assume every shelter shown on a map app is always open.",
+          "feedback": "Unsafe. Map listings do not guarantee current operation or access."
+        }
+      ],
+      "answer_id": "b",
+      "source_ids": [
+        "mois-2026",
+        "safety-map",
+        "civil-preparedness"
+      ]
+    },
+    {
+      "id": "cbrn-location",
+      "level_id": "changing-situation",
+      "scenario_id": "cbrn-alert",
+      "prompt": "You receive a CBRN alert. How should you choose where to shelter?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "Follow official guidance on the agent type, shelter location, and protective actions.",
+          "feedback": "Correct. Chemical, biological, and radiological events require different shelter instructions."
+        },
+        {
+          "id": "b",
+          "text": "Always go to the deepest basement regardless of the agent.",
+          "feedback": "Unsafe. Some chemical agents sink into basements, so upper-floor sealed indoor shelter may be ordered."
+        },
+        {
+          "id": "c",
+          "text": "Treat it like a standard alert and turn off the radio.",
+          "feedback": "Unsafe. Shelter and all-clear instructions differ; keep monitoring official broadcasts."
+        }
+      ],
+      "answer_id": "a",
+      "source_ids": [
+        "mois-2026",
+        "civil-alerts"
+      ]
+    },
+    {
+      "id": "prepare-long-term",
+      "level_id": "changing-situation",
+      "scenario_id": "prepare",
+      "prompt": "How should you interpret the app's '4-person · 3-day' example vs. official long-term preparedness guides?",
+      "choices": [
+        {
+          "id": "a",
+          "text": "Set 15 butane canisters as an automatic 3-day target for every household.",
+          "feedback": "Incorrect. The 15+ canister figure is a long-term preparedness reference; consider stove type and safe storage."
+        },
+        {
+          "id": "b",
+          "text": "Treat the 3-day example as the final target for every household.",
+          "feedback": "Incorrect. Official guides recommend up to 30 days of household food/water, and needs vary by household."
+        },
+        {
+          "id": "c",
+          "text": "Use the 3-day figure as a starting baseline, and adjust targets based on official long-term guidance and home storage.",
+          "feedback": "Correct. Review long-term guidance and tailor targets and rotation schedules to your household."
+        }
+      ],
+      "answer_id": "c",
+      "source_ids": [
+        "supplies",
+        "kgs-butane",
+        "kgs-butane-use"
+      ]
+    }
+  ]
+}

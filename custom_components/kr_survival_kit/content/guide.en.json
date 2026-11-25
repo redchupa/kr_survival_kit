@@ -1,0 +1,435 @@
+{
+  "schema_version": 1,
+  "content_version": "0.1.0-draft.12",
+  "official_first": "Follow active emergency alerts, official broadcasts, and on-site instructions first.",
+  "household_summary": "4-person · 3-day example: 24 L drinking water, ~46 L total safe water (23 × 2 L bottles, incl. drinking), 36 servings of instant meals & canned goods; adjust to your household.",
+  "communication_loss": {
+    "title": "If Phone & Internet Fail",
+    "first_action": "If evacuation is needed, evacuate first. Check local announcements or a battery-powered radio for updates.",
+    "paper_note": "Do not assume an alert is over simply because you cannot hear announcements.",
+    "source_ids": ["mois-2026", "civil-preparedness", "civil-alerts"],
+    "review_status": "draft",
+    "reviewed_on": null
+  },
+  "sources": {
+    "project-example": {
+      "publisher": "Household Example",
+      "title": "Checklist-Based Optional Supplies",
+      "url": "",
+      "section": "Not an official mandate. Enable items as needed and check package expiration dates.",
+      "checked_on": "2026-11-10"
+    },
+    "mois-2026": {
+      "publisher": "MOIS (Korea)",
+      "title": "2026 Civil Emergency Action Guide",
+      "url": "https://www.mois.go.kr/frt/bbs/type001/commonSelectBoardArticle.do?bbsId=BBSMSTR_000000000327&nttId=128720",
+      "section": "Preparedness, alert responses, shelters, and evacuation support",
+      "checked_on": "2026-11-10"
+    },
+    "mois-guide": {
+      "publisher": "MOIS (Korea)",
+      "title": "Emergency Action Guidelines",
+      "url": "https://www.mois.go.kr/frt/bbs/type002/commonSelectBoardArticle.do?bbsId=BBSMSTR_000000000530&nttId=119828",
+      "section": "Peacetime prep, civil defense alert actions, shelter conduct",
+      "checked_on": "2026-11-09"
+    },
+    "facilities": {
+      "publisher": "SafeKorea (국민안전24)",
+      "title": "Civil Defense Facility Lookup",
+      "url": "https://www.safekorea.go.kr/safekorea-kor/em/emergency/erm.html",
+      "section": "Civil defense shelters and emergency water supply facilities",
+      "checked_on": "2026-11-09"
+    },
+    "supplies": {
+      "publisher": "SafeKorea (국민안전24)",
+      "title": "Emergency Supply Preparation Guide",
+      "url": "https://safekorea.go.kr/safekorea-kor/acts/nacts/action-guide.do?category=preparationEmcSuply&menuSn=4",
+      "section": "30-day household food/water, 15+ butane canisters, and rotating dated supplies",
+      "checked_on": "2026-11-17"
+    },
+    "civil-alerts": {
+      "publisher": "SafeKorea (국민안전24)",
+      "title": "Civil Defense Alert Actions",
+      "url": "https://safekorea.go.kr/safekorea-kor/acts/nacts/action-guide.do?actsHeaderTitle=%EB%AF%BC%EB%B0%A9%EA%B3%B5%EA%B2%BD%EB%B3%B4&category=civlAirDefenseWarning&menuSn=4",
+      "section": "Warning, Air Raid, CBRN, and Nuclear alert actions and post-shelter broadcasts",
+      "checked_on": "2026-11-09"
+    },
+    "civil-preparedness": {
+      "publisher": "SafeKorea (국민안전24)",
+      "title": "Civil Preparedness",
+      "url": "https://www.safekorea.go.kr/safekorea-kor/acts/nacts/action-guide.do?actsHeaderTitle=%EB%B9%84%EC%83%81%EB%8C%80%EB%B9%84&category=stateOfEmergency&menuSn=4",
+      "section": "Flood-prone basements, official broadcasts, and family meetup points",
+      "checked_on": "2026-11-09"
+    },
+    "power": {
+      "publisher": "SafeKorea (국민안전24)",
+      "title": "Power Outages & Shortages",
+      "url": "https://www.safekorea.go.kr/safekorea-kor/acts/nacts/action-guide.do?category=powerOutagesandShortages&menuSn=4",
+      "section": "Flashlights, apartment blackouts, and elevator outages",
+      "checked_on": "2026-11-09"
+    },
+    "water": {
+      "publisher": "Incheon City",
+      "title": "Tap Water Outage Guide",
+      "url": "https://www.yeonsu.go.kr/UpFiles/board_1/%EC%9E%AC%EB%82%9C%EB%B0%9C%EC%83%9D_%EC%8B%9C_%EA%B5%AD%EB%AF%BC%ED%96%89%EB%8F%99%EC%9A%94%EB%A0%B9.pdf",
+      "section": "Scheduled and sudden tap water outages",
+      "checked_on": "2026-11-09"
+    },
+    "cdc-power": {
+      "publisher": "US CDC",
+      "title": "Protect Yourself During a Power Outage",
+      "url": "https://www.cdc.gov/natural-disasters/response/what-to-do-protect-yourself-during-a-power-outage.html",
+      "section": "Carbon monoxide prevention and food safety",
+      "checked_on": "2026-11-09"
+    },
+    "food-power": {
+      "publisher": "FoodSafety.gov",
+      "title": "Food Safety During a Power Outage",
+      "url": "https://www.foodsafety.gov/food-safety-charts/food-safety-during-power-outage",
+      "section": "When to discard refrigerated food (never taste to test)",
+      "checked_on": "2026-11-10"
+    },
+    "lift": {
+      "publisher": "Danyang Disaster HQ",
+      "title": "Elevator Emergency Guide",
+      "url": "https://www.danyang.go.kr/dysafe/1704",
+      "section": "Use intercom when stopped; do not force doors open",
+      "checked_on": "2026-11-10"
+    },
+    "cdc-water": {
+      "publisher": "US CDC",
+      "title": "Safe Water in Emergencies",
+      "url": "https://www.cdc.gov/water-emergency/about/index.html",
+      "section": "Safe drinking water when tap water is unavailable or suspect",
+      "checked_on": "2026-11-09"
+    },
+    "safety-map": {
+      "publisher": "SafeKorea (국민안전24)",
+      "title": "Safety Map",
+      "url": "https://www.safekorea.go.kr/safekorea-kor/flsm/flsm/facilitiesSafteyMap.do",
+      "section": "Shelter, water point, and pharmacy lookup (verify access on site)",
+      "checked_on": "2026-11-16"
+    },
+    "usfa-battery": {
+      "publisher": "US Fire Administration",
+      "title": "Battery Fire Safety",
+      "url": "https://www.usfa.fema.gov/prevention/home-fires/prevent-fires/batteries/",
+      "section": "Lithium-ion charging, storage, and stopping use if swollen/overheated",
+      "checked_on": "2026-11-16"
+    },
+    "solar-manual": {
+      "publisher": "EcoFlow",
+      "title": "110W Portable Solar Panel Manual",
+      "url": "https://manuals.ecoflow.com/us/product/110w-lightweight-portable-solar-panel?lang=en_US",
+      "section": "Example for checking voltage, current, and connector compatibility",
+      "checked_on": "2026-11-16"
+    },
+    "kgs-butane": {
+      "publisher": "Korea Gas Safety Corp.",
+      "title": "Old Butane Canister Collection",
+      "url": "https://kgs.or.kr/gwangju/hea/board.do?searchBoardSn=102476",
+      "section": "Replacing canisters over 3 years old or with rust/dents",
+      "checked_on": "2026-11-16"
+    },
+    "kgs-butane-use": {
+      "publisher": "Korea Gas Safety Corp.",
+      "title": "Portable Stove & Butane Safety",
+      "url": "https://www.kgs.or.kr/kgs/agc/board.do?searchBoardSn=102696",
+      "section": "Keep away from heat, avoid oversized pans, detach canister after use",
+      "checked_on": "2026-11-16"
+    },
+    "nps-navigation": {
+      "publisher": "US National Park Service",
+      "title": "Outdoor Emergency Plan",
+      "url": "https://www.nps.gov/articles/gtgemergencyplan.htm",
+      "section": "Stop, orient with map/compass/landmarks, do not wander blindly",
+      "checked_on": "2026-11-16"
+    },
+    "usgs-compass": {
+      "publisher": "US Geological Survey",
+      "title": "Finding Your Way With Map and Compass",
+      "url": "https://www.usgs.gov/educational-resources/finding-your-way-map-and-compass",
+      "section": "Practicing paper map scale, terrain, and compass bearings",
+      "checked_on": "2026-11-16"
+    },
+    "faa-flying": {
+      "publisher": "US FAA",
+      "title": "Flying Safe",
+      "url": "https://www.faa.gov/travelers/fly_safe",
+      "section": "Safety briefing, seatbelts, nearest exits, and crew instructions",
+      "checked_on": "2026-11-16"
+    },
+    "korail-emergency": {
+      "publisher": "KORAIL",
+      "title": "Rail Emergency Action Guide",
+      "url": "https://info.korail.com/info/contents.do?key=970",
+      "section": "Train intercom, emergency lighting, and crew instructions",
+      "checked_on": "2026-11-16"
+    },
+    "uscg-boating": {
+      "publisher": "US Coast Guard",
+      "title": "Federal Requirements for Recreational Boats",
+      "url": "https://www.uscgboating.org/assets/1/AssetManager/Boaters-Guide-to-Federal-Requirements-for-Receational-Boats-20231108.pdf",
+      "section": "Check life jacket fit and location before boarding",
+      "checked_on": "2026-11-16"
+    },
+    "cdc-sanitation": {
+      "publisher": "US CDC",
+      "title": "Environmental Health Emergency Response Guide",
+      "url": "https://stacks.cdc.gov/view/cdc/39018/cdc_39018_DS1.pdf",
+      "section": "Bag-lined toilet/container sanitation when sewage is unavailable",
+      "checked_on": "2026-11-16"
+    },
+    "cdc-cold": {
+      "publisher": "US CDC",
+      "title": "Preventing Hypothermia",
+      "url": "https://www.cdc.gov/winter-weather/prevention/index.html",
+      "section": "Hypothermia risks when wet/cold; dry layers and medical help",
+      "checked_on": "2026-11-17"
+    },
+    "noaa-seawater": {
+      "publisher": "US NOAA",
+      "title": "Can humans drink seawater?",
+      "url": "https://oceanservice.noaa.gov/facts/drinksw.html",
+      "section": "Drinking seawater worsens dehydration due to salt excretion",
+      "checked_on": "2026-11-17"
+    }
+  },
+  "paper_checkpoints": {
+    "condition": "Do not return or depart just because time has passed. Follow new alerts and on-site instructions first.",
+    "rows": [
+      {"when": "Right After Shelter", "text": "Account for companions, check nearby hazards, and listen to broadcasts. Do not drive to schools during air raids."},
+      {"when": "First 24 Hours", "text": "Check drinking water, essential meds, and care items. Report your status when safe and communications allow."},
+      {"when": "Days 1–3+", "text": "Check remaining supplies and distribution points. Before long-distance travel, verify official orders, routes, and support."}
+    ],
+    "source_ids": ["mois-2026", "civil-preparedness", "civil-alerts"],
+    "review_status": "draft",
+    "reviewed_on": null
+  },
+  "playbook": [
+    {
+      "id": "first-day",
+      "label": "First 24h",
+      "title": "First 24 Hours After an Alert",
+      "intro": "Checkpoints are measured from when the alert was first confirmed. Timing for shelter, return, or travel depends on on-site hazards and official orders.",
+      "rows": [
+        {"when": "Immediate", "title": "Take protective action for the alert", "text": "Follow the first action for your alert. If caring for children or anyone needing assistance, guide them to shelter first. If your go-bag is out of reach, do not delay evacuation to look for it."},
+        {"when": "After Shelter", "title": "Account for people and nearby hazards", "text": "Check everyone with you and look for smoke or flooding. Do not leave shelter just because noise stops; listen to on-site announcements or a battery radio."},
+        {"when": "20–60 min", "title": "Separated family members shelter in place", "text": "At work, school, or home, follow local site instructions. Caregivers should not drive to schools during an air raid. Share your location once safe and connected."},
+        {"when": "1–6 hours", "title": "Use your offline meetup plan if needed", "text": "Only travel to your written meetup point when movement is officially permitted. Do not set out blindly if someone is overdue; log last known times and places."},
+        {"when": "6–24 hours", "title": "Prepare for extended stay", "text": "Check drinking water, prescription medications, care supplies, flashlights, and radio. If power or water remains out, switch to the Outage tab."}
+      ],
+      "source_ids": ["mois-2026", "civil-preparedness"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "supply-outage",
+      "label": "Outages & Supply",
+      "title": "During Extended Power & Water Outages",
+      "intro": "Verify official notices and local safety before sheltering in place. If a new air raid, CBRN, or nuclear alert sounds, switch to that alert's first action immediately.",
+      "rows": [
+        {"when": "Immediate", "title": "When both power and water are cut", "text": "Use flashlights and keep fridge/freezer doors shut. Use stored drinking water first. Use DC/USB ports on power banks to avoid AC inverter standby loss. Never run fuel generators or charcoal indoors."},
+        {"when": "Day 1", "title": "Log outage time and prioritize perishables", "text": "A closed fridge stays cold ~4 hours; a full freezer ~48 hours (~24h half-full). Eat safe perishables first and discard refrigerated food held above 4°C for over 4 hours—never taste to test."},
+        {"when": "Days 1–3", "title": "Track water, sanitation, and power daily", "text": "Separate drinking water from washing water. If sewage lines are damaged or restricted, do not flush—use a bag-lined container. Reserve battery power for lighting and radio broadcasts."},
+        {"when": "Days 4–14", "title": "Check aid before supplies run out", "text": "Monitor remaining water, food, and medications and locate official supply points. If fire or flooding makes your building unsafe, evacuate immediately."},
+        {"when": "Day 15+", "title": "Long-term support and care continuity", "text": "Reconfirm official water, medical, and care stations. Keep infant feeding and medication routines consistent and update paper contact logs."}
+      ],
+      "source_ids": ["mois-2026", "power", "water", "cdc-power", "food-power", "cdc-water"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "relocation",
+      "label": "Travel Decision",
+      "title": "When to Stay vs. When to Relocate",
+      "intro": "Plan relocation across pre-crisis, early, and extended phases. Never assume roads become safe simply after a set number of days.",
+      "rows": [
+        {"when": "Peacetime / Early", "title": "Keep documents and transit options ready", "text": "Prepare family IDs, passports, and contact plans. Check official advisories, operating carriers, entry rules, and destination lodging before planning long-distance travel."},
+        {"when": "During Alert", "title": "Nearest protective shelter comes first", "text": "Move to the nearest shelter for the alert. Postpone long drives or cross-city meetups until the immediate threat passes."},
+        {"when": "On Evacuation Order", "title": "Verify four departure conditions", "text": "Confirm: (1) official order or local hazard, (2) open route and transport, (3) accessible destination, and (4) support for dependents. Never bypass roadblocks."},
+        {"when": "Choosing Mode", "title": "Compare foot, vehicle, and transit", "text": "Verify walking distance/ability, official road access and fuel for cars, and confirmed operation for rail/air/ferry before departing."},
+        {"when": "On Arrival", "title": "Confirm headcount and local support", "text": "Record arrival time, check everyone in, share status if possible, and locate water, food, and medical support."}
+      ],
+      "source_ids": ["mois-2026", "civil-alerts", "facilities"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "scenario-switch",
+      "label": "Scenario Matrix",
+      "title": "Scenario Transition Matrix",
+      "intro": "Multiple events can overlap. Whenever a new alert or evacuation order arrives, follow that scenario's first action immediately.",
+      "layout": "matrix",
+      "rows": [
+        {"when": "Peacetime / Tension", "title": "Verify shelters, meetup plans, and core supplies.", "text": "Monitor official advisories and transit status; review the four departure conditions before considering travel."},
+        {"when": "Power / Water Outage", "title": "Use flashlights and stored drinking water.", "text": "Secure fridge food on Day 1, then audit safe water and supply points daily."},
+        {"when": "Air Raid / Shelling", "title": "Move to the nearest shelter.", "text": "Confirm headcount and local hazards inside. Do not leave based on silence or elapsed time alone."},
+        {"when": "CBRN / Nuclear", "title": "Check official instructions for shelter type.", "text": "Different agents require different shelter locations (basement vs. sealed upper floor)."},
+        {"when": "Long-Range Evacuation", "title": "Follow official destination and route orders.", "text": "Verify transit, fuel, and dependent care; report status upon arrival."},
+        {"when": "Extended Supply Cut", "title": "Track remaining days of water, meds, and care.", "text": "Update aid locations and reassess immediately if building safety is compromised."}
+      ],
+      "source_ids": ["mois-2026", "civil-preparedness", "civil-alerts", "power"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "drill",
+      "label": "Drills & Audits",
+      "title": "Calculating Readiness in Drills",
+      "intro": "Check readiness using real numbers from your home. Examples below are illustrative; actual needs vary by household and event.",
+      "rows": [
+        {"when": "01 · Water", "title": "Stored volume ÷ daily household use", "text": "Example: 12 L safe water ÷ 6 L/day = 2 days. Count cooking/hygiene water separately, and mark unverified water as unknown."},
+        {"when": "02 · Power", "title": "Watts (W) × hours (h) = Watt-hours (Wh)", "text": "Example: 2W light × 4h + 3W radio × 2h + 10W charger × 1h = 24 Wh/day. A 120 Wh usable bank lasts ~5 days before conversion losses."},
+        {"when": "03 · Roles", "title": "Practice solo and shared caregiving", "text": "Simulate zero phone/internet: practice evacuating alone with dependents, sheltering separately, and reuniting safely."},
+        {"when": "04 · Audit", "title": "Verified items ÷ total checked items", "text": "Example: 3 of 4 core checks verified = 75% audit completion. Note missing items and set the next review date."},
+        {"when": "05 · Table-Top", "title": "Combine air raid + comms blackout", "text": "Using paper only, locate first actions, broadcast channels, and meetup points. Then test outage and supply scenarios."}
+      ],
+      "source_ids": ["mois-2026", "civil-preparedness", "supplies"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "equipment-use",
+      "label": "Equipment Check",
+      "title": "Testing Equipment in Peacetime",
+      "intro": "Read manuals and test gear before an emergency. Never count equipment as ready unless its limits and condition are verified.",
+      "layout": "reference",
+      "rows": [
+        {"when": "Power", "title": "Power Banks & Stations", "text": "Check charger specs and output limits. Charge on a firm, ventilated surface. Stop using immediately if swollen, leaking, smelling odd, or overheating."},
+        {"when": "Solar", "title": "Solar Panel to Power Station", "text": "Verify voltage, current, and connector compatibility in both manuals before connecting. Inspect cables and mounting spots in peacetime."},
+        {"when": "Water", "title": "Portable Water Filters", "text": "Use stored potable water first. Check what contaminants a filter removes—many do not remove viruses and require secondary disinfection. Never drink seawater or chemically/radiologically suspect water."},
+        {"when": "Cooking", "title": "Portable Stoves & Butane", "text": "Check manufacture/expiry dates and inspect cans for rust or dents. Keep away from heat, never use indoors without ventilation, and detach cans after use."}
+      ],
+      "source_ids": ["usfa-battery", "solar-manual", "cdc-water", "noaa-seawater", "kgs-butane", "kgs-butane-use"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "field-skills",
+      "label": "Field Skills",
+      "title": "Navigation & Hygiene Skills to Practice",
+      "intro": "On-site hazards and official orders always take priority. These notes cover general peacetime skills and do not guarantee route safety.",
+      "layout": "reference",
+      "rows": [
+        {"when": "Navigation", "title": "Paper Maps & Compass", "text": "Print maps to shelters and meetup points in peacetime and practice reading scale, landmarks, and bearings. If lost, stop and orient before moving."},
+        {"when": "Transit", "title": "Emergency Procedures Over Seat Choice", "text": "On planes, read safety cards, fasten belts, and note nearest exits. On trains, locate emergency intercoms and lighting and follow crew instructions."},
+        {"when": "Marine", "title": "Life Jackets & Crew Orders", "text": "Confirm life jacket fit and location before boarding, and follow crew instructions during incidents."},
+        {"when": "Sanitation", "title": "When Toilets Cannot Flush", "text": "Do not assume toilets are unusable on water outage alone, but if sewage is damaged/restricted, do not flush—use a bag-lined container and wash hands."},
+        {"when": "Cold", "title": "Wet Clothing & Hypothermia", "text": "Move out of wind, remove wet clothes, and layer dry clothes/blankets. Shivering, confusion, or slurred speech signal hypothermia—seek medical help and avoid alcohol or direct open-flame heat."}
+      ],
+      "source_ids": ["nps-navigation", "usgs-compass", "faa-flying", "korail-emergency", "uscg-boating", "cdc-sanitation", "cdc-cold"],
+      "review_status": "draft",
+      "reviewed_on": null
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "air-raid",
+      "title": "Air Raid Alert",
+      "kind": "Civil Defense Alerts",
+      "first_action": "Evacuate immediately to the nearest civil defense shelter or safe underground facility.",
+      "details": [
+        "Use emergency stairs in high-rise buildings.",
+        "If driving, pull over safely to an open lot or the right shoulder and evacuate.",
+        "Avoid basements prone to flooding during heavy rain; if underground shelter is unavailable, move to an interior windowless room in a concrete building.",
+        "Keep listening to official government broadcasts inside the shelter."
+      ],
+      "paper_note": "Use stairs in high-rises. If underground shelter is flooded or unavailable, shelter in a windowless interior concrete room.",
+      "source_ids": ["mois-2026", "civil-preparedness"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "civil-warning",
+      "title": "Civil Defense Warning",
+      "kind": "Civil Defense Alerts",
+      "first_action": "Monitor official broadcasts and evacuate immediately if ordered.",
+      "details": [
+        "If permitted by local guidance, help children and people needing mobility assistance evacuate early.",
+        "If no evacuation order is active, prepare to move at a moment's notice and keep monitoring updates."
+      ],
+      "paper_note": "Prepare to evacuate if no order is active yet; assist children and mobility-impaired family members.",
+      "source_ids": ["mois-2026", "civil-alerts"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "cbrn-alert",
+      "title": "CBRN Alert",
+      "kind": "Civil Defense Alerts",
+      "first_action": "Follow official instructions for shelter location and protective actions.",
+      "details": [
+        "For chemical attacks with shelter-in-place orders, move to an upper-floor room that can be sealed from outside air.",
+        "For biological alerts, follow authorities' orders on designated shelter or staying home.",
+        "Keep monitoring official broadcasts throughout."
+      ],
+      "paper_note": "For chemical indoor-shelter orders, move to a higher-floor room sealed from outside air.",
+      "source_ids": ["mois-2026", "civil-alerts"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "nuclear-alert",
+      "title": "Nuclear Alert",
+      "kind": "Civil Defense Alerts",
+      "first_action": "If there is time before detonation, move quickly to a sealed underground shelter.",
+      "details": [
+        "If caught in the open right after a flash, drop flat and protect your body until the blast wave and debris stop.",
+        "Afterward, move to a deep basement or interior concrete structure to reduce fallout exposure and listen to broadcasts.",
+        "If fire or structural hazards force you to leave, follow on-site emergency instructions."
+      ],
+      "paper_note": "After a flash, drop and cover until blast/debris pass, then shelter deep underground or inside concrete from fallout.",
+      "source_ids": ["mois-2026", "civil-alerts"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "power-outage",
+      "title": "Power Outage",
+      "kind": "Utility Outages",
+      "first_action": "Use flashlights and keep refrigerator and freezer doors closed.",
+      "details": [
+        "If trapped in an elevator, use the emergency bell or intercom; never force the doors open.",
+        "Never run fuel generators or charcoal stoves indoors, in garages, or near windows, doors, or vents."
+      ],
+      "paper_note": "Never use fuel generators or charcoal indoors.",
+      "source_ids": ["power", "cdc-power", "lift"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "water-outage",
+      "title": "Water Outage",
+      "kind": "Utility Outages",
+      "first_action": "Use pre-stored drinking water first.",
+      "details": [
+        "Check municipal or utility notices for emergency water truck locations and hours.",
+        "Drink water from emergency stations only after confirming it is potable.",
+        "Even after tap water returns, follow any boil-water or non-potable advisories."
+      ],
+      "paper_note": "Verify operating status and potability before drinking emergency water.",
+      "source_ids": ["water", "facilities", "cdc-water"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "prepare",
+      "title": "Peacetime Prep",
+      "kind": "Household Check",
+      "first_action": "Verify two civil defense shelters and write them on your family paper sheet.",
+      "details": [
+        "Choose a family meetup point in case communications fail. During an active alert, sheltering comes before reuniting.",
+        "Visit shelter entrances in person and verify that your battery-powered radio works and receives stations.",
+        "Check SafeKorea maps and local maps in peacetime for primary and backup shelters, pharmacies, stations, and stores. Map pins do not guarantee access during a crisis—never delay evacuation to shop.",
+        "Audit your drinking water, shelf-stable foods, and hygiene supplies first, and rotate items nearing expiration.",
+        "The 4-person · 3-day example is a starting baseline. SafeKorea recommends 30 days of food/water and 15+ butane canisters—set household targets safely according to your stove and storage.",
+        "Check flashlights, batteries, go-bags, and any dependent-care items."
+      ],
+      "paper_note": "Set a no-phone meetup spot and test your battery radio reception.",
+      "source_ids": ["mois-2026", "facilities", "safety-map", "supplies", "civil-preparedness"],
+      "review_status": "draft",
+      "reviewed_on": null
+    }
+  ]
+}
