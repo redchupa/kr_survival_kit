@@ -265,7 +265,7 @@ function krBoundedInt(value, min, max) {
   return number >= min && number <= max ? number : null;
 }
 
-const KR_ASSET_VERSION = "0.12.1";
+const KR_ASSET_VERSION = "0.13.0";
 
 function krGetLang() {
   try { return window.localStorage?.getItem("kr_survival_kit_lang") === "en" ? "en" : "ko"; } catch { return "ko"; }
@@ -1575,6 +1575,50 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     :host([data-kr-themed]) .add-lot{border-color:var(--kr-accent);color:var(--kr-accent)}
     :host([data-kr-themed]) .quick-bar .qbtn[data-dir="up"]{color:var(--kr-accent)}
     :host([data-kr-themed]) .quick-bar .qbtn:hover:not(:disabled){background:var(--kr-glow);border-color:var(--kr-accent)}
+    :host([data-kr-themed]) ha-card{border-radius:var(--kr-radius,16px);box-shadow:var(--kr-shadow,0 24px 64px rgba(4,14,24,.32));border:1px solid var(--kr-line)}
+    :host([data-kr-themed]) .ready-panel,:host([data-kr-themed]) .compact-detail,:host([data-kr-themed]) .expiring-banner,:host([data-kr-themed]) .loc-group{border-radius:var(--kr-radius,14px)}
+    :host([data-kr-themed]) .ready-item .shelf-edit,:host([data-kr-themed]) .signals button,:host([data-kr-themed]) .mission-item,:host([data-kr-themed]) .quest-btn{border-radius:var(--kr-tile-radius,12px)}
+    :host([data-kr-themed]) .ready-art,:host([data-kr-themed]) .dialog-art{background:var(--kr-art-bg,rgba(9,25,36,.42));border-color:var(--kr-line);border-radius:var(--kr-tile-radius,12px)}
+
+    /* Bespoke Theme Signatures */
+    :host([data-theme-id="cute"]) .hero{background:radial-gradient(circle at 18% 20%,rgba(255,182,213,.45) 0 18%,transparent 19%),radial-gradient(circle at 86% 14%,rgba(255,158,200,.42),transparent 46%),linear-gradient(135deg,#fff5f9 0%,#ffe7f0 100%)}
+    :host([data-theme-id="cute"]) .hero::before{background-image:radial-gradient(rgba(232,74,138,.12) 1.5px,transparent 1.5px);background-size:20px 20px}
+    :host([data-theme-id="cute"]) .ready-item .shelf-edit{background:linear-gradient(180deg,#ffffff 0%,#fff4f8 100%);box-shadow:0 6px 16px rgba(232,74,138,.1)}
+    :host([data-theme-id="cute"]) .ready-item .shelf-edit:hover:not(:disabled){transform:translateY(-3px) scale(1.01);box-shadow:0 10px 22px rgba(232,74,138,.2)}
+    :host([data-theme-id="cute"]) .rank-badge,:host([data-theme-id="cute"]) .pct-chip{border-radius:999px}
+
+    :host([data-theme-id="future"]) .hero{background:radial-gradient(circle at 82% 15%,rgba(0,240,255,.22),transparent 42%),radial-gradient(circle at 15% 85%,rgba(99,102,241,.2),transparent 45%),linear-gradient(135deg,#080f24 0%,#050914 100%)}
+    :host([data-theme-id="future"]) .hero::before{background-image:linear-gradient(rgba(0,240,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.07) 1px,transparent 1px);background-size:32px 32px}
+    :host([data-theme-id="future"]) .ready-panel,:host([data-theme-id="future"]) .compact-detail{backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(0,240,255,.22),0 8px 28px rgba(0,10,30,.45)}
+    :host([data-theme-id="future"]) .ready-item .shelf-edit{background:linear-gradient(160deg,rgba(16,28,58,.92),rgba(9,16,36,.96));box-shadow:inset 0 0 18px rgba(0,240,255,.07)}
+    :host([data-theme-id="future"]) .signals strong,:host([data-theme-id="future"]) .hero h2{text-shadow:0 0 14px rgba(0,240,255,.35)}
+
+    :host([data-theme-id="cyber"]) .hero{background:radial-gradient(circle at 85% 12%,rgba(255,42,133,.28),transparent 45%),radial-gradient(circle at 10% 90%,rgba(0,240,255,.16),transparent 45%),linear-gradient(135deg,#120824 0%,#07040f 100%)}
+    :host([data-theme-id="cyber"]) .hero::before{background-image:repeating-linear-gradient(0deg,rgba(255,42,133,.06) 0 1px,transparent 1px 3px),linear-gradient(90deg,rgba(0,240,255,.04) 1px,transparent 1px);background-size:100% 3px,24px 24px}
+    :host([data-theme-id="cyber"]) .hero h2{text-shadow:2px 0 rgba(0,240,255,.55),-2px 0 rgba(255,42,133,.55);letter-spacing:-.02em}
+    :host([data-theme-id="cyber"]) .ready-panel,:host([data-theme-id="cyber"]) .compact-detail{box-shadow:0 0 0 1px rgba(255,42,133,.28),0 10px 28px rgba(0,0,0,.6)}
+    :host([data-theme-id="cyber"]) .ready-item .shelf-edit{background:linear-gradient(180deg,#1a1033 0%,#0f091f 100%);border-color:rgba(155,77,255,.45)}
+    :host([data-theme-id="cyber"]) .ready-item[data-complete="true"] .shelf-edit{box-shadow:0 0 14px rgba(255,42,133,.32)}
+
+    :host([data-theme-id="robot"]) ha-card{border-top:5px solid #ff9f1c}
+    :host([data-theme-id="robot"]) .hero{background:repeating-linear-gradient(-45deg,rgba(255,159,28,.05) 0 8px,transparent 8px 16px),linear-gradient(135deg,#222730 0%,#14171c 100%)}
+    :host([data-theme-id="robot"]) .ready-panel{border-top:3px solid #ff9f1c;background:linear-gradient(180deg,#232830 0%,#191d24 100%)}
+    :host([data-theme-id="robot"]) .ready-item .shelf-edit{background:linear-gradient(180deg,#29303b 0%,#1d222b 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 4px 10px rgba(0,0,0,.35)}
+    :host([data-theme-id="robot"]) .tile-led{border-radius:2px;width:9px;height:5px}
+
+    :host([data-theme-id="pretty"]) .hero{background:radial-gradient(circle at 80% 15%,rgba(196,158,245,.36),transparent 48%),radial-gradient(circle at 12% 80%,rgba(245,190,220,.3),transparent 45%),linear-gradient(135deg,#fcfaff 0%,#f1e8fa 100%)}
+    :host([data-theme-id="pretty"]) .ready-panel,:host([data-theme-id="pretty"]) .compact-detail{box-shadow:0 12px 30px rgba(142,78,198,.08);border-width:1.5px}
+    :host([data-theme-id="pretty"]) .ready-item .shelf-edit{background:linear-gradient(180deg,#ffffff 0%,#f9f4ff 100%);box-shadow:0 6px 16px rgba(142,78,198,.09)}
+
+    :host([data-theme-id="cool"]) .hero{background:radial-gradient(circle at 85% 12%,rgba(46,229,157,.18),transparent 45%),linear-gradient(135deg,#0d1b17 0%,#070e0c 100%)}
+    :host([data-theme-id="cool"]) .hero::before{background-image:linear-gradient(rgba(46,229,157,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(46,229,157,.04) 1px,transparent 1px);background-size:22px 22px}
+    :host([data-theme-id="cool"]) .ready-item .shelf-edit{background:linear-gradient(180deg,#132621 0%,#0c1714 100%)}
+    :host([data-theme-id="cool"]) .ready-item[data-complete="true"] .shelf-edit{box-shadow:0 0 16px rgba(46,229,157,.2)}
+
+    :host([data-theme-id="horror"]) ha-card{box-shadow:inset 0 0 110px rgba(170,10,28,.26),0 24px 64px rgba(0,0,0,.78)}
+    :host([data-theme-id="horror"]) .hero{background:radial-gradient(circle at 82% 18%,rgba(255,40,65,.22),transparent 46%),radial-gradient(circle at 20% 80%,rgba(120,8,20,.25),transparent 52%),linear-gradient(135deg,#17070b 0%,#080305 100%)}
+    :host([data-theme-id="horror"]) .ready-item .shelf-edit{background:linear-gradient(180deg,#1d0b10 0%,#100508 100%)}
+    :host([data-theme-id="horror"]) .hero h2{text-shadow:0 0 18px rgba(255,59,78,.45)}
     </style><ha-card>${edit || customForm || settingsForm ? `<dialog id="item-dialog" aria-labelledby="item-dialog-title">${this._message && !settingsForm ? `<p class="message" role="status">${escape(this._message)}</p>` : ""}${edit || customForm || settingsForm}</dialog>` : ""}<section class="hero" aria-label="${T("비축 관리 개요", "Stockpile Overview")}"><div class="hero-intro"><div class="hero-head"><div class="hero-title">${display.nickname ? `<span class="nickname">🏠 ${escape(display.nickname)}</span>` : ""}<h2>${escape(titleText)}</h2></div><div class="atmosphere${display.show_clock ? "" : " no-clock"}" aria-label="${T("시각과 날씨", "Time and Weather")}">${survChip}<span id="local-clock">--:--</span><span id="local-weather" hidden></span><div class="view-switch" role="group" aria-label="${T("창고 보기", "Warehouse View")}"><button type="button" data-view-mode="2d" aria-pressed="${this._viewMode === "2d"}">${T("2D 선반", "2D Shelf")}</button><button type="button" data-view-mode="3d" aria-pressed="${this._viewMode === "3d"}">${T("3D 창고", "3D View")}</button></div><button type="button" id="refresh" aria-label="${T("재고 새로고침", "Refresh Inventory")}" title="${T("재고 새로고침", "Refresh Inventory")}">↻</button><button type="button" id="open-settings" aria-label="${T("대시보드 설정", "Dashboard Settings")}" title="${T("대시보드 설정", "Dashboard Settings")}" ${snapshot ? "" : "disabled"}>⚙</button></div></div>` +
       (!snapshot ? `<p class="hero-copy">${this._loadError ? T("재고를 읽지 못했습니다. 새로고침으로 다시 시도하세요.", "Failed to load inventory. Try refreshing.") : T("재고를 불러오는 중입니다.", "Loading inventory...")}</p>` : "") +
       `${signals}</div><div class="status-disclosures">${display.show_rank ? krStockRankView(snapshot, this._rankOpen, lang) : ""}${display.show_missions ? krMissionView(snapshot, escape, animateMission, this._missionOpen, lang) : ""}</div>` +
@@ -2210,6 +2254,11 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       :host([data-kr-themed]) .kind,:host([data-kr-themed]) .action-top h3,:host([data-kr-themed]) .references a,:host([data-kr-themed]) .comms strong,:host([data-kr-themed]) .time-when,:host([data-kr-themed]) .reference-item span{color:var(--kr-accent)}
       :host([data-kr-themed]) .hero-actions a,:host([data-kr-themed]) .quiz-panel button,:host([data-kr-themed]) .nav-items button.active,:host([data-kr-themed]) .sheet-tabs button[aria-selected="true"]{border-color:var(--kr-line);background:var(--kr-glow);color:var(--kr-text)}
       :host([data-kr-themed]) .nav-items button:hover,:host([data-kr-themed]) .sheet-tabs button:hover{background:var(--kr-glow)}
+      :host([data-kr-themed]) .hero,:host([data-kr-themed]) .rail,:host([data-kr-themed]) .action,:host([data-kr-themed]) .timeline,:host([data-kr-themed]) .references,:host([data-kr-themed]) .quiz-panel,:host([data-kr-themed]) .siren-box{border-radius:var(--kr-radius,18px)}
+      :host([data-theme-id="cyber"]) .hero{box-shadow:0 0 24px rgba(255,42,133,.2)}
+      :host([data-theme-id="robot"]) .hero{border-top:4px solid #ff9f1c}
+      :host([data-theme-id="horror"]) ha-card{box-shadow:inset 0 0 100px rgba(170,10,28,.24)}
+      :host([data-theme-id="cute"]) .hero,:host([data-theme-id="pretty"]) .hero{box-shadow:0 14px 36px rgba(160,90,170,.12)}
     </style><ha-card><main class="shell"><header class="hero"><div class="hero-content"><h2>${T("상황 안내", "Emergency Guide")}</h2><p><strong>${esc(guide.official_first)}</strong> ${T("받은 경보를 선택하면 첫 행동을 바로 확인할 수 있습니다.", "Select an alert to see immediate first actions.")}</p><div class="hero-actions"><a href="${esc(this._assetPath)}/kr-survival-kit-a4.pdf" target="_blank" rel="noopener">${T("A4 행동 카드 열기", "Open A4 Action Card")}</a><a class="secondary" href="${esc(this._assetPath)}/kr-survival-kit-offline.html" target="_blank" rel="noopener">${T("오프라인 안내 열기", "Open Offline Guide")}</a>${this._showInventoryLink ? `<a class="secondary" href="/kr-survival-kit/home">${T("비축 관리로", "Go to Stockpile")}</a>` : ""}</div></div><div class="orb" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 8 82 21v25c0 23-13 36-32 47C31 82 18 69 18 46V21z" fill="#7bc8d9" stroke="#dafaff" stroke-width="2"/><path d="M50 18 73 27v19c0 17-8 28-23 37-15-9-23-20-23-37V27z" fill="#22506a"/><path d="M50 30v34M33 47h34" stroke="#bbf1f3" stroke-width="7" stroke-linecap="round"/></svg></div></header>
     <div class="layout"><nav class="rail" aria-label="${T("상황 선택", "Select Scenario")}"><h2>${T("상황별 첫 행동", "First Actions")}</h2>${scenarioNav}</nav><section class="action" data-tone="${alertTone}" aria-live="polite"><div class="action-top"><p class="kind">${esc(scenario.kind)}</p><h2>${esc(scenario.title)}</h2><h3>${T("먼저 할 일", "Immediate Action")}</h3><p class="first-action">${esc(scenario.first_action)}</p></div><div class="action-body"><h3>${T("이어 확인할 일", "Next Steps")}</h3>${detail}${household}${sirenHtml}<div class="comms"><strong>${T("전화·인터넷이 끊기면", "If Phone/Internet Fails")}</strong>${esc(guide.communication_loss.first_action)} ${esc(guide.communication_loss.paper_note)}</div></div></section></div>
     <section class="timeline" aria-labelledby="timeline-title"><div class="section-head"><h2 id="timeline-title">${T(sheetHeading, "Extended Timeline & Reference")}</h2><p>${T(sheetSummary, "Follow official broadcasts and on-site instructions first.")}</p></div><div class="sheet-tabs" role="tablist" aria-label="${T("상세 행동 안내", "Detailed Playbook")}">${sheetNav}</div><div id="sheet-panel" role="tabpanel" aria-labelledby="tab-${esc(sheet.id)}" tabindex="0"><h3>${esc(sheet.title)}</h3><p class="sheet-intro">${esc(sheet.intro)}</p>${sheet.layout === "reference" ? `<div class="reference-grid">${rows}</div>` : `<ol class="time-list">${rows}</ol>`}</div></section>
@@ -2279,17 +2328,17 @@ if (!customElements.get("kr-survival-kit-guide-card")) {
 window.customCards.push({ type: "kr-survival-kit-guide-card", name: "KR Survival Kit 상황 안내", description: "경보별 첫 행동과 시간순 안내" });
 
 const KR_PANEL_THEMES = {
-  black: {name: "블랙", enName: "Black", scheme:"dark", bg: "#101215", surface: "#1c2026", glow: "#272f36", text: "#f1f4f5", muted: "#c0cbd0", line: "#49535d", accent: "#96e4da", "accent-ink": "#102021"},
-  white: {name: "화이트", enName: "White", scheme:"light", bg: "#f3f6f8", surface: "#ffffff", glow: "#e1ebf1", text: "#152b3a", muted: "#405763", line: "#aabfc9", accent: "#075d70", "accent-ink": "#ffffff"},
-  blue: {name: "블루", enName: "Blue", scheme:"dark", bg: "#101d38", surface: "#182d4f", glow: "#234568", text: "#eef6ff", muted: "#c6daf0", line: "#56769c", accent: "#8bd8ff", "accent-ink": "#112540"},
-  ivory: {name: "아이보리", enName: "Ivory", scheme:"light", bg: "#f2e9d7", surface: "#fff9ec", glow: "#ece0c5", text: "#362b20", muted: "#5d5040", line: "#b6a387", accent: "#714619", "accent-ink": "#ffffff"},
-  cute: {name: "귀여운", enName: "Cute", scheme:"light", bg: "#fff2f6", surface: "#ffffff", glow: "#ffe0eb", text: "#4a2034", muted: "#8c536e", line: "#f4b8ce", accent: "#e84a8a", "accent-ink": "#ffffff"},
-  future: {name: "미래", enName: "Future", scheme:"dark", bg: "#070b18", surface: "#0e162e", glow: "#17254d", text: "#e6f6ff", muted: "#8cb4d8", line: "#2b467a", accent: "#00f0ff", "accent-ink": "#04141d"},
-  cyber: {name: "사이버", enName: "Cyber", scheme:"dark", bg: "#090612", surface: "#140d26", glow: "#261447", text: "#f7ecff", muted: "#c6a4e8", line: "#5b2d8c", accent: "#ff2a85", "accent-ink": "#ffffff"},
-  robot: {name: "로봇", enName: "Robot", scheme:"dark", bg: "#16191e", surface: "#20252d", glow: "#2d3540", text: "#eef2f6", muted: "#9aa6b5", line: "#4c5766", accent: "#ff9f1c", "accent-ink": "#1a1100"},
-  pretty: {name: "예쁜", enName: "Pretty", scheme:"light", bg: "#f7f2fb", surface: "#ffffff", glow: "#ede2f7", text: "#2e1f3d", muted: "#6b5582", line: "#cfb9e6", accent: "#8e4ec6", "accent-ink": "#ffffff"},
-  cool: {name: "멋진", enName: "Cool", scheme:"dark", bg: "#09110f", surface: "#101e1b", glow: "#17302a", text: "#ebfaf6", muted: "#92bfb4", line: "#2d574c", accent: "#2ee59d", "accent-ink": "#062116"},
-  horror: {name: "공포", enName: "Horror", scheme:"dark", bg: "#0b0507", surface: "#170a0e", glow: "#2e0f18", text: "#f7e6e9", muted: "#b88a92", line: "#5c202c", accent: "#ff3b4e", "accent-ink": "#ffffff"},
+  black: {name: "블랙", enName: "Black", tagline: "미니멀 다크", enTagline: "Minimal Dark", scheme:"dark", bg: "#101215", surface: "#1c2026", glow: "#272f36", text: "#f1f4f5", muted: "#c0cbd0", line: "#49535d", accent: "#96e4da", "accent-ink": "#102021", "art-bg": "#151a20", radius: "16px", "tile-radius": "12px", shadow: "0 24px 64px rgba(0,0,0,.45)"},
+  white: {name: "화이트", enName: "White", tagline: "클린 라이트", enTagline: "Clean Light", scheme:"light", bg: "#f3f6f8", surface: "#ffffff", glow: "#e1ebf1", text: "#152b3a", muted: "#405763", line: "#aabfc9", accent: "#075d70", "accent-ink": "#ffffff", "art-bg": "#eef4f7", radius: "16px", "tile-radius": "12px", shadow: "0 18px 42px rgba(21,43,58,.1)"},
+  blue: {name: "블루", enName: "Blue", tagline: "딥 마린", enTagline: "Deep Marine", scheme:"dark", bg: "#101d38", surface: "#182d4f", glow: "#234568", text: "#eef6ff", muted: "#c6daf0", line: "#56769c", accent: "#8bd8ff", "accent-ink": "#112540", "art-bg": "#132645", radius: "16px", "tile-radius": "12px", shadow: "0 24px 64px rgba(4,14,28,.45)"},
+  ivory: {name: "아이보리", enName: "Ivory", tagline: "웜 페이퍼", enTagline: "Warm Paper", scheme:"light", bg: "#f2e9d7", surface: "#fff9ec", glow: "#ece0c5", text: "#362b20", muted: "#5d5040", line: "#b6a387", accent: "#714619", "accent-ink": "#ffffff", "art-bg": "#f5ebd8", radius: "16px", "tile-radius": "12px", shadow: "0 18px 42px rgba(54,43,32,.1)"},
+  cute: {name: "귀여운", enName: "Cute", tagline: "파스텔 라운드", enTagline: "Pastel Pill", scheme:"light", bg: "#fff2f6", surface: "#ffffff", glow: "#ffe0eb", text: "#4a2034", muted: "#8c536e", line: "#f4b8ce", accent: "#e84a8a", "accent-ink": "#ffffff", "art-bg": "#ffe8f1", radius: "24px", "tile-radius": "18px", shadow: "0 20px 46px rgba(232,74,138,.14)"},
+  future: {name: "미래", enName: "Future", tagline: "오비탈 HUD", enTagline: "Orbital HUD", scheme:"dark", bg: "#070b18", surface: "#0e162e", glow: "#17254d", text: "#e6f6ff", muted: "#8cb4d8", line: "#2b467a", accent: "#00f0ff", "accent-ink": "#04141d", "art-bg": "#0a132b", radius: "14px", "tile-radius": "10px", shadow: "0 24px 64px rgba(0,20,60,.65)"},
+  cyber: {name: "사이버", enName: "Cyber", tagline: "네온 스캔라인", enTagline: "Neon CRT", scheme:"dark", bg: "#090612", surface: "#140d26", glow: "#261447", text: "#f7ecff", muted: "#c6a4e8", line: "#5b2d8c", accent: "#ff2a85", "accent-ink": "#ffffff", "art-bg": "#1a0e30", radius: "4px", "tile-radius": "4px", shadow: "0 0 36px rgba(255,42,133,.22)"},
+  robot: {name: "로봇", enName: "Robot", tagline: "메카 인더스트리얼", enTagline: "Mecha Steel", scheme:"dark", bg: "#16191e", surface: "#20252d", glow: "#2d3540", text: "#eef2f6", muted: "#9aa6b5", line: "#4c5766", accent: "#ff9f1c", "accent-ink": "#1a1100", "art-bg": "#191d24", radius: "6px", "tile-radius": "6px", shadow: "0 22px 54px rgba(0,0,0,.55)"},
+  pretty: {name: "예쁜", enName: "Pretty", tagline: "라벤더 펄", enTagline: "Lavender Pearl", scheme:"light", bg: "#f7f2fb", surface: "#ffffff", glow: "#ede2f7", text: "#2e1f3d", muted: "#6b5582", line: "#cfb9e6", accent: "#8e4ec6", "accent-ink": "#ffffff", "art-bg": "#f3ebfc", radius: "22px", "tile-radius": "16px", shadow: "0 20px 46px rgba(142,78,198,.12)"},
+  cool: {name: "멋진", enName: "Cool", tagline: "스텔스 택티컬", enTagline: "Stealth Tech", scheme:"dark", bg: "#09110f", surface: "#101e1b", glow: "#17302a", text: "#ebfaf6", muted: "#92bfb4", line: "#2d574c", accent: "#2ee59d", "accent-ink": "#062116", "art-bg": "#0e1b18", radius: "10px", "tile-radius": "8px", shadow: "0 24px 60px rgba(0,0,0,.6)"},
+  horror: {name: "공포", enName: "Horror", tagline: "블러드 크림슨", enTagline: "Crimson Dread", scheme:"dark", bg: "#0b0507", surface: "#170a0e", glow: "#2e0f18", text: "#f7e6e9", muted: "#b88a92", line: "#5c202c", accent: "#ff3b4e", "accent-ink": "#ffffff", "art-bg": "#1c090e", radius: "8px", "tile-radius": "6px", shadow: "0 24px 64px rgba(80,0,10,.55)"},
 };
 
 class KrSurvivalKitPanel extends HTMLElement {
@@ -2297,22 +2346,37 @@ class KrSurvivalKitPanel extends HTMLElement {
     super();
     this._lang = krGetLang();
     const T = (ko, en) => krT(this._lang, ko, en);
+    let saved;
+    try { saved = window.localStorage.getItem("kr_survival_kit_theme"); } catch { /* storage is optional */ }
+    this._theme = Object.hasOwn(KR_PANEL_THEMES, saved) ? saved : "black";
+    const cur = KR_PANEL_THEMES[this._theme];
     this.attachShadow({ mode: "open" }).innerHTML = `
       <style>
         :host { display:block; color:var(--kr-text); background:var(--kr-bg); min-height:100%; }
-        header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px;
+        header { position:relative; z-index:20; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px;
           padding: 8px 16px; background:var(--kr-surface); border-bottom:1px solid var(--kr-line); }
         nav { display: flex; flex-wrap: wrap; gap: 8px; }
         a { color: inherit; padding: 10px 12px; border-radius: 8px; text-decoration: none; }
         a[aria-current="page"] { color:var(--kr-text); font-weight:700;
           box-shadow: inset 0 -3px var(--kr-accent); }
         a:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
-        .panel-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-inline-start:auto}
-        .theme-switch,.lang-switch{display:flex;flex-wrap:wrap;gap:5px}
-        .theme-switch button,.lang-switch button{min-height:36px;padding:.3rem .55rem;border:1px solid var(--kr-line);border-radius:7px;color:var(--kr-text);background:var(--kr-bg);cursor:pointer;font:inherit;font-size:.82rem}
-        .theme-switch button[aria-pressed="true"],.lang-switch button[aria-pressed="true"]{background:var(--kr-accent);color:var(--kr-accent-ink);border-color:var(--kr-accent);font-weight:700}
-        .theme-switch button:focus-visible,.lang-switch button:focus-visible{outline:2px solid var(--kr-accent);outline-offset:2px}
-        @media(max-width:720px){.panel-controls{width:100%;margin-inline-start:0}}
+        .panel-controls{position:relative;display:flex;align-items:center;gap:8px;margin-inline-start:auto}
+        #theme-picker-btn{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:.3rem .75rem;border:1px solid var(--kr-line);border-radius:9px;color:var(--kr-text);background:var(--kr-bg);cursor:pointer;font:inherit;font-size:.84rem;font-weight:600}
+        #theme-picker-btn:hover,#theme-picker-btn[aria-expanded="true"]{border-color:var(--kr-accent);background:var(--kr-glow)}
+        .theme-dot{width:12px;height:12px;border-radius:50%;border:1px solid rgba(128,128,128,.45);flex-shrink:0}
+        .theme-popover{position:absolute;top:calc(100% + 8px);right:0;z-index:50;width:min(92vw,390px);padding:10px;border:1px solid var(--kr-line);border-radius:14px;background:var(--kr-surface);box-shadow:0 18px 48px rgba(0,0,0,.38);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+        .theme-popover[hidden]{display:none}
+        .theme-opt{display:flex;align-items:center;gap:8px;text-align:left;min-height:42px;padding:6px 9px;border:1px solid var(--kr-line);border-radius:10px;color:var(--kr-text);background:var(--kr-bg);cursor:pointer;font:inherit}
+        .theme-opt:hover{border-color:var(--kr-accent);background:var(--kr-glow)}
+        .theme-opt[aria-pressed="true"]{border-color:var(--kr-accent);background:var(--kr-glow);box-shadow:inset 0 0 0 1px var(--kr-accent)}
+        .theme-meta{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+        .theme-meta strong{font-size:.82rem}
+        .theme-meta small{font-size:.7rem;color:var(--kr-muted)}
+        .lang-switch{display:flex;gap:3px;padding:2px;border:1px solid var(--kr-line);border-radius:9px;background:var(--kr-bg)}
+        .lang-switch button{min-height:30px;padding:.2rem .55rem;border:0;border-radius:7px;color:var(--kr-muted);background:transparent;cursor:pointer;font:inherit;font-size:.78rem;font-weight:700}
+        .lang-switch button[aria-pressed="true"]{background:var(--kr-accent);color:var(--kr-accent-ink)}
+        #theme-picker-btn:focus-visible,.theme-opt:focus-visible,.lang-switch button:focus-visible{outline:2px solid var(--kr-accent);outline-offset:2px}
+        @media(max-width:600px){.panel-controls{width:100%;margin-inline-start:0;justify-content:flex-end}.theme-popover{left:0;right:auto;width:100%;grid-template-columns:1fr}}
         main { padding: clamp(4px, 2vw, 20px); }
       </style>
       <header>
@@ -2323,8 +2387,15 @@ class KrSurvivalKitPanel extends HTMLElement {
           <a href="/kr-survival-kit/guide" data-nav="guide">${T("상황 안내", "Guide")}</a>
         </nav>
         <div class="panel-controls">
-          <div class="theme-switch" role="group" aria-label="${T("화면 테마", "Theme")}">${Object.entries(KR_PANEL_THEMES).map(([id, theme]) =>
-            `<button type="button" data-theme="${id}" aria-pressed="false">${this._lang === "en" ? theme.enName : theme.name}</button>`).join("")}</div>
+          <button type="button" id="theme-picker-btn" aria-haspopup="true" aria-expanded="false">
+            <span class="theme-dot" style="background:linear-gradient(135deg,${cur.bg} 50%,${cur.accent} 50%)"></span>
+            <span id="theme-picker-label">${T(`테마: ${cur.name}`, `Theme: ${cur.enName}`)}</span>
+            <span aria-hidden="true">▾</span>
+          </button>
+          <div class="theme-popover" id="theme-popover" role="group" aria-label="${T("화면 테마", "Theme")}" hidden>
+            ${Object.entries(KR_PANEL_THEMES).map(([id, theme]) =>
+              `<button type="button" class="theme-opt" data-theme="${id}" aria-pressed="false"><span class="theme-dot" style="background:linear-gradient(135deg,${theme.bg} 50%,${theme.accent} 50%)"></span><span class="theme-meta"><strong>${this._lang === "en" ? theme.enName : theme.name}</strong><small>${this._lang === "en" ? theme.enTagline : theme.tagline}</small></span></button>`).join("")}
+          </div>
           <div class="lang-switch" role="group" aria-label="${T("언어 선택", "Language")}">
             <button type="button" data-lang="ko" aria-pressed="${this._lang === "ko"}">KO</button>
             <button type="button" data-lang="en" aria-pressed="${this._lang === "en"}">EN</button>
@@ -2332,12 +2403,25 @@ class KrSurvivalKitPanel extends HTMLElement {
         </div>
       </header>
       <main></main>`;
-    let saved;
-    try { saved = window.localStorage.getItem("kr_survival_kit_theme"); } catch { /* storage is optional */ }
-    this._theme = Object.hasOwn(KR_PANEL_THEMES, saved) ? saved : "black";
+    const pickerBtn = this.shadowRoot.querySelector("#theme-picker-btn");
+    const popover = this.shadowRoot.querySelector("#theme-popover");
+    pickerBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const open = popover.hidden;
+      popover.hidden = !open;
+      pickerBtn.setAttribute("aria-expanded", String(open));
+    });
+    this.shadowRoot.addEventListener("click", (e) => {
+      if (!popover.hidden && !e.target.closest?.(".panel-controls")) {
+        popover.hidden = true;
+        pickerBtn.setAttribute("aria-expanded", "false");
+      }
+    });
     this.shadowRoot.querySelectorAll("[data-theme]").forEach((button) => button.addEventListener("click", () => {
       this._applyTheme(button.dataset.theme);
       try { window.localStorage.setItem("kr_survival_kit_theme", button.dataset.theme); } catch { /* storage is optional */ }
+      popover.hidden = true;
+      pickerBtn.setAttribute("aria-expanded", "false");
     }));
     this.shadowRoot.querySelectorAll("[data-lang]").forEach((button) => button.addEventListener("click", () => {
       this._applyLang(button.dataset.lang);
@@ -2352,9 +2436,14 @@ class KrSurvivalKitPanel extends HTMLElement {
   _applyTheme(name) {
     this._theme = name;
     this.setAttribute("data-theme-id", name);
-    for (const [key, value] of Object.entries(KR_PANEL_THEMES[name])) {
-      if (key !== "name" && key !== "enName") this.style.setProperty(`--kr-${key}`, value);
+    const theme = KR_PANEL_THEMES[name];
+    for (const [key, value] of Object.entries(theme)) {
+      if (!["name", "enName", "tagline", "enTagline"].includes(key)) this.style.setProperty(`--kr-${key}`, value);
     }
+    const label = this.shadowRoot.querySelector("#theme-picker-label");
+    if (label) label.textContent = krT(this._lang, `테마: ${theme.name}`, `Theme: ${theme.enName}`);
+    const dot = this.shadowRoot.querySelector("#theme-picker-btn .theme-dot");
+    if (dot) dot.style.background = `linear-gradient(135deg,${theme.bg} 50%,${theme.accent} 50%)`;
     for (const button of this.shadowRoot.querySelectorAll("[data-theme]")) {
       button.setAttribute("aria-pressed", String(button.dataset.theme === name));
     }
@@ -2368,9 +2457,17 @@ class KrSurvivalKitPanel extends HTMLElement {
     const guideLink = this.shadowRoot.querySelector('[data-nav="guide"]');
     if (homeLink) homeLink.textContent = krT(this._lang, "비축 관리", "Stockpile");
     if (guideLink) guideLink.textContent = krT(this._lang, "상황 안내", "Guide");
+    const theme = KR_PANEL_THEMES[this._theme];
+    const label = this.shadowRoot.querySelector("#theme-picker-label");
+    if (label && theme) label.textContent = krT(this._lang, `테마: ${theme.name}`, `Theme: ${theme.enName}`);
     for (const button of this.shadowRoot.querySelectorAll("[data-theme]")) {
       const th = KR_PANEL_THEMES[button.dataset.theme];
-      if (th) button.textContent = this._lang === "en" ? th.enName : th.name;
+      if (th) {
+        const strong = button.querySelector("strong");
+        const small = button.querySelector("small");
+        if (strong) strong.textContent = this._lang === "en" ? th.enName : th.name;
+        if (small) small.textContent = this._lang === "en" ? th.enTagline : th.tagline;
+      }
     }
     for (const button of this.shadowRoot.querySelectorAll("[data-lang]")) {
       button.setAttribute("aria-pressed", String(button.dataset.lang === this._lang));

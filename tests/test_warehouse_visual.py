@@ -339,7 +339,8 @@ def main():
         assert panel.locator("kr-survival-kit-panel-inventory .ready-art").count() > 1
         assert panel.locator(".quiz-panel").count() == 0
         for label, palette in [("블랙", "#101215"), ("화이트", "#f3f6f8"), ("블루", "#101d38"), ("아이보리", "#f2e9d7")]:
-            theme = panel.get_by_role("button", name=label, exact=True)
+            panel.locator("#theme-picker-btn").click()
+            theme = panel.locator(f".theme-opt:has-text('{label}')")
             theme.click()
             assert theme.get_attribute("aria-pressed") == "true"
             assert panel.evaluate("el => getComputedStyle(el).getPropertyValue('--kr-bg').trim()") == palette
@@ -357,7 +358,7 @@ def main():
         assert panel.locator("a[aria-current='page']").inner_text() == "상황 안내"
         assert panel.locator(".quiz-panel").get_attribute("open") is None
         assert panel.get_by_role("link", name="비축 관리로").count() == 0
-        assert panel.get_by_role("button", name="아이보리").get_attribute("aria-pressed") == "true"
+        assert panel.locator(".theme-opt[data-theme='ivory']").get_attribute("aria-pressed") == "true"
         assert panel.get_by_role("link", name="A4 행동 카드 열기").get_attribute("href") == "/kr_survival_kit_assets/kr-survival-kit-a4.pdf"
         assert panel.get_by_role("link", name="오프라인 안내 열기").get_attribute("href") == "/kr_survival_kit_assets/kr-survival-kit-offline.html"
         assert page.evaluate("document.documentElement.scrollWidth === document.documentElement.clientWidth")
