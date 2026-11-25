@@ -265,7 +265,7 @@ function krBoundedInt(value, min, max) {
   return number >= min && number <= max ? number : null;
 }
 
-const KR_ASSET_VERSION = "0.12.0";
+const KR_ASSET_VERSION = "0.12.1";
 
 function krGetLang() {
   try { return window.localStorage?.getItem("kr_survival_kit_lang") === "en" ? "en" : "ko"; } catch { return "ko"; }

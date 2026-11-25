@@ -23,9 +23,13 @@ def main():
     assert re.fullmatch(r"\d+\.\d+\.\d+", manifest["version"])
     for name in ("catalog", "household", "guide", "quiz"):
         assert json.loads((INTEGRATION / "content" / f"{name}.ko.json").read_text(encoding="utf-8"))
+    expected_inspection_label = {
+        "ko": "기본 재고 점검 주기 (일)",
+        "en": "Default inventory check interval (days)",
+    }
     for locale in ("ko", "en"):
         strings = json.loads((INTEGRATION / "translations" / f"{locale}.json").read_text(encoding="utf-8"))
-        assert strings["config"]["step"]["user"]["data"]["inspection_days"] == "기본 재고 점검 주기 (일)"
+        assert strings["config"]["step"]["user"]["data"]["inspection_days"] == expected_inspection_label[locale]
         assert strings["config"]["abort"]["incomplete_install"]
     assert (INTEGRATION / "www" / "kr-survival-kit-card.js").is_file()
     card = (INTEGRATION / "www" / "kr-survival-kit-card.js").read_text(encoding="utf-8")
