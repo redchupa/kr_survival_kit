@@ -5,7 +5,7 @@
 **비상 물품의 수량과 기한을 일상 속에서 순환 관리하고, 재난 시 행동 요령을 확인하는 Home Assistant 대시보드**
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/redchupa/kr_survival_kit/main/docs/images/warehouse-3d-night.jpg" alt="밤 조명이 켜진 3D 비축 창고. 랙 위에 생수·즉석밥·컵라면·통조림이 놓여 있고 품목마다 이름표가 떠 있다" width="100%">
+  <img src="https://raw.githubusercontent.com/redchupa/kr_survival_kit/main/docs/images/home-stockpile-3d.png" alt="Home Assistant에서 본 3D 비축 창고와 품목별 선반" width="100%">
   <br><sub>3D 비축 창고 · 밤 모드</sub>
 </p>
 

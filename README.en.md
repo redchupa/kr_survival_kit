@@ -5,7 +5,7 @@
 **A Home Assistant integration for managing household emergency supplies with FIFO rotation, shelter readiness tracking, 2D/3D warehouse views, and offline action guides.**
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/redchupa/kr_survival_kit/main/docs/images/warehouse-3d-night.jpg" alt="3D warehouse view in night mode showing shelves stocked with water, meals, and canned food" width="100%">
+  <img src="https://raw.githubusercontent.com/redchupa/kr_survival_kit/main/docs/images/home-stockpile-3d.png" alt="The Home Stockpile dashboard in Home Assistant, showing labeled shelves in the 3D warehouse" width="100%">
   <br><sub>3D Warehouse View (Night Mode)</sub>
 </p>
 
