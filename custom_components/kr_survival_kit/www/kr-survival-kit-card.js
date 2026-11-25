@@ -18,33 +18,61 @@ const KR_OPTIONAL_CATEGORIES = [
   { id: "doc_move", label: "자산·서류·이동", ids: new Set(["important-documents", "window-locks", "storage-bin", "emergency-contact-card", "family-photo", "basic-documents", "door-window-locks", "lock-tools", "transport-cart", "emergency-payment-check", "cash-krw", "cash-usd", "crypto-cold-wallet"]) },
 ];
 
+const KR_OPTIONAL_CATEGORIES_EN = {
+  all: "All",
+  custom: "Custom",
+  water_cook: "Water · Food · Cook",
+  power_light: "Power · Fuel · Comms",
+  care_infant: "Medical · Infant",
+  gear_protect: "Gear · Hygiene · Sleep",
+  doc_move: "Assets · Docs · Move",
+};
+
+const KR_UNIT_EN = {
+  "개": "ea", "병": "btl", "팩": "pk", "통": "can", "박스": "box", "상자": "box",
+  "세트": "set", "켤레": "pair", "장": "pc", "롤": "roll", "봉": "bag", "권": "copy",
+  "갑": "pack", "정": "tab", "포": "pouch", "원": "KRW", "달러": "USD", "개입": "pk",
+};
+
 function krStockScale(item) {
   return item.id === "drinking-water" ? 1000 : 1;
 }
 
-function krStockUnit(item) {
-  return item.id === "drinking-water" ? "L" : item.unit;
+function krStockUnit(item, lang = "ko") {
+  if (item.id === "drinking-water") return "L";
+  return lang === "en" ? (KR_UNIT_EN[item.unit] || item.unit) : item.unit;
 }
 
 function krStockFormat(item, stored) {
   return String(Number(stored) / krStockScale(item));
 }
 
-function krStockText(item, stored) {
-  return `${krStockFormat(item, stored)} ${krStockUnit(item)}`;
+function krStockText(item, stored, lang = "ko") {
+  return `${krStockFormat(item, stored)} ${krStockUnit(item, lang)}`;
 }
 
-function krDateLabel(item) {
-  if (item.id === "drinking-water") return "유통기한";
-  return ["소비기한", "유통기한", "교체 점검일", "사용기한", "사용 권장기한"].includes(item.date_label)
-    ? item.date_label : "유통기한 또는 소비기한";
+function krDateLabel(item, lang = "ko") {
+  const koLabel = item.id === "drinking-water" ? "유통기한"
+    : ["소비기한", "유통기한", "교체 점검일", "사용기한", "사용 권장기한"].includes(item.date_label)
+      ? item.date_label : "유통기한 또는 소비기한";
+  if (lang !== "en") return koLabel;
+  return {
+    "유통기한": "Expiration Date",
+    "소비기한": "Use-by Date",
+    "교체 점검일": "Replacement Check",
+    "사용기한": "Use-by Date",
+    "사용 권장기한": "Recommended Use-by",
+    "유통기한 또는 소비기한": "Expiry / Use-by Date",
+  }[koLabel] || "Expiry Date";
 }
 
 /** Quick expiry buttons sized to the product: batteries last years, medicine and food months to a few years. */
-function krExpiryPresets(item) {
-  if (item.date_label === "사용 권장기한") return [[36, "+3년"], [60, "+5년"], [120, "+10년"]];
-  if (item.date_label === "사용기한") return [[12, "+1년"], [24, "+2년"], [36, "+3년"]];
-  return [[6, "+6개월"], [12, "+1년"], [24, "+2년"]];
+function krExpiryPresets(item, lang = "ko") {
+  const yr = lang === "en" ? "y" : "년";
+  const mo = lang === "en" ? "m" : "개월";
+  if (item.date_label === "사용 권장기한") return [[36, `+3${yr}`], [60, `+5${yr}`], [120, `+10${yr}`]];
+  if (item.date_label === "사용기한") return [[12, `+1${yr}`], [24, `+2${yr}`], [36, `+3${yr}`]];
+  return [[6, `+6${mo}`], [12, `+1${yr}`], [24, `+2${yr}`]];
 }
 
 function krStockParse(item, shown, allowBlank = false) {
@@ -265,7 +293,7 @@ function krBoundedInt(value, min, max) {
   return number >= min && number <= max ? number : null;
 }
 
-const KR_ASSET_VERSION = "0.13.0";
+const KR_ASSET_VERSION = "0.13.1";
 
 function krGetLang() {
   try { return window.localStorage?.getItem("kr_survival_kit_lang") === "en" ? "en" : "ko"; } catch { return "ko"; }
@@ -304,6 +332,18 @@ const KR_EN_NAMES = {
   "portable-radio-communication": "Two-Way Radio", "emergency-payment-check": "Payment Check",
   "cash-krw": "KRW Cash", "cash-usd": "USD Cash", "crypto-cold-wallet": "Crypto / Cold Wallet",
   "protective-goggles": "Safety Goggles",
+  "digestive-medicine": "Digestive Meds", "cold-medicine": "Cold Medicine",
+  antidiarrheal: "Antidiarrheal", "wound-ointment": "Wound Ointment",
+  "sterile-gauze": "Sterile Gauze", "elastic-bandage": "Elastic Bandage",
+  "adhesive-bandages": "Adhesive Bandages", "medical-tape": "Medical Tape",
+  "batteries-c": "C Batteries", "batteries-d": "D Batteries",
+  headlamp: "Headlamp", "emergency-blanket": "Emergency Blanket",
+  mouthwash: "Mouthwash", "disposable-tableware": "Disposable Tableware",
+  "plastic-wrap": "Plastic Wrap", "infant-medicine": "Infant Medicine",
+  "ice-packs": "Ice Packs", "charging-cable": "Charging Cable",
+  "spare-shoes": "Spare Shoes", "aluminum-tape": "Aluminum Tape",
+  "cable-ties": "Cable Ties", "important-documents": "Important Docs Copy",
+  "window-locks": "Window Locks",
 };
 function krItemDisplayName(item, lang) {
   if (lang === "en" && KR_EN_NAMES[item.id]) return KR_EN_NAMES[item.id];
@@ -365,7 +405,7 @@ function krLocationPanel(snapshot, escape, open = false, lang = "ko") {
   const short = (item) => krItemDisplayName(item, lang);
   const places = [...groups.keys()].sort((a, b) => groups.get(b).length - groups.get(a).length || a.localeCompare(b, lang === "en" ? "en" : "ko"));
   const entry = ({ item, quantity }, place) =>
-    `<li data-loc-text="${escape(`${place} ${item.name} ${short(item)}`.toLowerCase())}"><button type="button" class="loc-item" data-edit="${escape(item.id)}">${escape(short(item))}<b>${escape(krStockText(item, quantity))}</b></button></li>`;
+    `<li data-loc-text="${escape(`${place} ${item.name} ${short(item)}`.toLowerCase())}"><button type="button" class="loc-item" data-edit="${escape(item.id)}">${escape(short(item))}<b>${escape(krStockText(item, quantity, lang))}</b></button></li>`;
   const body = places.length
     ? places.map((place) => `<section class="loc-group" data-loc-group><h4>${KR_PIN_SVG}${escape(place)} <span>${groups.get(place).length}${T("종", "")}</span></h4><ul>${groups.get(place).map((row) => entry(row, place)).join("")}</ul></section>`).join("")
     : `<p class="ready-empty">${T('아직 보관 위치를 적은 물품이 없습니다. 물품을 눌러 <strong>보관 위치</strong>에 "현관 팬트리", "주방 팬트리 3층 선반"처럼 적어 두면 여기서 장소별로 모아 볼 수 있어요.', 'No storage locations recorded yet. Tap an item and enter a <strong>Location</strong> (e.g. "Pantry Shelf 3") to group items by place.')}</p>`;
@@ -426,7 +466,7 @@ function krReadyGrid(snapshot, escape, visible = snapshot?.catalog.filter((item)
     const current = status.usable ?? 0;
     // Stock whose package date is still unknown is on the shelf too; show it so a save never looks lost.
     const held = current + (status.unknown_date_quantity ?? 0);
-    const quantity = `${krStockText(item, held)} / ${status.target == null ? T("목표 미설정", "No Target") : krStockText(item, status.target)}`;
+    const quantity = `${krStockText(item, held, lang)} / ${status.target == null ? T("목표 미설정", "No Target") : krStockText(item, status.target, lang)}`;
     const label = inactive ? T("미사용", "Inactive") : ready ? T("완비", "Ready") : !status.confirmed || status.stale ? T("실사 필요", "Check") :
       status.expiring_quantity > 0 ? T("기한 임박", "Expiring") : status.expired_quantity > 0 ? T("기한 경과", "Expired") :
       status.unknown_date_quantity > 0 ? (status.next_label_check_on ? `${T("기한 확인", "Date?")} ${status.next_label_check_on}` : T("기한 확인", "Date?")) : status.state === "shortage" ? T("부족", "Low") : "";
@@ -593,7 +633,7 @@ function krStockShelvesOnly(snapshot, escape, showInactive, editing, filter, opt
   const quickToggle = `<button type="button" id="toggle-quick-mode" aria-pressed="${quickMode}" title="${T("모달을 열지 않고 바로 +1 / -1 소비·보충", "Quick +1 / -1 without opening modal")}">${quickMode ? T("⚡ 빠른 ±1 켜짐", "⚡ Quick ±1 ON") : T("⚡ 빠른 ±1", "⚡ Quick ±1")}</button>`;
   const shelves = `<section class="ready-panel" aria-labelledby="essentials-shelf"><div class="shelf-head"><h3 id="essentials-shelf" tabindex="-1">${T("기본 비축 물품", "Essential Supplies")} <span>${T(`완비 ${ready.filter((item) => !krIsSelectable(item)).length}종`, `${ready.filter((item) => !krIsSelectable(item)).length} Ready`)}</span></h3>${quickToggle}</div>${krReadyGrid(snapshot, escape, essentials, editing, quickMode, lang)}</section>`;
   if (!optional.length) return shelves;
-  const catEn = { all: "All", power: "Power/Light", food: "Food/Fuel", water: "Water/Sanitation", medical: "Medical/Mask", safety: "Tools/Evacuation" };
+  const catEn = KR_OPTIONAL_CATEGORIES_EN;
   const categoryBar = `<div class="opt-toolbar"><div class="opt-cats" role="group" aria-label="${T("선택 물품 분류", "Optional Categories")}">${KR_OPTIONAL_CATEGORIES.map((cat) =>
     `<button type="button" data-opt-cat="${cat.id}" aria-pressed="${optCategory === cat.id}">${lang === "en" ? (catEn[cat.id] || cat.label) : cat.label}</button>`).join("")}</div><input id="opt-search" type="search" placeholder="${T("품목 검색...", "Search items...")}" aria-label="${T("미사용 선택 물품 검색", "Search unused optional items")}" value="${escape(optSearch)}"></div>`;
   const backupBar = `<div class="backup-bar"><button type="button" id="backup-export">${T("💾 재고 백업 저장 (JSON)", "💾 Export Backup (JSON)")}</button><button type="button" id="backup-import-btn">${T("📂 백업 복원", "📂 Import Backup")}</button><input type="file" id="backup-import" accept="application/json,.json" hidden aria-hidden="true" tabindex="-1"></div>`;
@@ -1295,56 +1335,67 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const draftIcon = draftItem ? (KR_READY_PICTOGRAMS[draftItem.id] || KR_CUSTOM_PICTOGRAM) : "";
     const knownPlaces = krAllLocations(snapshot);
     const custom = this._customDraft;
-    const customForm = custom && !this._draft ? `<form id="custom-editor"><div class="dialog-head"><span class="dialog-art" aria-hidden="true">${KR_CUSTOM_PICTOGRAM}</span><div><h3 id="item-dialog-title" tabindex="-1">물품 직접 추가</h3><p class="dialog-status">목록에 없는 물품을 우리 집 물품으로 추가합니다.</p></div></div>` +
-      `<label for="custom-name">물품 이름 <small>(최대 ${KR_CUSTOM_NAME_MAX}자)</small></label><input id="custom-name" type="text" required maxlength="${KR_CUSTOM_NAME_MAX}" autocomplete="off" placeholder="예: 캠핑용 랜턴, 반려견 사료" value="${escape(custom.name)}" aria-describedby="custom-name-help"><p id="custom-name-help" class="item-note">꺾쇠(&lt; &gt;)·따옴표·&amp; 같은 특수문자는 자동으로 빠집니다.</p>` +
-      `<label for="custom-unit">단위</label><select id="custom-unit">${KR_CUSTOM_UNITS.map((unit) => `<option value="${unit}" ${custom.unit === unit ? "selected" : ""}>${unit}</option>`).join("")}</select>` +
-      `<label for="custom-date">기한 관리</label><select id="custom-date">${KR_CUSTOM_DATES.map(([value, text]) => `<option value="${value}" ${custom.date === value ? "selected" : ""}>${text}</option>`).join("")}</select>` +
-      `<div class="actions"><button type="submit" class="primary" ${this._saving ? "disabled" : ""}>추가하고 수량 입력</button><button type="button" id="custom-cancel">취소</button></div></form>` : "";
+    const customDateEn = { "": "No Expiry (Quantity Check Only)", "유통기한": "Expiration Date", "소비기한": "Use-by Date", "사용기한": "Use-by (Meds/Hygiene)", "사용 권장기한": "Recommended Use-by (Batteries)" };
+    const customForm = custom && !this._draft ? `<form id="custom-editor"><div class="dialog-head"><span class="dialog-art" aria-hidden="true">${KR_CUSTOM_PICTOGRAM}</span><div><h3 id="item-dialog-title" tabindex="-1">${T("물품 직접 추가", "Add Custom Item")}</h3><p class="dialog-status">${T("목록에 없는 물품을 우리 집 물품으로 추가합니다.", "Add a custom item not in the default catalog.")}</p></div></div>` +
+      `<label for="custom-name">${T("물품 이름", "Item Name")} <small>(${T(`최대 ${KR_CUSTOM_NAME_MAX}자`, `max ${KR_CUSTOM_NAME_MAX} chars`)})</small></label><input id="custom-name" type="text" required maxlength="${KR_CUSTOM_NAME_MAX}" autocomplete="off" placeholder="${T("예: 캠핑용 랜턴, 반려견 사료", "e.g. Camping Lantern, Pet Food")}" value="${escape(custom.name)}" aria-describedby="custom-name-help"><p id="custom-name-help" class="item-note">${T("꺾쇠(< >)·따옴표·& 같은 특수문자는 자동으로 빠집니다.", "Special characters (< > quotes &) are stripped automatically.")}</p>` +
+      `<label for="custom-unit">${T("단위", "Unit")}</label><select id="custom-unit">${KR_CUSTOM_UNITS.map((unit) => `<option value="${unit}" ${custom.unit === unit ? "selected" : ""}>${lang === "en" ? (KR_UNIT_EN[unit] || unit) : unit}</option>`).join("")}</select>` +
+      `<label for="custom-date">${T("기한 관리", "Expiry Tracking")}</label><select id="custom-date">${KR_CUSTOM_DATES.map(([value, text]) => `<option value="${value}" ${custom.date === value ? "selected" : ""}>${lang === "en" ? (customDateEn[value] || text) : text}</option>`).join("")}</select>` +
+      `<div class="actions"><button type="submit" class="primary" ${this._saving ? "disabled" : ""}>${T("추가하고 수량 입력", "Add & Enter Quantity")}</button><button type="button" id="custom-cancel">${T("취소", "Cancel")}</button></div></form>` : "";
     const settings = this._settingsDraft && !this._draft && !custom ? this._settingsDraft : null;
-    const settingsForm = settings ? `<form id="settings-editor" novalidate><div class="dialog-head"><span class="dialog-art settings-art" aria-hidden="true">⚙️</span><div><h3 id="item-dialog-title" tabindex="-1">대시보드 설정</h3><p class="dialog-status">이 Home Assistant를 쓰는 모든 기기에 함께 적용됩니다.</p></div></div>` +
-      `<fieldset class="settings-group"><legend>이름</legend>` +
-      `<label for="set-title">대시보드 제목 <small>(최대 ${KR_TITLE_MAX}자)</small></label><input id="set-title" type="text" maxlength="${KR_TITLE_MAX}" autocomplete="off" placeholder="${KR_DEFAULT_TITLE}" value="${escape(settings.title)}"><p class="item-note">비워 두면 "${KR_DEFAULT_TITLE}"로 표시됩니다.</p>` +
-      `<label for="set-nickname">집 이름·닉네임 <small>(선택, 최대 ${KR_NICKNAME_MAX}자)</small></label><input id="set-nickname" type="text" maxlength="${KR_NICKNAME_MAX}" autocomplete="off" placeholder="예: 행복한 우리집, 민준이네" value="${escape(settings.nickname)}"><p class="item-note">제목 위에 작게 표시됩니다. 특수문자(&lt; &gt; " ' &amp; 등)는 자동으로 빠집니다.</p></fieldset>` +
-      `<fieldset class="settings-group"><legend>우리 집 기준</legend><div class="field-pair">` +
-      `<label>가구 인원 (명)<input id="set-people" ${this._settingsInvalid === "set-people" ? 'aria-invalid="true"' : ""} type="number" inputmode="numeric" min="1" max="99" step="1" required value="${escape(settings.household_size)}"></label>` +
-      `<label>기본 점검 주기 (일)<input id="set-days" ${this._settingsInvalid === "set-days" ? 'aria-invalid="true"' : ""} type="number" inputmode="numeric" min="7" max="365" step="1" required value="${escape(settings.inspection_days)}"></label></div>` +
-      `<p class="item-note">가구 인원은 1~99명, 점검 주기는 7~365일까지 입력할 수 있습니다. 인원을 바꾸면 며칠분 계산과 목표량이 바로 바뀌고, 품목마다 따로 정한 점검 주기는 그대로 유지됩니다.</p>${this._message && this._settingsInvalid ? `<p class="message settings-message" role="alert">${escape(this._message)}</p>` : ""}</fieldset>` +
-      `<fieldset class="settings-group"><legend>화면에 보일 항목</legend>${KR_DISPLAY_TOGGLES.map(([key, label, help]) =>
-        `<label class="check-row toggle-row"><input type="checkbox" data-toggle="${key}" ${settings[key] ? "checked" : ""}><span><strong>${label}</strong><small>${help}</small></span></label>`).join("")}</fieldset>` +
+    const toggleEn = {
+      show_survival: ["Show Water & Food Days", "Shows 'Water Xd · Food Yd' next to the title."],
+      show_clock: ["Show Clock & Weather", "Shows current time and local weather next to the title."],
+      show_expiring: ["Show Expiring Banner", "Highlights expiring or expired items at the top."],
+      show_rank: ["Show Shelter Rank", "Displays stockpile score and rank (Iron to Challenger)."],
+      show_missions: ["Show Urgent Quests", "Highlights priority restock and rotation quests."],
+    };
+    const settingsForm = settings ? `<form id="settings-editor" novalidate><div class="dialog-head"><span class="dialog-art settings-art" aria-hidden="true">⚙️</span><div><h3 id="item-dialog-title" tabindex="-1">${T("대시보드 설정", "Dashboard Settings")}</h3><p class="dialog-status">${T("이 Home Assistant를 쓰는 모든 기기에 함께 적용됩니다.", "Applies across all devices using this Home Assistant.")}</p></div></div>` +
+      `<fieldset class="settings-group"><legend>${T("이름", "Names")}</legend>` +
+      `<label for="set-title">${T("대시보드 제목", "Dashboard Title")} <small>(${T(`최대 ${KR_TITLE_MAX}자`, `max ${KR_TITLE_MAX} chars`)})</small></label><input id="set-title" type="text" maxlength="${KR_TITLE_MAX}" autocomplete="off" placeholder="${T(KR_DEFAULT_TITLE, "Home Stockpile")}" value="${escape(settings.title)}"><p class="item-note">${T(`비워 두면 "${KR_DEFAULT_TITLE}"로 표시됩니다.`, 'Leave blank to use default title.')}</p>` +
+      `<label for="set-nickname">${T("집 이름·닉네임", "Household Nickname")} <small>(${T(`선택, 최대 ${KR_NICKNAME_MAX}자`, `optional, max ${KR_NICKNAME_MAX}`)})</small></label><input id="set-nickname" type="text" maxlength="${KR_NICKNAME_MAX}" autocomplete="off" placeholder="${T("예: 행복한 우리집, 민준이네", "e.g. Safe Haven, Home Base")}" value="${escape(settings.nickname)}"><p class="item-note">${T('제목 위에 작게 표시됩니다. 특수문자(< > " \' & 등)는 자동으로 빠집니다.', 'Shown above the title. Special characters are stripped automatically.')}</p></fieldset>` +
+      `<fieldset class="settings-group"><legend>${T("우리 집 기준", "Household Baseline")}</legend><div class="field-pair">` +
+      `<label>${T("가구 인원 (명)", "Household Size")}<input id="set-people" ${this._settingsInvalid === "set-people" ? 'aria-invalid="true"' : ""} type="number" inputmode="numeric" min="1" max="99" step="1" required value="${escape(settings.household_size)}"></label>` +
+      `<label>${T("기본 점검 주기 (일)", "Default Check Interval (days)")}<input id="set-days" ${this._settingsInvalid === "set-days" ? 'aria-invalid="true"' : ""} type="number" inputmode="numeric" min="7" max="365" step="1" required value="${escape(settings.inspection_days)}"></label></div>` +
+      `<p class="item-note">${T("가구 인원은 1~99명, 점검 주기는 7~365일까지 입력할 수 있습니다. 인원을 바꾸면 며칠분 계산과 목표량이 바로 바뀌고, 품목마다 따로 정한 점검 주기는 그대로 유지됩니다.", "Household size: 1–99; check interval: 7–365 days. Changing size immediately recalculates targets and survival days.")}</p>${this._message && this._settingsInvalid ? `<p class="message settings-message" role="alert">${escape(this._message)}</p>` : ""}</fieldset>` +
+      `<fieldset class="settings-group"><legend>${T("화면에 보일 항목", "Visible Sections")}</legend>${KR_DISPLAY_TOGGLES.map(([key, label, help]) => {
+        const [lText, hText] = lang === "en" && toggleEn[key] ? toggleEn[key] : [label, help];
+        return `<label class="check-row toggle-row"><input type="checkbox" data-toggle="${key}" ${settings[key] ? "checked" : ""}><span><strong>${lText}</strong><small>${hText}</small></span></label>`;
+      }).join("")}</fieldset>` +
       (this._message && !this._settingsInvalid ? `<p class="message settings-message" role="alert">${escape(this._message)}</p>` : "") +
-      `<div class="actions"><button type="submit" class="primary" ${this._saving ? "disabled" : ""}>저장</button><button type="button" id="settings-cancel">취소</button><button type="button" id="settings-reset">기본값으로</button></div></form>` : "";
-    const edit = this._draft && draftItem ? `<form id="editor"><div class="dialog-head"><span class="dialog-art" aria-hidden="true">${draftIcon}</span><div><h3 id="item-dialog-title" tabindex="-1">${escape(draftItem.name)} 수정</h3><p class="dialog-status">현재 ${escape(krStockText(draftItem, (draftItem.status.usable ?? 0) + (draftItem.status.unknown_date_quantity ?? 0)))} · ${states[draftItem.status.state]} · 실사 ${escape(draftItem.status.verified_on || "없음")}${draftItem.status.next_review_on ? ` · 다음 ${escape(draftItem.status.next_review_on)}` : ""}</p></div></div>` +
-      (draftItem.status.target != null ? `<p class="recommendation">${people}인 가구 목표 <strong>${escape(krStockText(draftItem, draftItem.status.target))}</strong></p>` : "") +
-      (draftItem.examples ? `<p class="item-note">${escape(draftItem.examples)}</p>` : "") +
-      (draftItem.note && !noteCoveredByBasis ? `<p class="item-note">${escape(draftItem.note)}</p>` : "") +
-      (draftRecommendation?.basis ? `<details class="item-reference"><summary>품목 참고 기준</summary><p>${escape(draftRecommendation.basis)}</p></details>` : "") +
-      (this._draft.lots.length > 1 ? `<p class="item-note">보관 위치나 입고일이 다른 재고를 나눠 기록합니다. 각 수량과 위치를 수정할 수 있습니다.</p>` : "") +
+      `<div class="actions"><button type="submit" class="primary" ${this._saving ? "disabled" : ""}>${T("저장", "Save")}</button><button type="button" id="settings-cancel">${T("취소", "Cancel")}</button><button type="button" id="settings-reset">${T("기본값으로", "Reset")}</button></div></form>` : "";
+    const editItemName = draftItem ? krItemDisplayName(draftItem, lang) : "";
+    const edit = this._draft && draftItem ? `<form id="editor"><div class="dialog-head"><span class="dialog-art" aria-hidden="true">${draftIcon}</span><div><h3 id="item-dialog-title" tabindex="-1">${escape(editItemName)} ${T("수정", "Edit")}</h3><p class="dialog-status">${T("현재", "Current")} ${escape(krStockText(draftItem, (draftItem.status.usable ?? 0) + (draftItem.status.unknown_date_quantity ?? 0), lang))} · ${states[draftItem.status.state]} · ${T("실사", "Checked")} ${escape(draftItem.status.verified_on || T("없음", "None"))}${draftItem.status.next_review_on ? ` · ${T("다음", "Next")} ${escape(draftItem.status.next_review_on)}` : ""}</p></div></div>` +
+      (draftItem.status.target != null ? `<p class="recommendation">${T(`${people}인 가구 목표`, `Target for ${people}`)} <strong>${escape(krStockText(draftItem, draftItem.status.target, lang))}</strong></p>` : "") +
+      (lang !== "en" && draftItem.examples ? `<p class="item-note">${escape(draftItem.examples)}</p>` : "") +
+      (lang !== "en" && draftItem.note && !noteCoveredByBasis ? `<p class="item-note">${escape(draftItem.note)}</p>` : "") +
+      (lang !== "en" && draftRecommendation?.basis ? `<details class="item-reference"><summary>품목 참고 기준</summary><p>${escape(draftRecommendation.basis)}</p></details>` : "") +
+      (this._draft.lots.length > 1 ? `<p class="item-note">${T("보관 위치나 입고일이 다른 재고를 나눠 기록합니다. 각 수량과 위치를 수정할 수 있습니다.", "Track separate lots by storage location or received date.")}</p>` : "") +
       `<datalist id="kr-location-options">${[...new Set([...knownPlaces, ...KR_LOCATION_EXAMPLES])].map((place) => `<option value="${escape(place)}"></option>`).join("")}</datalist>` +
       this._draft.lots.map((lot, index) =>
-        `<fieldset class="lot-edit"><legend>${this._draft.lots.length > 1 ? `재고 ${index + 1}${String(lot.location || "").trim() ? ` · ${escape(lot.location.trim())}` : ""}` : "수량과 날짜"}</legend>` +
-        (this._draft.lots.length > 1 ? `<button type="button" class="lot-remove" data-remove-lot="${index}" aria-label="재고 ${index + 1} 삭제">이 재고 삭제</button>` : "") +
+        `<fieldset class="lot-edit"><legend>${this._draft.lots.length > 1 ? `${T("재고", "Lot")} ${index + 1}${String(lot.location || "").trim() ? ` · ${escape(lot.location.trim())}` : ""}` : T("수량과 날짜", "Quantity & Dates")}</legend>` +
+        (this._draft.lots.length > 1 ? `<button type="button" class="lot-remove" data-remove-lot="${index}" aria-label="${T(`재고 ${index + 1} 삭제`, `Remove lot ${index + 1}`)}">${T("이 재고 삭제", "Remove Lot")}</button>` : "") +
         (lot.capacity !== undefined
-          ? `<div class="preset-row" role="group" aria-label="생수 빠른 입력"><button type="button" class="preset-btn" data-water-preset="2:6">2L × 6병</button><button type="button" class="preset-btn" data-water-preset="2:12">2L × 12병</button><button type="button" class="preset-btn" data-water-preset="0.5:20">500ml × 20병</button></div>` +
-            `<div class="field-pair"><label>병 용량 (L)<input class="capacity" type="number" min="0.001" max="1000000" step="0.001" value="${escape(lot.capacity)}" required></label>` +
-            `<label>병 수 (병)<input class="bottle-count" type="number" min="0" max="1000000000" step="1" value="${escape(lot.count)}" required></label></div>` +
+          ? `<div class="preset-row" role="group" aria-label="${T("생수 빠른 입력", "Quick Water Presets")}"><button type="button" class="preset-btn" data-water-preset="2:6">${T("2L × 6병", "2L × 6")}</button><button type="button" class="preset-btn" data-water-preset="2:12">${T("2L × 12병", "2L × 12")}</button><button type="button" class="preset-btn" data-water-preset="0.5:20">${T("500ml × 20병", "500ml × 20")}</button></div>` +
+            `<div class="field-pair"><label>${T("병 용량 (L)", "Bottle Size (L)")}<input class="capacity" type="number" min="0.001" max="1000000" step="0.001" value="${escape(lot.capacity)}" required></label>` +
+            `<label>${T("병 수 (병)", "Bottles")}<input class="bottle-count" type="number" min="0" max="1000000000" step="1" value="${escape(lot.count)}" required></label></div>` +
             `<output class="lot-total" aria-live="polite"></output>`
-          : `<label>${draftItem.id === "drinking-water" ? "보유량 합계 (L)" : `보유 수량 (${escape(krStockUnit(draftItem))})`}<div class="qty-row"><input class="quantity" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(lot.quantity)}" required><button type="button" class="step-btn" data-step="-1" aria-label="1 빼기">−1</button><button type="button" class="step-btn" data-step="1" aria-label="1 더하기">+1</button><button type="button" class="step-btn" data-step="5" aria-label="5 더하기">+5</button></div></label>`) +
-        `<div class="field-pair"><label>입고일<input class="received-on" type="date" value="${escape(lot.received_on || snapshot.today || "")}"></label>` +
-        (draftItem.date_kind === "expiry" ? `<label>${escape(krDateLabel(draftItem))}<input class="expiry" type="date" value="${escape(lot.expires_on || "")}" aria-describedby="expiry-help"></label>` : `<div></div>`) + `</div>` +
-        (draftItem.date_kind === "expiry" ? `<div class="preset-row" role="group" aria-label="${escape(krDateLabel(draftItem))} 빠른 설정">${krExpiryPresets(draftItem).map(([months, text]) => `<button type="button" class="preset-btn" data-exp-months="${months}">${text}</button>`).join("")}</div>` : "") +
-        (lot.label_check_on ? `<small class="label-check">포장 기한 확인일 ${escape(lot.label_check_on)}</small>` : "") +
-        `<label class="loc-field">보관 위치 <small>(선택)</small><input class="location" type="text" maxlength="${KR_LOCATION_MAX}" list="kr-location-options" autocomplete="off" value="${escape(lot.location || "")}" placeholder="예: 주방 팬트리 3층 선반"></label>` +
-        `<div class="preset-row loc-chips" role="group" aria-label="자주 쓰는 보관 위치">${(knownPlaces.length ? knownPlaces : KR_LOCATION_EXAMPLES).slice(0, 5).map((place) => `<button type="button" class="preset-btn" data-loc="${escape(place)}">${KR_PIN_SVG}${escape(place)}</button>`).join("")}</div>` +
+          : `<label>${draftItem.id === "drinking-water" ? T("보유량 합계 (L)", "Total Volume (L)") : `${T("보유 수량", "Quantity")} (${escape(krStockUnit(draftItem, lang))})`}<div class="qty-row"><input class="quantity" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(lot.quantity)}" required><button type="button" class="step-btn" data-step="-1" aria-label="1 ${T("빼기", "minus")}">−1</button><button type="button" class="step-btn" data-step="1" aria-label="1 ${T("더하기", "plus")}">+1</button><button type="button" class="step-btn" data-step="5" aria-label="5 ${T("더하기", "plus")}">+5</button></div></label>`) +
+        `<div class="field-pair"><label>${T("입고일", "Received On")}<input class="received-on" type="date" value="${escape(lot.received_on || snapshot.today || "")}"></label>` +
+        (draftItem.date_kind === "expiry" ? `<label>${escape(krDateLabel(draftItem, lang))}<input class="expiry" type="date" value="${escape(lot.expires_on || "")}" aria-describedby="expiry-help"></label>` : `<div></div>`) + `</div>` +
+        (draftItem.date_kind === "expiry" ? `<div class="preset-row" role="group" aria-label="${escape(krDateLabel(draftItem, lang))}">${krExpiryPresets(draftItem, lang).map(([months, text]) => `<button type="button" class="preset-btn" data-exp-months="${months}">${text}</button>`).join("")}</div>` : "") +
+        (lot.label_check_on ? `<small class="label-check">${T("포장 기한 확인일", "Label Check Due")} ${escape(lot.label_check_on)}</small>` : "") +
+        `<label class="loc-field">${T("보관 위치", "Location")} <small>(${T("선택", "optional")})</small><input class="location" type="text" maxlength="${KR_LOCATION_MAX}" list="kr-location-options" autocomplete="off" value="${escape(lot.location || "")}" placeholder="${T("예: 주방 팬트리 3층 선반", "e.g. Pantry Shelf 3")}"></label>` +
+        `<div class="preset-row loc-chips" role="group" aria-label="${T("자주 쓰는 보관 위치", "Frequent Locations")}">${(knownPlaces.length ? knownPlaces : KR_LOCATION_EXAMPLES).slice(0, 5).map((place) => `<button type="button" class="preset-btn" data-loc="${escape(place)}">${KR_PIN_SVG}${escape(place)}</button>`).join("")}</div>` +
         `</fieldset>`
       ).join("") +
-      (this._draft.lots.length < 20 ? `<button type="button" id="add-lot" class="add-lot">＋ 다른 위치에 보관 중인 재고 추가</button>` : "") +
-      (draftItem.date_kind === "expiry" ? `<p id="expiry-help" class="item-note">${escape(krDateLabel(draftItem))}이 여러 개면 가장 빠른 날짜를 입력하세요. 비우면 ${labelCheckDays}일 뒤 확인 알림이 뜹니다.</p>` : `<p class="item-note">저장한 날을 마지막 실사일로 기록합니다.</p>`) +
-      `<label for="target">목표량 (${escape(krStockUnit(draftItem))})</label><input id="target" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(this._draft.target)}" placeholder="${draftItem.status.recommended_target == null ? "미설정" : escape(krStockText(draftItem, draftItem.status.recommended_target)) + " 자동"}">` +
-      `<details id="item-settings" ${this._draft.settingsOpen ? "open" : ""}><summary>점검 및 관리 설정</summary>` +
-      `<label class="check-row"><input id="applicable" type="checkbox" ${this._draft.applicable ? "checked" : ""}> 우리 집에서 관리</label>` +
-      `<label for="review-interval">재고 점검 주기 (일)</label><input id="review-interval" type="number" min="1" max="3650" step="1" value="${escape(this._draft.review_interval_days)}" placeholder="기본 ${escape(snapshot.default_review_interval_days ?? 30)}일"><p class="item-note">마지막 저장일로부터 이 기간이 지나면 실사 필요로 표시됩니다.</p></details>` +
-      `<div class="actions"><button type="submit" class="primary">저장</button><button type="button" id="cancel">취소</button>` +
-      `${draftItem.custom ? `<button type="button" id="remove-custom" class="danger">이 물품 삭제</button>` : snapshot.items[this._draft.id] ? `<button type="button" id="delete" class="danger">기록 삭제</button>` : ""}</div></form>` : "";
+      (this._draft.lots.length < 20 ? `<button type="button" id="add-lot" class="add-lot">${T("＋ 다른 위치에 보관 중인 재고 추가", "+ Add Lot in Another Location")}</button>` : "") +
+      (draftItem.date_kind === "expiry" ? `<p id="expiry-help" class="item-note">${T(`${krDateLabel(draftItem)}이 여러 개면 가장 빠른 날짜를 입력하세요. 비우면 ${labelCheckDays}일 뒤 확인 알림이 뜹니다.`, `Enter the earliest ${krDateLabel(draftItem, "en").toLowerCase()}. Leave blank to be reminded in ${labelCheckDays} days.`)}</p>` : `<p class="item-note">${T("저장한 날을 마지막 실사일로 기록합니다.", "Saving records today as the last verification date.")}</p>`) +
+      `<label for="target">${T("목표량", "Target")} (${escape(krStockUnit(draftItem, lang))})</label><input id="target" type="number" min="0" max="${draftItem.id === "drinking-water" ? "1000000" : "1000000000"}" step="${draftItem.id === "drinking-water" ? "0.001" : "1"}" value="${escape(this._draft.target)}" placeholder="${draftItem.status.recommended_target == null ? T("미설정", "Unset") : escape(krStockText(draftItem, draftItem.status.recommended_target, lang)) + T(" 자동", " (auto)")}">` +
+      `<details id="item-settings" ${this._draft.settingsOpen ? "open" : ""}><summary>${T("점검 및 관리 설정", "Check & Management Settings")}</summary>` +
+      `<label class="check-row"><input id="applicable" type="checkbox" ${this._draft.applicable ? "checked" : ""}> ${T("우리 집에서 관리", "Track in Household")}</label>` +
+      `<label for="review-interval">${T("재고 점검 주기 (일)", "Check Interval (days)")}</label><input id="review-interval" type="number" min="1" max="3650" step="1" value="${escape(this._draft.review_interval_days)}" placeholder="${T(`기본 ${snapshot.default_review_interval_days ?? 30}일`, `Default ${snapshot.default_review_interval_days ?? 30}d`)}"><p class="item-note">${T("마지막 저장일로부터 이 기간이 지나면 실사 필요로 표시됩니다.", "Items older than this since last save are marked as Check Needed.")}</p></details>` +
+      `<div class="actions"><button type="submit" class="primary">${T("저장", "Save")}</button><button type="button" id="cancel">${T("취소", "Cancel")}</button>` +
+      `${draftItem.custom ? `<button type="button" id="remove-custom" class="danger">${T("이 물품 삭제", "Delete Item")}</button>` : snapshot.items[this._draft.id] ? `<button type="button" id="delete" class="danger">${T("기록 삭제", "Clear Record")}</button>` : ""}</div></form>` : "";
     const counts = snapshot?.summary;
     const filters = [["all", T("전체", "All"), null], ["shortage", T("부족", "Shortage"), counts?.shortage_count],
       ["needs_check", T("확인 필요", "Needs Check"), counts?.needs_check_count], ["expiring", T("기한 임박", "Expiring"), counts?.expiring_count]];
@@ -1353,7 +1404,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const missionSignature = krMissionState(snapshot).map((mission) => mission.complete).join("");
     const animateMission = Boolean(snapshot && missionSignature !== this._missionSignature);
     this._missionSignature = missionSignature;
-    const catEn3d = { all: "All", power: "Power/Light", food: "Food/Fuel", water: "Water/Sanitation", medical: "Medical/Mask", safety: "Tools/Evacuation" };
+    const catEn3d = KR_OPTIONAL_CATEGORIES_EN;
     const optCatSelect = `<select id="zone-3d-cat" data-3d-cat aria-label="${T("3D 선택 물품 분류", "3D Optional Category")}">${KR_OPTIONAL_CATEGORIES.map((c) => `<option value="${c.id}">${lang === "en" ? (catEn3d[c.id] || c.label) : c.label}</option>`).join("")}</select>`;
     const stage3d = this._viewMode === "3d" && snapshot ? `<section class="warehouse-3d-stage" aria-label="${T("3D 입체 창고 뷰", "3D Warehouse View")}"><div class="warehouse-3d-bar"><div class="controls" role="group" aria-label="${T("창고 구역", "Warehouse Zone")}"><button type="button" data-3d-zone="essentials" aria-pressed="true">${T("기본 비축 랙", "Essentials Rack")}</button><button type="button" data-3d-zone="optional" aria-pressed="false">${T("선택 물품 랙", "Optional Rack")}</button>${optCatSelect}<button type="button" id="toggle-3d-active" aria-pressed="false">${T("사용 중만", "Active Only")}</button></div><div class="controls" role="group" aria-label="${T("창고 환경", "Environment")}"><select data-3d-time aria-label="${T("시간대", "Time of Day")}"><option value="auto">${T("시간 자동", "Auto Time")}</option><option value="day">${T("낮", "Day")}</option><option value="night">${T("밤", "Night")}</option></select><select data-3d-weather aria-label="${T("날씨", "Weather")}"><option value="auto">${T("날씨 자동", "Auto Weather")}</option><option value="clear">${T("맑음", "Clear")}</option><option value="rain">${T("비", "Rain")}</option><option value="snow">${T("눈", "Snow")}</option><option value="storm">${T("뇌우", "Storm")}</option></select><span class="env-chip" id="env-3d-chip" role="status"></span></div><div class="controls"><button type="button" id="toggle-3d-spin" aria-pressed="true">${T("자동 회전", "Auto Spin")}</button><button type="button" id="reset-3d-cam">${T("시점 초기화", "Reset View")}</button></div></div><canvas id="warehouse-3d-canvas"></canvas><div id="warehouse-3d-tooltip" role="status" hidden></div></section>` : "";
     const surv = krSurvivalDays(snapshot);
@@ -2146,6 +2197,8 @@ class KrSurvivalKitGuideCard extends HTMLElement {
   _quizView(escape) {
     const data = this._quizData;
     if (!data?.questions?.length) return "";
+    const lang = this._lang || krGetLang();
+    const T = (ko, en) => krT(lang, ko, en);
     const index = Math.min(this._quizIndex, data.questions.length - 1);
     const question = data.questions[index];
     const level = data.levels.find((entry) => entry.id === question.level_id);
@@ -2161,14 +2214,14 @@ class KrSurvivalKitGuideCard extends HTMLElement {
       if (url.protocol !== "https:") return "";
       return `<a href="${escape(url.href)}" target="_blank" rel="noopener noreferrer">${escape(source.publisher || source.title || id)}</a>`;
     }).filter(Boolean).join(" · ");
-    return `<details class="quiz-panel" ${this._quizOpen ? "open" : ""}><summary class="quiz-head"><strong>${escape(data.title || "상황 판단 연습")}</strong><span>학습 진도 ${answered}/${data.questions.length} · 정답 ${correct}/${data.questions.length}</span></summary>` +
-      `<p>학습 기록은 이 브라우저에만 저장됩니다. 실제 대피 판단이나 생존 가능성 점수가 아닙니다.</p>` +
-      `<div class="quiz-question"><small>${escape(level?.title || "학습 문제")} · ${index + 1}/${data.questions.length}</small><h4>${escape(question.prompt)}</h4>` +
+    return `<details class="quiz-panel" ${this._quizOpen ? "open" : ""}><summary class="quiz-head"><strong>${escape(lang === "en" ? "Scenario Judgment Quiz" : (data.title || "상황 판단 연습"))}</strong><span>${T("학습 진도", "Progress")} ${answered}/${data.questions.length} · ${T("정답", "Correct")} ${correct}/${data.questions.length}</span></summary>` +
+      `<p>${T("학습 기록은 이 브라우저에만 저장됩니다. 실제 대피 판단이나 생존 가능성 점수가 아닙니다.", "Progress is saved in this browser only and is for training purposes.")}</p>` +
+      `<div class="quiz-question"><small>${escape(level?.title || T("학습 문제", "Question"))} · ${index + 1}/${data.questions.length}</small><h4>${escape(question.prompt)}</h4>` +
       `<div class="quiz-choices">${question.choices.map((entry) => `<button type="button" data-quiz-choice="${escape(entry.id)}" aria-pressed="${selected === entry.id}">${escape(entry.text)}</button>`).join("")}</div>` +
-      (choice ? `<div class="quiz-feedback" role="status"><p><strong>${selected === question.answer_id ? "맞았습니다." : "다시 확인해 보세요."}</strong> ${escape(choice.feedback)}</p>` +
-        `<p><strong>정답: ${escape(answer?.text || "자료 확인 필요")}</strong> ${escape(answer?.feedback || "")}</p>` +
-        `<p class="quiz-sources">${sourceLinks ? `공식 출처: ${sourceLinks}` : `공식 참고 자료를 확인하세요.`}</p></div>` : "") +
-      `<div class="quiz-nav"><button type="button" data-quiz-nav="prev" ${index === 0 ? "disabled" : ""}>이전</button><button type="button" data-quiz-nav="next" ${index === data.questions.length - 1 ? "disabled" : ""}>다음 문제</button></div><button type="button" data-quiz-reset>학습 기록 지우고 다시 풀기</button></div></details>`;
+      (choice ? `<div class="quiz-feedback" role="status"><p><strong>${selected === question.answer_id ? T("맞았습니다.", "Correct.") : T("다시 확인해 보세요.", "Check again.")}</strong> ${escape(choice.feedback)}</p>` +
+        `<p><strong>${T("정답", "Answer")}: ${escape(answer?.text || T("자료 확인 필요", "Verify guide"))}</strong> ${escape(answer?.feedback || "")}</p>` +
+        `<p class="quiz-sources">${sourceLinks ? `${T("공식 출처", "Official Source")}: ${sourceLinks}` : T("공식 참고 자료를 확인하세요.", "Check official references.")}</p></div>` : "") +
+      `<div class="quiz-nav"><button type="button" data-quiz-nav="prev" ${index === 0 ? "disabled" : ""}>${T("이전", "Previous")}</button><button type="button" data-quiz-nav="next" ${index === data.questions.length - 1 ? "disabled" : ""}>${T("다음 문제", "Next")}</button></div><button type="button" data-quiz-reset>${T("학습 기록 지우고 다시 풀기", "Reset Quiz Progress")}</button></div></details>`;
   }
 
   set hass(value) { this._hass = value; }
@@ -2185,13 +2238,24 @@ class KrSurvivalKitGuideCard extends HTMLElement {
     const scenario = scenarios.find((item) => item.id === this._scenario) || scenarios[0];
     const sheet = guide.playbook.find((item) => item.id === this._sheet) || guide.playbook[0];
     const scenarioGroups = [
-      ["평시", scenarios.filter((item) => item.id === "prepare")],
-      ["민방공 경보", scenarios.filter((item) => item.kind === "민방공 경보")],
-      ["생활 기반 장애", scenarios.filter((item) => item.kind === "생활 기반 장애")],
+      [T("평시", "Peacetime"), scenarios.filter((item) => item.id === "prepare")],
+      [T("민방공 경보", "Civil Defense Alerts"), scenarios.filter((item) => item.kind === "민방공 경보")],
+      [T("생활 기반 장애", "Utility Outages"), scenarios.filter((item) => item.kind === "생활 기반 장애")],
     ];
+    const scenarioTitleEn = {
+      prepare: "Peacetime Prep",
+      "air-raid": "Air Raid Alert",
+      "civil-warning": "Civil Defense Warning",
+      "cbrn-alert": "CBRN Alert",
+      "nuclear-alert": "Nuclear Alert",
+      blackout: "Power Outage",
+      "water-outage": "Water Outage",
+      "winter-heating": "Heating Failure",
+    };
     const scenarioNav = scenarioGroups.map(([title, items]) => `<div class="nav-group"><h3>${esc(title)}</h3><div class="nav-items">${items.map((item) =>
-      `<button type="button" data-scenario="${esc(item.id)}" aria-pressed="${item.id === scenario.id}" class="${item.id === scenario.id ? "active" : ""}">${esc(item.title)}</button>`).join("")}</div></div>`).join("");
-    const sheetNav = guide.playbook.map((item) => `<button type="button" role="tab" id="tab-${esc(item.id)}" aria-controls="sheet-panel" aria-selected="${item.id === sheet.id}" tabindex="${item.id === sheet.id ? 0 : -1}" data-sheet="${esc(item.id)}">${esc(item.label || item.title)}</button>`).join("");
+      `<button type="button" data-scenario="${esc(item.id)}" aria-pressed="${item.id === scenario.id}" class="${item.id === scenario.id ? "active" : ""}">${esc(lang === "en" ? (scenarioTitleEn[item.id] || item.title) : item.title)}</button>`).join("")}</div></div>`).join("");
+    const sheetLabelEn = { "first-day": "First 24 Hours", "first-week": "Days 2–7", "extended": "Extended Stay", "field-skills": "Field Skills", "equipment": "Equipment Check" };
+    const sheetNav = guide.playbook.map((item) => `<button type="button" role="tab" id="tab-${esc(item.id)}" aria-controls="sheet-panel" aria-selected="${item.id === sheet.id}" tabindex="${item.id === sheet.id ? 0 : -1}" data-sheet="${esc(item.id)}">${esc(lang === "en" ? (sheetLabelEn[item.id] || item.label || item.title) : (item.label || item.title))}</button>`).join("");
     const detail = scenario.details?.length ? `<ul>${scenario.details.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : `<p>${esc(scenario.paper_note)}</p>`;
     const household = scenario.id === "prepare" ? `<p class="household">${esc(guide.household_summary)}</p>` : "";
     const rows = sheet.layout === "reference" ? sheet.rows.map((row) =>

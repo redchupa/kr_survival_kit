@@ -1293,8 +1293,9 @@ export class KrWarehouseThreeEngine {
     const deckMat = new THREE.MeshStandardMaterial({ color: 0x1a3547, roughness: 0.55, metalness: 0.4 });
     this.topDeckMat = new THREE.MeshStandardMaterial({ color: 0x4f6b7d, roughness: 0.4, metalness: 0.7 });
     const beamOrange = new THREE.MeshStandardMaterial({ color: 0xe76f51, roughness: 0.45, metalness: 0.6 });
-    const zoneTitle = this.zone === "optional" ? "선택 물품 랙" : "기본 비축 랙";
-    const zoneShort = this.zone === "optional" ? "선택" : "기본";
+    const isEn = (() => { try { return window.localStorage?.getItem("kr_survival_kit_lang") === "en"; } catch { return false; } })();
+    const zoneTitle = this.zone === "optional" ? (isEn ? "Optional Rack" : "선택 물품 랙") : (isEn ? "Essentials Rack" : "기본 비축 랙");
+    const zoneShort = this.zone === "optional" ? (isEn ? "Opt" : "선택") : (isEn ? "Ess" : "기본");
 
     for (let r = 0; r < rows; r++) {
       const z = rowZ(r);
@@ -1321,7 +1322,7 @@ export class KrWarehouseThreeEngine {
       // End-cap row signs on both rack ends.
       const first = r * cols + 1;
       const last = Math.min(itemsToShow.length, (r + 1) * cols);
-      const tex = makePlateTexture(`${ROW_LETTERS[r % ROW_LETTERS.length]}열`, `${zoneShort} · ${String(first).padStart(2, "0")}–${String(last).padStart(2, "0")}번`, "#52f2a8");
+      const tex = makePlateTexture(isEn ? `Row ${ROW_LETTERS[r % ROW_LETTERS.length]}` : `${ROW_LETTERS[r % ROW_LETTERS.length]}열`, `${zoneShort} · ${String(first).padStart(2, "0")}–${String(last).padStart(2, "0")}${isEn ? "" : "번"}`, "#52f2a8");
       for (const side of [-1, 1]) {
         const sign = makeSign(tex, 0.86, 0.27);
         sign.position.set(side * (rackW / 2 + 0.03), 1.25, z);
@@ -1340,7 +1341,7 @@ export class KrWarehouseThreeEngine {
       else if (s?.state === "shortage" || s?.expired_quantity > 0) acc.short++;
       return acc;
     }, { ready: 0, short: 0 });
-    const boardTex = makePlateTexture(`${zoneTitle} · ${itemsToShow.length}종`, `완비 ${counts.ready} · 부족 ${counts.short} · 클릭해서 수정`, "#ffd166", 768, 160);
+    const boardTex = makePlateTexture(`${zoneTitle} · ${itemsToShow.length}${isEn ? "" : "종"}`, isEn ? `Ready ${counts.ready} · Low ${counts.short} · Click to edit` : `완비 ${counts.ready} · 부족 ${counts.short} · 클릭해서 수정`, "#ffd166", 768, 160);
     const board = makeSign(boardTex, 2.9, 0.6);
     const boardZ = backZ - 0.45;
     board.position.set(0, 2.5, boardZ);
@@ -1387,8 +1388,8 @@ export class KrWarehouseThreeEngine {
 
       const unit = item.id === "drinking-water" ? "L" : item.unit;
       const scale = item.id === "drinking-water" ? 1000 : 1;
-      const qtyText = `${((status.usable ?? 0) + (status.unknown_date_quantity ?? 0)) / scale} ${unit} / ${status.target == null ? "미설정" : `${status.target / scale} ${unit}`}`;
-      const statusLabel = ready ? "완비" : status.state === "shortage" ? "부족" : status.expiring_quantity > 0 ? "기한 임박" : "실사 필요";
+      const qtyText = `${((status.usable ?? 0) + (status.unknown_date_quantity ?? 0)) / scale} ${unit} / ${status.target == null ? (isEn ? "Unset" : "미설정") : `${status.target / scale} ${unit}`}`;
+      const statusLabel = ready ? (isEn ? "Ready" : "완비") : status.state === "shortage" ? (isEn ? "Low" : "부족") : status.expiring_quantity > 0 ? (isEn ? "Expiring" : "기한 임박") : (isEn ? "Check" : "실사 필요");
       const slotNo = `${ROW_LETTERS[r % ROW_LETTERS.length]}-${String(col + 1).padStart(2, "0")}`;
 
       const places = [...new Set((snapshot.items[item.id]?.lots || []).map((lot) => String(lot.location || "").trim()).filter(Boolean))];
