@@ -56,6 +56,12 @@ Home Assistant 2026.11 이상 및 관리자 계정이 필요합니다.
 
 ### HACS로 설치 (권장)
 
+아래 버튼을 누르면 내 Home Assistant의 HACS에서 이 저장소가 바로 열립니다. URL을 복사해 붙여넣을 필요가 없어요.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=redchupa&repository=kr_survival_kit&category=integration)
+
+버튼이 동작하지 않으면 아래 순서대로 진행하세요.
+
 1. Home Assistant에서 **HACS**를 엽니다.
 2. **KR Survival Kit**를 검색해 선택합니다.
 3. **다운로드**를 누른 뒤 Home Assistant를 재시작합니다.

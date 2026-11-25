@@ -51,6 +51,12 @@ Requires **Home Assistant 2026.11 or newer** and an administrator account.
 
 ### Via HACS (Recommended)
 
+Click the button to open this repository in HACS on your own Home Assistant — no URL copy-paste needed.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=redchupa&repository=kr_survival_kit&category=integration)
+
+If the button doesn't work, follow these steps:
+
 1. Open **HACS** in Home Assistant.
 2. Search for **KR Survival Kit** (or add `https://github.com/redchupa/kr_survival_kit` as a custom **Integration** repository).
 3. Click **Download** and restart Home Assistant.
