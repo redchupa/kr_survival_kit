@@ -74,6 +74,13 @@ const LAMP_Y = 2.92;
 const MAX_SPOTS = 6;
 
 const WEATHER_LABEL = { clear: "맑음", rain: "🌧 비", snow: "❄️ 눈", storm: "⛈ 뇌우" };
+const WEATHER_LABEL_EN = { clear: "Clear", rain: "🌧 Rain", snow: "❄️ Snow", storm: "⛈ Storm" };
+const DAYPART_LABEL = { dawn: "🌅 새벽", day: "☀️ 낮", sunset: "🌇 노을", night: "🌙 밤" };
+const DAYPART_LABEL_EN = { dawn: "🌅 Dawn", day: "☀️ Day", sunset: "🌇 Sunset", night: "🌙 Night" };
+
+function isEnglishLang() {
+  try { return window.localStorage?.getItem("kr_survival_kit_lang") === "en"; } catch { return false; }
+}
 
 /** Map a Home Assistant weather condition onto the 4 scene weather modes. */
 export function mapHaWeather(state) {
@@ -1139,18 +1146,25 @@ export class KrWarehouseThreeEngine {
     this.slotGroups = [];
     this.flames = [];
     this.blinkers = [];
+    this.urgentLeds = [];
+    this.beaconMats = [];
     this.lamps = { beams: [], pools: [], bulbs: [], spots: [] };
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2(-9, -9);
     this.reducedMotion = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
 
-    this._cur = { hemi: 0.9, dir: 1.55, spot: 4, beam: 0.05, stars: 0, moon: 0, snow: 0, wet: 0 };
-    this._bg = new THREE.Color(0x07131e);
-    this._bgShown = new THREE.Color(0x07131e);
+    this._cur = { hemi: 1.4, dir: 2.1, spot: 6, beam: 0.05, accent: 1.6, stars: 0, moon: 0, motes: 0.7, snow: 0, wet: 0 };
+    this._bg = new THREE.Color(0x2e6488);
+    this._bgShown = new THREE.Color(0x2e6488);
     this._flashColor = new THREE.Color(0xdde8ff);
-    this._dirColor = new THREE.Color(0xffffff);
-    this._deckBase = new THREE.Color(0x4f6b7d);
-    this._deckSnow = new THREE.Color(0xe9f1f5);
+    this._dirColor = new THREE.Color(0xfffaf2);
+    this._hemiSky = new THREE.Color(0xdbf4ff);
+    this._hemiGround = new THREE.Color(0x244257);
+    this._accentColor = new THREE.Color(0x56cfe1);
+    this._deckBase = new THREE.Color(0x6a899e);
+    this._deckSnow = new THREE.Color(0xeef6fa);
+    this._dirPos = new THREE.Vector3(6, 12, 7);
+    this._resetGoal = null;
     this._flash = 0;
     this._envKey = "";
     this._envReady = false;
@@ -1172,18 +1186,18 @@ export class KrWarehouseThreeEngine {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.32;
 
     this.scene = new THREE.Scene();
     this.scene.background = this._bgShown;
-    this.scene.fog = new THREE.Fog(0x07131e, 30, 70);
+    this.scene.fog = new THREE.Fog(0x2e6488, 30, 70);
     this.camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 90);
 
-    this.hemiLight = new THREE.HemisphereLight(0xb8e6f5, 0x102230, 0.9);
+    this.hemiLight = new THREE.HemisphereLight(0xdbf4ff, 0x244257, 1.4);
     this.scene.add(this.hemiLight);
 
-    this.dirLight = new THREE.DirectionalLight(0xffffff, 1.55);
-    this.dirLight.position.set(6, 11, 7);
+    this.dirLight = new THREE.DirectionalLight(0xfffaf2, 2.1);
+    this.dirLight.position.set(6, 12, 7);
     this.dirLight.castShadow = true;
     this.dirLight.shadow.mapSize.set(2048, 2048);
     this.dirLight.shadow.camera.near = 1;
@@ -1192,23 +1206,41 @@ export class KrWarehouseThreeEngine {
     this.scene.add(this.dirLight);
     this.scene.add(this.dirLight.target);
 
-    this.accentLight = new THREE.PointLight(0x4cc9f0, 1.4, 18);
-    this.accentLight.position.set(-4, 4, -3);
+    this.accentLight = new THREE.PointLight(0x56cfe1, 1.8, 24);
+    this.accentLight.position.set(-4, 4.2, -3);
     this.scene.add(this.accentLight);
 
     this.floorMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(44, 44),
-      new THREE.MeshStandardMaterial({ color: 0x0b1926, roughness: 0.75, metalness: 0.2, map: concreteTexture() }),
+      new THREE.MeshStandardMaterial({ color: 0x1b2d3e, roughness: 0.48, metalness: 0.28, map: concreteTexture() }),
     );
     this.floorMesh.rotation.x = -Math.PI / 2;
     this.floorMesh.receiveShadow = true;
     this.scene.add(this.floorMesh);
 
-    const grid = new THREE.GridHelper(40, 40, 0x3c8dad, 0x193b4d);
+    const grid = new THREE.GridHelper(40, 40, 0x4cc9f0, 0x264c66);
     grid.material.transparent = true;
-    grid.material.opacity = 0.35;
+    grid.material.opacity = 0.34;
     grid.position.y = 0.004;
     this.scene.add(grid);
+
+    // Holographic hover ring that highlights the hovered shelf slot.
+    this.hoverRing = new THREE.Group();
+    const outerRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.37, 0.44, 36),
+      new THREE.MeshBasicMaterial({ color: 0x38f2d4, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+    );
+    outerRing.rotation.x = -HALF;
+    const innerRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.26, 0.295, 24),
+      new THREE.MeshBasicMaterial({ color: 0x52f2a8, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+    );
+    innerRing.rotation.x = -HALF;
+    innerRing.position.y = 0.004;
+    this.hoverRing.add(outerRing, innerRing);
+    this.hoverRing.scale.setScalar(0.01);
+    this.hoverRing.visible = false;
+    this.scene.add(this.hoverRing);
 
     this._buildSky();
 
@@ -1219,7 +1251,7 @@ export class KrWarehouseThreeEngine {
   }
 
   _buildSky() {
-    // Star field (night, clear sky only).
+    // Star field (night & twilight clear sky).
     const count = 700;
     const pos = new Float32Array(count * 3);
     let seed = 7;
@@ -1234,14 +1266,20 @@ export class KrWarehouseThreeEngine {
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    this.starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.22, map: flakeTexture(), transparent: true, opacity: 0, depthWrite: false, fog: false });
+    this.starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.24, map: flakeTexture(), transparent: true, opacity: 0, depthWrite: false, fog: false });
     this.stars = new THREE.Points(geo, this.starMat);
     this.scene.add(this.stars);
 
-    this.moonMat = new THREE.MeshBasicMaterial({ color: 0xf1f5ff, transparent: true, opacity: 0, fog: false });
+    this.moonMat = new THREE.MeshBasicMaterial({ color: 0xf4f8ff, transparent: true, opacity: 0, fog: false });
     this.moon = new THREE.Mesh(new THREE.SphereGeometry(1.6, 24, 16), this.moonMat);
     this.moon.position.set(-18, 20, -26);
     this.scene.add(this.moon);
+
+    this.moonHaloMat = new THREE.SpriteMaterial({ map: poolTexture(), color: 0x99d6ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+    this.moonHalo = new THREE.Sprite(this.moonHaloMat);
+    this.moonHalo.position.copy(this.moon.position);
+    this.moonHalo.scale.set(11, 11, 1);
+    this.scene.add(this.moonHalo);
   }
 
   rebuild() {
@@ -1254,6 +1292,8 @@ export class KrWarehouseThreeEngine {
     if (this.tooltip) this.tooltip.hidden = true;
     this.flames = [];
     this.blinkers = [];
+    this.urgentLeds = [];
+    this.beaconMats = [];
     this.lamps = { beams: [], pools: [], bulbs: [], spots: [] };
     const snapshot = this.getSnapshot();
     if (!snapshot) return;
@@ -1289,11 +1329,12 @@ export class KrWarehouseThreeEngine {
     Object.assign(this.dirLight.shadow.camera, { left: -shadowSpan, right: shadowSpan, top: shadowSpan, bottom: -shadowSpan });
     this.dirLight.shadow.camera.updateProjectionMatrix();
 
-    const metalMat = new THREE.MeshStandardMaterial({ color: 0x3b5b6e, roughness: 0.35, metalness: 0.78 });
-    const deckMat = new THREE.MeshStandardMaterial({ color: 0x1a3547, roughness: 0.55, metalness: 0.4 });
-    this.topDeckMat = new THREE.MeshStandardMaterial({ color: 0x4f6b7d, roughness: 0.4, metalness: 0.7 });
-    const beamOrange = new THREE.MeshStandardMaterial({ color: 0xe76f51, roughness: 0.45, metalness: 0.6 });
-    const isEn = (() => { try { return window.localStorage?.getItem("kr_survival_kit_lang") === "en"; } catch { return false; } })();
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x6b879c, roughness: 0.28, metalness: 0.82 });
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x264156, roughness: 0.42, metalness: 0.45 });
+    this.topDeckMat = new THREE.MeshStandardMaterial({ color: 0x6a899e, roughness: 0.32, metalness: 0.75 });
+    const beamAmber = new THREE.MeshStandardMaterial({ color: 0xf4a261, emissive: 0x5c2608, emissiveIntensity: 0.22, roughness: 0.3, metalness: 0.72 });
+    const beamCyan = new THREE.MeshStandardMaterial({ color: 0x38e4ff, emissive: 0x0a5a70, emissiveIntensity: 0.32, roughness: 0.25, metalness: 0.78 });
+    const isEn = isEnglishLang();
     const zoneTitle = this.zone === "optional" ? (isEn ? "Optional Rack" : "선택 물품 랙") : (isEn ? "Essentials Rack" : "기본 비축 랙");
     const zoneShort = this.zone === "optional" ? (isEn ? "Opt" : "선택") : (isEn ? "Ess" : "기본");
 
@@ -1307,10 +1348,10 @@ export class KrWarehouseThreeEngine {
         add(this.worldGroup, B(0.025, 0.025, RACK_DEPTH - 0.06), this.topDeckMat, -rackW / 2 + (b * rackW) / bars, 1.535, z).castShadow = false;
       }
       add(this.worldGroup, B(rackW, 0.02, 0.02), this.topDeckMat, 0, 1.55, z).castShadow = false;
-      // Orange load beams on the front/back of each level, like pallet racking.
-      for (const y of [0.25, 1.49]) {
-        add(this.worldGroup, B(rackW, 0.06, 0.05), beamOrange, 0, y, z + RACK_DEPTH / 2 - 0.02);
-        add(this.worldGroup, B(rackW, 0.06, 0.05), beamOrange, 0, y, z - RACK_DEPTH / 2 + 0.02);
+      // Sleek anodized amber (lower) & cyan (upper) load beams on each level.
+      for (const [y, mat] of [[0.25, beamAmber], [1.49, beamCyan]]) {
+        add(this.worldGroup, B(rackW, 0.06, 0.05), mat, 0, y, z + RACK_DEPTH / 2 - 0.02);
+        add(this.worldGroup, B(rackW, 0.06, 0.05), mat, 0, y, z - RACK_DEPTH / 2 + 0.02);
       }
       for (const px of [-rackW / 2 + 0.08, rackW / 2 - 0.08]) {
         for (const pz of [z - RACK_DEPTH / 2 + 0.08, z + RACK_DEPTH / 2 - 0.08]) {
@@ -1363,16 +1404,19 @@ export class KrWarehouseThreeEngine {
       const toneHex = ready ? "#52f2a8" : bad ? "#ff7b7b" : "#ffd166";
       const toneNum = ready ? 0x52f2a8 : bad ? 0xff7b7b : 0xffd166;
 
+      const baseScale = matchesFilter ? 1 : 0.72;
       const slot = new THREE.Group();
       slot.position.set(xPos, 0.37, zPos);
-      if (!matchesFilter) slot.scale.setScalar(0.72);
+      if (!matchesFilter) slot.scale.setScalar(baseScale);
 
+      const ledMat = new THREE.MeshStandardMaterial({ color: toneNum, emissive: toneNum, emissiveIntensity: matchesFilter ? 0.95 : 0.18 });
       const led = new THREE.Mesh(
         new THREE.BoxGeometry(0.76, 0.035, 0.05),
-        new THREE.MeshStandardMaterial({ color: toneNum, emissive: toneNum, emissiveIntensity: matchesFilter ? 0.9 : 0.15 }),
+        ledMat,
       );
       led.position.set(0, -0.02, RACK_DEPTH / 2 - 0.02);
       slot.add(led);
+      if (bad && matchesFilter) this.urgentLeds.push(ledMat);
 
       const ctx = { flames: this.flames, blinkers: this.blinkers };
       slot.add(buildItemMesh(item, ratio, toneNum, ready, kit, ctx));
@@ -1393,7 +1437,7 @@ export class KrWarehouseThreeEngine {
       const slotNo = `${ROW_LETTERS[r % ROW_LETTERS.length]}-${String(col + 1).padStart(2, "0")}`;
 
       const places = [...new Set((snapshot.items[item.id]?.lots || []).map((lot) => String(lot.location || "").trim()).filter(Boolean))];
-      slot.userData = { item, name: shortName, slotNo, qtyText, statusLabel, places, baseY: 0.37, hitMesh };
+      slot.userData = { item, name: shortName, slotNo, qtyText, statusLabel, places, baseY: 0.37, baseScale, hitMesh };
       hitMesh.userData = { slot };
       this.worldGroup.add(slot);
       this.slotGroups.push(slot);
@@ -1462,33 +1506,46 @@ export class KrWarehouseThreeEngine {
   }
 
   _buildFloorMarks(rows, rowZ, rackW, frontZ, backZ) {
-    const yellow = new THREE.MeshBasicMaterial({ color: 0xffc300, transparent: true, opacity: 0.85 });
-    const strip = (w, d, x, z) => {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), yellow);
+    const amber = new THREE.MeshBasicMaterial({ color: 0xffc300, transparent: true, opacity: 0.88 });
+    const cyan = new THREE.MeshBasicMaterial({ color: 0x38e4ff, transparent: true, opacity: 0.82, blending: THREE.AdditiveBlending, depthWrite: false });
+    const strip = (w, d, x, z, mat = amber, y = 0.008) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat);
       m.rotation.x = -HALF;
-      m.position.set(x, 0.008, z);
+      m.position.set(x, y, z);
       this.worldGroup.add(m);
     };
-    // Keep-clear line along each rack face.
+    // Keep-clear amber line along each rack face.
     for (let r = 0; r < rows; r++) {
-      strip(rackW + 0.4, 0.05, 0, rowZ(r) + RACK_DEPTH / 2 + 0.14);
-      strip(rackW + 0.4, 0.05, 0, rowZ(r) - RACK_DEPTH / 2 - 0.14);
+      strip(rackW + 0.4, 0.045, 0, rowZ(r) + RACK_DEPTH / 2 + 0.14, amber);
+      strip(rackW + 0.4, 0.045, 0, rowZ(r) - RACK_DEPTH / 2 - 0.14, amber);
     }
-    // Zone outline.
+    // Sleek glowing cyan bay outline perimeter.
     const x0 = rackW / 2 + 0.7;
     const zA = backZ - 0.7;
     const zB = frontZ + 1.7;
-    strip(x0 * 2, 0.09, 0, zA);
-    strip(x0 * 2, 0.09, 0, zB);
-    strip(0.09, zB - zA, -x0, (zA + zB) / 2);
-    strip(0.09, zB - zA, x0, (zA + zB) / 2);
+    strip(x0 * 2, 0.08, 0, zA, cyan, 0.009);
+    strip(x0 * 2, 0.08, 0, zB, cyan, 0.009);
+    strip(0.08, zB - zA, -x0, (zA + zB) / 2, cyan, 0.009);
+    strip(0.08, zB - zA, x0, (zA + zB) / 2, cyan, 0.009);
     // Hazard chevrons at the front entrance.
-    const hazard = new THREE.MeshBasicMaterial({ color: 0xffc300, transparent: true, opacity: 0.7 });
+    const hazard = new THREE.MeshBasicMaterial({ color: 0xffc300, transparent: true, opacity: 0.75 });
     for (let i = -3; i <= 3; i++) {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.42), hazard);
       m.rotation.set(-HALF, 0, 0.6);
       m.position.set(i * 0.34, 0.009, zB + 0.35);
       this.worldGroup.add(m);
+    }
+
+    // 4 corner architectural bay pillars with subtle glowing status beacons.
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x6b879c, roughness: 0.28, metalness: 0.84 });
+    const plinthMat = new THREE.MeshStandardMaterial({ color: 0x264156, roughness: 0.4, metalness: 0.65 });
+    for (const [px, pz] of [[-x0, zA], [x0, zA], [-x0, zB], [x0, zB]]) {
+      add(this.worldGroup, B(0.32, 0.16, 0.32), plinthMat, px, 0.08, pz);
+      add(this.worldGroup, B(0.16, CEILING_Y, 0.16), pillarMat, px, CEILING_Y / 2, pz);
+      const stripMat = new THREE.MeshStandardMaterial({ color: 0x38e4ff, emissive: 0x38e4ff, emissiveIntensity: 0.85, roughness: 0.2 });
+      const beacon = add(this.worldGroup, B(0.19, 0.08, 0.19), stripMat, px, CEILING_Y - 0.18, pz);
+      beacon.castShadow = false;
+      this.beaconMats.push(stripMat);
     }
   }
 
@@ -1538,51 +1595,157 @@ export class KrWarehouseThreeEngine {
     this.snow.frustumCulled = false;
     this.snow.visible = false;
     this.weatherGroup.add(this.snow);
+
+    // Sunlit ambient dust motes / subtle sparkles during clear day, dawn, and sunset.
+    const MOTES = 260;
+    const motePos = new Float32Array(MOTES * 3);
+    this._motePhase = new Float32Array(MOTES);
+    this._moteSpeed = new Float32Array(MOTES);
+    for (let i = 0; i < MOTES; i++) {
+      motePos.set([(rand() - 0.5) * W * 0.85, 0.3 + rand() * 4.2, cz + (rand() - 0.5) * D * 0.85], i * 3);
+      this._motePhase[i] = rand() * Math.PI * 2;
+      this._moteSpeed[i] = 0.08 + rand() * 0.14;
+    }
+    const moteGeo = new THREE.BufferGeometry();
+    moteGeo.setAttribute("position", new THREE.BufferAttribute(motePos, 3));
+    this.moteMat = new THREE.PointsMaterial({ color: 0xfff3cc, size: 0.075, map: flakeTexture(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+    this.motes = new THREE.Points(moteGeo, this.moteMat);
+    this.motes.frustumCulled = false;
+    this.motes.visible = false;
+    this.weatherGroup.add(this.motes);
   }
 
   _resolveEnv() {
     const ext = this.getEnvironment?.() || {};
-    let night;
-    if (this.timeMode === "day") night = false;
-    else if (this.timeMode === "night") night = true;
-    else if (ext.sun) night = ext.sun === "below_horizon" || ext.weather === "clear-night";
-    else {
-      const hour = new Date().getHours();
-      night = hour < 6 || hour >= 19;
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    const hhmm = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    let daypart;
+    if (this.timeMode === "dawn" || this.timeMode === "day" || this.timeMode === "sunset" || this.timeMode === "night") {
+      daypart = this.timeMode;
+    } else if (ext.sun) {
+      const below = ext.sun === "below_horizon" || ext.weather === "clear-night";
+      if (hour >= 5 && hour < 7) daypart = "dawn";
+      else if (hour >= 17 && hour < 19) daypart = "sunset";
+      else daypart = below ? "night" : "day";
+    } else {
+      if (hour >= 5 && hour < 7) daypart = "dawn";
+      else if (hour >= 7 && hour < 17) daypart = "day";
+      else if (hour >= 17 && hour < 19) daypart = "sunset";
+      else daypart = "night";
     }
+    const night = daypart === "night";
     const weather = this.weatherMode === "auto" ? mapHaWeather(ext.weather) : this.weatherMode;
     const synced = this.timeMode === "auto" || this.weatherMode === "auto";
-    const source = synced ? (ext.sun || ext.weather ? "HA 연동" : "시계 기준") : "수동";
-    return { night, weather, source };
+    const isEn = isEnglishLang();
+    const source = synced
+      ? (ext.sun || ext.weather ? (isEn ? "HA Sync" : "HA 연동") : (isEn ? "Local Clock" : "시계 기준"))
+      : (isEn ? "Manual" : "수동");
+    return { daypart, night, weather, source, hhmm, isEn };
   }
 
   _envTargets(env, theme) {
     const light = theme === "white" || theme === "ivory";
     const wet = env.weather === "rain" || env.weather === "storm";
-    const bgHex = env.night
-      ? (light ? (wet ? 0x263340 : 0x2b3a4a) : (wet ? 0x050b12 : 0x03080f))
-      : light
-        ? (wet ? 0xa9b6c0 : env.weather === "snow" ? 0xe9eef2 : theme === "ivory" ? 0xe8dec8 : 0xdbe6ec)
-        : (wet ? 0x1c2b36 : env.weather === "snow" ? 0x34495a : 0x1f4a66);
+    const snow = env.weather === "snow";
+    const clear = env.weather === "clear";
+    const dp = env.daypart || (env.night ? "night" : "day");
+
+    if (dp === "dawn") {
+      return {
+        bg: light ? (wet ? 0xc2b6c4 : snow ? 0xf2e8ec : 0xf4d7c8) : (wet ? 0x2a2638 : snow ? 0x4b435c : 0x3b2c4a),
+        hemi: (light ? 1.4 : 1.18) * (wet ? 0.82 : 1),
+        hemiSky: 0xffd2b8,
+        hemiGround: 0x2b2438,
+        dir: wet ? 1.0 : snow ? 1.35 : 1.85,
+        dirColor: 0xffb48a,
+        dirPos: [10, 7.5, 5],
+        spot: wet ? 14 : 9,
+        beam: wet ? 0.11 : 0.07,
+        accent: 1.8,
+        accentColor: 0xff9f68,
+        stars: clear ? 0.25 : 0,
+        moon: 0,
+        motes: clear ? 0.65 : 0,
+        snow: snow ? 1 : 0,
+        wet: wet ? 1 : 0,
+        fogNear: wet ? 12 : snow ? 10 : 30,
+        fogFar: wet ? 32 : snow ? 28 : 72,
+      };
+    }
+    if (dp === "sunset") {
+      return {
+        bg: light ? (wet ? 0xb9adb8 : snow ? 0xede3e8 : 0xf2caa8) : (wet ? 0x282136 : snow ? 0x4d3f58 : 0x3f2447),
+        hemi: (light ? 1.38 : 1.15) * (wet ? 0.82 : 1),
+        hemiSky: 0xffc08c,
+        hemiGround: 0x281e36,
+        dir: wet ? 0.95 : snow ? 1.3 : 1.9,
+        dirColor: 0xff9c5b,
+        dirPos: [-10, 7.5, 6],
+        spot: wet ? 16 : 12,
+        beam: wet ? 0.13 : 0.09,
+        accent: 2.0,
+        accentColor: 0xffb703,
+        stars: clear ? 0.3 : 0,
+        moon: 0,
+        motes: clear ? 0.75 : 0,
+        snow: snow ? 1 : 0,
+        wet: wet ? 1 : 0,
+        fogNear: wet ? 12 : snow ? 10 : 30,
+        fogFar: wet ? 32 : snow ? 28 : 72,
+      };
+    }
+    if (dp === "night") {
+      return {
+        bg: light ? (wet ? 0x2c3f52 : 0x344a60) : (wet ? 0x0b1a29 : 0x0e2236),
+        hemi: light ? 0.92 : 0.78,
+        hemiSky: 0x7ec8f2,
+        hemiGround: 0x162c40,
+        dir: 0.68,
+        dirColor: 0xb8d4ff,
+        dirPos: [-6, 11, -7],
+        spot: 32,
+        beam: 0.18,
+        accent: 2.8,
+        accentColor: 0x38e4ff,
+        stars: clear ? 0.95 : 0,
+        moon: clear ? 1 : 0,
+        motes: 0,
+        snow: snow ? 1 : 0,
+        wet: wet ? 1 : 0,
+        fogNear: wet ? 12 : snow ? 10 : 28,
+        fogFar: wet ? 32 : snow ? 28 : 68,
+      };
+    }
+    // Crisp bright daylight showroom.
     return {
-      bg: bgHex,
-      hemi: env.night ? (light ? 0.55 : 0.32) : (light ? 1.35 : 1.25) * (wet ? 0.75 : 1),
-      dir: env.night ? 0.22 : wet ? 0.7 : env.weather === "snow" ? 1.1 : 1.8,
-      dirColor: env.night ? 0x9db4ff : 0xffffff,
-      spot: env.night ? 26 : wet ? 10 : 4,
-      beam: env.night ? 0.17 : wet ? 0.09 : 0.04,
-      stars: env.night && env.weather === "clear" ? 0.9 : 0,
-      moon: env.night && env.weather === "clear" ? 1 : 0,
-      snow: env.weather === "snow" ? 1 : 0,
+      bg: light
+        ? (wet ? 0xb4c6d4 : snow ? 0xf0f5f9 : theme === "ivory" ? 0xf2ead7 : 0xe4eff6)
+        : (wet ? 0x263f52 : snow ? 0x4a6980 : 0x2e6488),
+      hemi: (light ? 1.65 : 1.5) * (wet ? 0.82 : 1),
+      hemiSky: 0xdbf4ff,
+      hemiGround: 0x244257,
+      dir: wet ? 1.1 : snow ? 1.5 : 2.3,
+      dirColor: 0xfffaf2,
+      dirPos: [6, 12, 7],
+      spot: wet ? 12 : 6,
+      beam: wet ? 0.09 : 0.045,
+      accent: 1.6,
+      accentColor: 0x56cfe1,
+      stars: 0,
+      moon: 0,
+      motes: clear ? 0.85 : 0,
+      snow: snow ? 1 : 0,
       wet: wet ? 1 : 0,
-      fogNear: wet ? 11 : env.weather === "snow" ? 9 : 30,
-      fogFar: wet ? 30 : env.weather === "snow" ? 26 : 70,
+      fogNear: wet ? 12 : snow ? 10 : 32,
+      fogFar: wet ? 32 : snow ? 28 : 74,
     };
   }
 
   _applyEnvironment(dt, t) {
     const env = this._resolveEnv();
-    const key = `${env.night}|${env.weather}|${env.source}`;
+    const key = `${env.daypart}|${env.weather}|${env.source}|${env.hhmm}|${env.isEn}`;
     if (key !== this._envKey) {
       this._envKey = key;
       if (this.rain) {
@@ -1590,7 +1753,9 @@ export class KrWarehouseThreeEngine {
         this.rain.geometry.setDrawRange(0, (env.weather === "storm" ? 2400 : 1400) * 2);
       }
       if (this.snow) this.snow.visible = env.weather === "snow";
-      const label = `${env.night ? "🌙 밤" : "☀️ 낮"} · ${WEATHER_LABEL[env.weather]} · ${env.source}`;
+      const dpLabel = (env.isEn ? DAYPART_LABEL_EN : DAYPART_LABEL)[env.daypart] || "";
+      const wLabel = (env.isEn ? WEATHER_LABEL_EN : WEATHER_LABEL)[env.weather] || "";
+      const label = `${dpLabel} ${env.hhmm} · ${wLabel} · ${env.source}`;
       this.envLabel = label;
       this.onEnvChange?.(label, env);
     }
@@ -1599,9 +1764,13 @@ export class KrWarehouseThreeEngine {
     const a = this._envReady ? Math.min(1, dt * 2.2) : 1;
     this._envReady = true;
     const c = this._cur;
-    for (const k of ["hemi", "dir", "spot", "beam", "stars", "moon", "snow", "wet"]) c[k] += (tg[k] - c[k]) * a;
+    for (const k of ["hemi", "dir", "spot", "beam", "accent", "stars", "moon", "motes", "snow", "wet"]) c[k] += (tg[k] - c[k]) * a;
     this._bg.lerp(new THREE.Color(tg.bg), a);
     this._dirColor.lerp(new THREE.Color(tg.dirColor), a);
+    this._hemiSky.lerp(new THREE.Color(tg.hemiSky), a);
+    this._hemiGround.lerp(new THREE.Color(tg.hemiGround), a);
+    this._accentColor.lerp(new THREE.Color(tg.accentColor), a);
+    this._dirPos.lerp(new THREE.Vector3(...tg.dirPos), a);
 
     // Lightning: random double flash during storms.
     if (env.weather === "storm" && !this.reducedMotion) {
@@ -1616,24 +1785,34 @@ export class KrWarehouseThreeEngine {
     this.scene.fog.near += (tg.fogNear - this.scene.fog.near) * a;
     this.scene.fog.far += (tg.fogFar - this.scene.fog.far) * a;
     this.hemiLight.intensity = c.hemi + f * 2.4;
+    this.hemiLight.color.copy(this._hemiSky);
+    this.hemiLight.groundColor.copy(this._hemiGround);
     this.dirLight.intensity = c.dir;
     this.dirLight.color.copy(this._dirColor);
-    this.accentLight.intensity = env.night ? 2.2 : 1.4;
+    this.dirLight.position.copy(this._dirPos);
+    this.accentLight.intensity = c.accent;
+    this.accentLight.color.copy(this._accentColor);
     this.starMat.opacity = c.stars;
     this.moonMat.opacity = c.moon;
+    if (this.moonHaloMat) this.moonHaloMat.opacity = c.moon * 0.42;
     this.stars.visible = c.stars > 0.02;
     this.moon.visible = c.moon > 0.02;
+    if (this.moonHalo) this.moonHalo.visible = c.moon > 0.02;
+    if (this.motes && this.moteMat) {
+      this.moteMat.opacity = c.motes * 0.55;
+      this.motes.visible = c.motes > 0.03;
+    }
 
     for (const s of this.lamps.spots) s.intensity = c.spot;
     for (const m of this.lamps.beams) m.opacity = c.beam;
     for (const m of this.lamps.pools) m.opacity = c.beam * 1.6;
-    const bulbHeat = Math.min(1, 0.55 + c.beam * 3);
-    for (const m of this.lamps.bulbs) m.color.setRGB(1, 0.93 * bulbHeat + 0.05, 0.72 * bulbHeat + 0.1);
+    const bulbHeat = Math.min(1, 0.58 + c.beam * 3);
+    for (const m of this.lamps.bulbs) m.color.setRGB(1, 0.94 * bulbHeat + 0.05, 0.76 * bulbHeat + 0.12);
 
-    // Snow settles on the top decks; rain makes the floor glossy.
+    // Snow settles on the top decks; rain makes the polished floor glossy.
     this.topDeckMat?.color.lerpColors(this._deckBase, this._deckSnow, c.snow);
-    this.floorMesh.material.roughness = 0.75 - 0.5 * c.wet;
-    this.floorMesh.material.metalness = 0.2 + 0.35 * c.wet;
+    this.floorMesh.material.roughness = 0.48 - 0.34 * c.wet;
+    this.floorMesh.material.metalness = 0.28 + 0.34 * c.wet;
   }
 
   _animateWeather(dt, t) {
@@ -1673,12 +1852,28 @@ export class KrWarehouseThreeEngine {
       }
       this.snow.geometry.attributes.position.needsUpdate = true;
     }
+    if (this.motes?.visible) {
+      const pos = this.motes.geometry.attributes.position.array;
+      for (let i = 0; i < this._moteSpeed.length; i++) {
+        const o = i * 3;
+        pos[o + 1] += this._moteSpeed[i] * dt;
+        pos[o] += Math.sin(t * 0.65 + this._motePhase[i]) * dt * 0.12;
+        pos[o + 2] += Math.cos(t * 0.55 + this._motePhase[i]) * dt * 0.12;
+        if (pos[o + 1] > 4.6) {
+          pos[o + 1] = 0.25;
+          pos[o] = (Math.random() - 0.5) * W * 0.85;
+          pos[o + 2] = cz + (Math.random() - 0.5) * D * 0.85;
+        }
+      }
+      this.motes.geometry.attributes.position.needsUpdate = true;
+    }
   }
 
   _bindEvents() {
     this._onPointerDown = (e) => {
       this.dragging = true;
       this.dragMoved = false;
+      this._resetGoal = null;
       this.pauseUntil = Infinity;
       this.lastX = e.clientX;
       this.lastY = e.clientY;
@@ -1720,6 +1915,7 @@ export class KrWarehouseThreeEngine {
     this._onWheel = (e) => {
       e.preventDefault();
       this._userZoomed = true;
+      this._resetGoal = null;
       this._resumeSoon();
       this.distance = Math.max(4.5, Math.min(22.0, this.distance + e.deltaY * 0.008));
     };
@@ -1754,7 +1950,8 @@ export class KrWarehouseThreeEngine {
       this.tooltip.style.top = `${Math.max(10, py - 20)}px`;
       const esc = (value) => String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
       const places = hit.userData.places?.length ? `<span>📍 ${esc(hit.userData.places.join(" · "))}</span>` : "";
-      this.tooltip.innerHTML = `<strong>${esc(hit.userData.name)} <small>${hit.userData.slotNo}</small></strong><span>${esc(hit.userData.qtyText)} · ${hit.userData.statusLabel}</span>${places}<small>클릭하여 수정</small>`;
+      const editHint = isEnglishLang() ? "Click to edit" : "클릭하여 수정";
+      this.tooltip.innerHTML = `<strong>${esc(hit.userData.name)} <small>${hit.userData.slotNo}</small></strong><span>${esc(hit.userData.qtyText)} · ${hit.userData.statusLabel}</span>${places}<small>${editHint}</small>`;
     } else {
       this.tooltip.hidden = true;
     }
@@ -1768,18 +1965,56 @@ export class KrWarehouseThreeEngine {
       const dt = Math.min(0.05, Math.max(0, (nowMs - last) / 1000));
       last = nowMs;
       const t = nowMs / 1000;
-      if (this.autoRotate && !this.dragging && nowMs >= this.pauseUntil) this.yaw += 0.15 * dt;
+
+      // Smooth damped camera reset transition.
+      if (this._resetGoal && !this.dragging) {
+        const k = Math.min(1, dt * 7.5);
+        const dyaw = Math.atan2(Math.sin(this._resetGoal.yaw - this.yaw), Math.cos(this._resetGoal.yaw - this.yaw));
+        this.yaw += dyaw * k;
+        this.pitch += (this._resetGoal.pitch - this.pitch) * k;
+        this.distance += (this._resetGoal.distance - this.distance) * k;
+        if (Math.abs(dyaw) < 0.004 && Math.abs(this._resetGoal.pitch - this.pitch) < 0.004 && Math.abs(this._resetGoal.distance - this.distance) < 0.01) {
+          this.yaw = this._resetGoal.yaw;
+          this.pitch = this._resetGoal.pitch;
+          this.distance = this._resetGoal.distance;
+          this._resetGoal = null;
+        }
+      } else if (this.autoRotate && !this.dragging && nowMs >= this.pauseUntil) {
+        this.yaw += 0.15 * dt;
+      }
 
       const theme = this.getTheme();
       const isLight = theme === "white" || theme === "ivory";
-      this.floorMesh.material.color.setHex(isLight ? 0xc2d3dc : 0x0b1926);
+      this.floorMesh.material.color.setHex(isLight ? 0xdbe5ee : 0x1b2d3e);
       this._applyEnvironment(dt, t);
       this._animateWeather(dt, t);
 
+      const lerpK = this.reducedMotion ? 1 : Math.min(1, dt * 12);
       for (const slot of this.slotGroups) {
-        const targetY = slot === this.hoveredSlot ? slot.userData.baseY + 0.14 : slot.userData.baseY;
-        slot.position.y += (targetY - slot.position.y) * 0.18;
+        const hovered = slot === this.hoveredSlot;
+        const targetY = hovered ? slot.userData.baseY + 0.14 : slot.userData.baseY;
+        const baseS = slot.userData.baseScale ?? 1;
+        const targetS = hovered ? baseS * 1.06 : baseS;
+        slot.position.y += (targetY - slot.position.y) * lerpK;
+        const nextS = slot.scale.x + (targetS - slot.scale.x) * lerpK;
+        slot.scale.setScalar(nextS);
       }
+
+      // Holographic hover ring animation.
+      if (this.hoverRing) {
+        if (this.hoveredSlot) {
+          this.hoverRing.visible = true;
+          this.hoverRing.position.set(this.hoveredSlot.position.x, this.hoveredSlot.userData.baseY + 0.015, this.hoveredSlot.position.z);
+          const s = this.hoverRing.scale.x + (1 - this.hoverRing.scale.x) * lerpK;
+          this.hoverRing.scale.setScalar(s);
+          if (!this.reducedMotion) this.hoverRing.rotation.y += dt * 1.35;
+        } else if (this.hoverRing.visible) {
+          const s = this.hoverRing.scale.x + (0.01 - this.hoverRing.scale.x) * lerpK;
+          this.hoverRing.scale.setScalar(s);
+          if (s < 0.04) this.hoverRing.visible = false;
+        }
+      }
+
       if (!this.reducedMotion) {
         this.flames.forEach((f, i) => {
           const s = 0.85 + Math.sin(t * 13 + i * 1.7) * 0.1 + Math.sin(t * 23 + i) * 0.06;
@@ -1787,6 +2022,13 @@ export class KrWarehouseThreeEngine {
         });
         const blink = Math.sin(t * 4) > 0.2;
         for (const b of this.blinkers) b.visible = blink;
+        // Gently pulse urgent (shortage/expired) LED bars.
+        this.urgentLeds.forEach((mat, i) => {
+          mat.emissiveIntensity = 0.72 + Math.sin(t * 4.2 + i * 0.65) * 0.55;
+        });
+        // Subtle pulse on the 4 corner bay pillar status beacons.
+        const beaconPulse = 0.75 + Math.sin(t * 2.1) * 0.25;
+        for (const mat of this.beaconMats) mat.emissiveIntensity = beaconPulse;
       }
 
       const cx = this.distance * Math.cos(this.pitch) * Math.sin(this.yaw);
@@ -1804,12 +2046,27 @@ export class KrWarehouseThreeEngine {
     this.pauseUntil = performance.now() + KR_SPIN_RESUME_MS;
   }
 
+  setZone(zone) { this.zone = zone; this.rebuild(); }
+  setOptCategory(cat) { this.optCategory = cat; this.rebuild(); }
+  setOnlyActive(onlyActive) { this.onlyActive = Boolean(onlyActive); this.rebuild(); }
+  setTimeMode(mode) { this.timeMode = mode; this._envKey = ""; }
+  setWeatherMode(mode) { this.weatherMode = mode; this._envKey = ""; }
+  setAutoRotate(enabled) { this.autoRotate = Boolean(enabled); }
+
   resetCamera() {
-    this.yaw = -0.62;
-    this.pitch = 0.48;
     this._userZoomed = false;
-    this.distance = this._targetCamDist || 8.4;
+    const targetDist = this._targetCamDist || 8.4;
+    if (this.reducedMotion) {
+      this.yaw = -0.62;
+      this.pitch = 0.48;
+      this.distance = targetDist;
+      this._resetGoal = null;
+    } else {
+      this._resetGoal = { yaw: -0.62, pitch: 0.48, distance: targetDist };
+    }
   }
+
+  dispose() { this.destroy(); }
 
   destroy() {
     if (this.rafId) cancelAnimationFrame(this.rafId);
@@ -1821,6 +2078,9 @@ export class KrWarehouseThreeEngine {
     this.canvas.removeEventListener("wheel", this._onWheel);
     disposeTree(this.worldGroup);
     disposeTree(this.weatherGroup);
+    if (this.hoverRing) disposeTree(this.hoverRing);
     this.renderer?.dispose();
   }
 }
+
+export const Warehouse3D = KrWarehouseThreeEngine;

@@ -193,6 +193,13 @@
       "url": "https://oceanservice.noaa.gov/facts/drinksw.html",
       "section": "Drinking seawater worsens dehydration due to salt excretion",
       "checked_on": "2026-11-17"
+    },
+    "redchupa-transport": {
+      "publisher": "Redchupa Transport Safety Analysis",
+      "title": "Safest Seats by Mode of Transport",
+      "url": "https://redchupa.com/entry/%ea%b5%90%ed%86%b5%ec%88%98%eb%8b%a8%eb%b3%84-%ec%83%9d%ec%a1%b4%eb%a5%a0%ec%9d%b4-%eb%86%92%ec%9d%80-%ec%a2%8c%ec%84%9d%ec%9d%80-%ec%96%b4%eb%94%94%ec%9d%bc%ea%b9%8c/",
+      "section": "Seat survival statistics by transport mode alongside seatbelt, exit, and crew-order priorities",
+      "checked_on": "2026-11-26"
     }
   },
   "paper_checkpoints": {
@@ -296,12 +303,14 @@
       "intro": "Read manuals and test gear before an emergency. Never count equipment as ready unless its limits and condition are verified.",
       "layout": "reference",
       "rows": [
-        {"when": "Power", "title": "Power Banks & Stations", "text": "Check charger specs and output limits. Charge on a firm, ventilated surface. Stop using immediately if swollen, leaking, smelling odd, or overheating."},
-        {"when": "Solar", "title": "Solar Panel to Power Station", "text": "Verify voltage, current, and connector compatibility in both manuals before connecting. Inspect cables and mounting spots in peacetime."},
-        {"when": "Water", "title": "Portable Water Filters", "text": "Use stored potable water first. Check what contaminants a filter removes—many do not remove viruses and require secondary disinfection. Never drink seawater or chemically/radiologically suspect water."},
-        {"when": "Cooking", "title": "Portable Stoves & Butane", "text": "Check manufacture/expiry dates and inspect cans for rust or dents. Keep away from heat, never use indoors without ventilation, and detach cans after use."}
+        {"when": "Power", "title": "Power Banks & Stations", "text": "Keep the 220V AC inverter OFF to avoid 10–15W idle standby loss and use DC/USB ports only. Prioritize charging in order of radio, flashlight, and phone, follow charger/output limits on a firm, ventilated surface, and stop use immediately if swollen, leaking, smelling odd, or overheating. Log only verified charge levels."},
+        {"when": "Solar", "title": "Solar Panel to Power Station", "text": "Verify voltage, current, and connector compatibility in both manuals before connecting. Test discreet indoor window or balcony-interior placement and inspect cables in peacetime to minimize outside visibility during crises; note that window glass and weather cut output sharply, so never rely on rated wattage alone."},
+        {"when": "Water", "title": "Portable Water Filters", "text": "Use stored potable water first. Pair a hollow-fiber filter (for sediment and bacteria) with Aquatabs purification tablets, unscented bleach disinfection, or boiling since most portable filters do not remove viruses. Never drink seawater or chemically/radiologically suspect water—find an alternate source."},
+        {"when": "Cooking", "title": "Portable Stoves & Butane", "text": "Check manufacture/expiry dates and inspect cans for rust or dents. Keep away from heat, never use indoors without ventilation, avoid oversized pans or double stacking, and detach cans after use."},
+        {"when": "Emergency Fuel", "title": "Emergency Fuel Siphoning (Safety First)", "text": "Only in lawful, extreme emergencies and from your own or an authorized vehicle, extract fuel into a metal jerrycan using a manual hand-siphon pump or gravity hose. NEVER siphon fuel by mouth due to lethal toxic vapor and lung aspiration hazards. Shut off the engine and ignition completely, touch bare vehicle metal to discharge static electricity before opening the cap, and work outdoors far from sparks or flames."},
+        {"when": "Nearby Hubs", "title": "Pre-Mapping Nearby Hubs", "text": "In peacetime, record primary and backup pharmacies, deeper subway stations and underground tunnel links, marts, convenience stores, and civil defense shelter entrances with walking routes on paper maps. Map pins never guarantee open status or access during alerts—evacuation always takes priority over shopping."}
       ],
-      "source_ids": ["usfa-battery", "solar-manual", "cdc-water", "noaa-seawater", "kgs-butane", "kgs-butane-use"],
+      "source_ids": ["usfa-battery", "solar-manual", "cdc-water", "noaa-seawater", "kgs-butane", "kgs-butane-use", "safety-map"],
       "review_status": "draft",
       "reviewed_on": null
     },
@@ -313,12 +322,47 @@
       "layout": "reference",
       "rows": [
         {"when": "Navigation", "title": "Paper Maps & Compass", "text": "Print maps to shelters and meetup points in peacetime and practice reading scale, landmarks, and bearings. If lost, stop and orient before moving."},
+        {"when": "Natural Bearings", "title": "Natural Direction Finding (Sun, Stars, Trees)", "text": "Mark the tip of a stick's shadow and mark it again 15 minutes later—the line runs West (first mark) to East (second); or point an analog watch's hour hand at the sun so the bisector to 12 o'clock points South (Northern Hemisphere). At night, extend the line of the Big Dipper's two end bowl stars (Dubhe & Merak) about 5×—or extend perpendicular from the center of Cassiopeia's W about 5×—to find Polaris (true North). Wider tree rings on the south side and moss on the north are rough cues with many exceptions from terrain, wind, and moisture, so always cross-check with sun, stars, or a compass."},
+        {"when": "Trail Marking", "title": "Trail Marking & Backtracking", "text": "At junctions and regular intervals, leave clear eye-level markers aligned with your travel direction using stacked stones (cairns), stick arrows, or reflective tape/cloth strips. Look back frequently to memorize reverse landmarks so you can safely backtrack to your origin."},
         {"when": "Transit", "title": "Emergency Procedures Over Seat Choice", "text": "On planes, read safety cards, fasten belts, and note nearest exits. On trains, locate emergency intercoms and lighting and follow crew instructions."},
         {"when": "Marine", "title": "Life Jackets & Crew Orders", "text": "Confirm life jacket fit and location before boarding, and follow crew instructions during incidents."},
-        {"when": "Sanitation", "title": "When Toilets Cannot Flush", "text": "Do not assume toilets are unusable on water outage alone, but if sewage is damaged/restricted, do not flush—use a bag-lined container and wash hands."},
+        {"when": "Sanitation", "title": "Sanitation: Toilet Shutoff & Bag Sealing", "text": "Do not assume toilets are unusable on water outage alone, but if sewage is damaged or restricted, follow this sequence: (1) shut off the main water valve and the toilet's supply angle valve; (2) flush once to empty remaining tank water and prevent accidental flushing or backflow; (3) lift the seat, double-seal the bowl with a large plastic sheet or heavy wrap, lower the seat, and double-line with black trash bags using solidifier, cat litter, or baking soda. Place a water-filled plastic bag (water lock) over floor drains to block odors/backflow, wash hands, and store sealed waste separately."},
         {"when": "Cold", "title": "Wet Clothing & Hypothermia", "text": "Move out of wind, remove wet clothes, and layer dry clothes/blankets. Shivering, confusion, or slurred speech signal hypothermia—seek medical help and avoid alcohol or direct open-flame heat."}
       ],
       "source_ids": ["nps-navigation", "usgs-compass", "faa-flying", "korail-emergency", "uscg-boating", "cdc-sanitation", "cdc-cold"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "wild-water-food",
+      "label": "Wild Survival",
+      "title": "Wild Water & Food",
+      "intro": "Stored water, rations, and certified life-saving gear always come first. Use these field techniques only as last-resort backups when normal supplies are completely cut off.",
+      "layout": "reference",
+      "rows": [
+        {"when": "Water Collection", "title": "Collecting Water with Plastic Sheets", "text": "For a transpiration bag, seal a clear plastic bag tightly around a sunlit, non-toxic broadleaf branch with a small pebble in the lower corner to pool condensation. For a solar still, dig a sunlit pit with a cup in the center, surround it with damp foliage, seal a plastic sheet over the pit with dirt, and place a small stone in the center so condensation drips into the cup. Treat these as supplemental backups—prioritize stored water and official supply points, and never drink seawater."},
+        {"when": "Wild Plants", "title": "Wild Edible Plants & Roots (Caution)", "text": "Relatively identifiable wild edibles in Korea include mugwort (ssuk), dandelion, kudzu root, acorns (must be leached repeatedly in water to remove tannins), and pine-needle tea. Strong safety warning: lethal look-alikes such as lily-of-the-valley (confused with wild garlic), water hemlock, jack-in-the-pulpit, and toxic mushrooms are common—NEVER eat any plant or mushroom unless 100% certain, and avoid milky sap, bitter/almond odors, or red berries."},
+        {"when": "Water Survival", "title": "Water Survival: Survival Float & Improvised Flotation", "text": "With the survival float (drownproofing / shrimp float), relax face-down curled loosely in the water using natural buoyancy, and only stroke gently to lift your head for a quick breath before relaxing again to conserve energy. In cold water with a life jacket, hold the HELP posture (knees tucked to chest) to slow hypothermia. Without a life jacket, knot long trouser cuffs, whip them overhead to trap air, and press the waist underwater as an improvised float, or seal empty plastic bottles inside clothing/packs or inflate a dry bag."},
+        {"when": "Emergency Fishing", "title": "Improvised Emergency Fishing", "text": "Cut the top off a plastic bottle and invert it inside as a funnel fish trap baited with insects or rice in shallow water, or stack stones in a V- or U-shaped weir to funnel fish with the current. With line and hook, target slow pools at dawn or dusk. Always cook freshwater fish thoroughly to eliminate parasites."}
+      ],
+      "source_ids": ["cdc-water", "noaa-seawater", "nps-navigation", "cdc-cold", "uscg-boating"],
+      "review_status": "draft",
+      "reviewed_on": null
+    },
+    {
+      "id": "transport-safety",
+      "label": "Transport Safety",
+      "title": "Transport Seat Safety",
+      "intro": "Seat survival statistics are probabilities that vary by crash scenario. Fastening your seatbelt, locating the nearest exits, and following crew orders always come first.",
+      "layout": "reference",
+      "rows": [
+        {"when": "Airplane", "title": "Rear Cabin & Within 5 Rows of Exits", "text": "Crash statistics show higher survival rates in the rear cabin (~32% fatality vs. ~38% in front), while wing sections sit near fuel tanks. Above all, count rows to the nearest exits (ideally within 5 rows), keep shoes on and seatbacks upright during takeoff and landing, and keep your seatbelt fastened."},
+        {"when": "Bus", "title": "Middle Rows (Aisle) & Seatbelt", "text": "On a 45-seat bus, middle-row aisle seats (rows 4–7) offer better buffering against front, rear, and side impacts compared to the very front, very back, or window seats. Wearing a seatbelt cuts fatality risk to roughly one-third—always buckle up and locate emergency exit hammers upon boarding."},
+        {"when": "Train / KTX", "title": "Center Cars, Rear-Facing Seats & Rules", "text": "Center cars in a train consist gain buffer protection during collisions or derailments (front cars face direct impact; rear cars face whiplash). Rear-facing seats better support the neck and spine during sudden braking, and dining cars are best avoided. Never step onto tracks during an emergency stop without crew clearance."},
+        {"when": "Subway", "title": "End Cars, Door Release & Stay Low", "text": "End cars (first and last) are typically less crowded and closer to platform exits during fire or smoke events. Before departure, note the manual door-release lever (emergency cock) under/beside seats, emergency intercom, and screen-door numbers; in a fire, cover nose and mouth and move low."},
+        {"when": "Car & Ferry", "title": "Rear Center Seat & Ferry Life Jackets", "text": "In passenger cars, the rear center seat is farthest from front and side impact zones, and seatbelts are essential in every seat. On ferries, check life jacket locations, proper fit, and deck evacuation routes right after boarding, and follow crew announcements."}
+      ],
+      "source_ids": ["redchupa-transport", "faa-flying", "korail-emergency", "uscg-boating"],
       "review_status": "draft",
       "reviewed_on": null
     }
