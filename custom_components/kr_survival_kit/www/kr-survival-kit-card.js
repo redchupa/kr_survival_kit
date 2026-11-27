@@ -34,13 +34,23 @@ const KR_UNIT_EN = {
   "갑": "pack", "정": "tab", "포": "pouch", "원": "KRW", "달러": "USD", "개입": "pk",
 };
 
+const KR_UNIT_I18N = {
+  en: KR_UNIT_EN,
+  ja: { "개": "個", "병": "本", "팩": "パック", "통": "缶", "박스": "箱", "상자": "箱", "세트": "セット", "켤레": "足", "장": "枚", "롤": "ロール", "봉": "袋", "권": "冊", "갑": "箱", "정": "錠", "포": "包", "원": "KRW", "달러": "USD", "개입": "個入" },
+  zh: { "개": "个", "병": "瓶", "팩": "包", "통": "罐", "박스": "箱", "상자": "箱", "세트": "套", "켤레": "双", "장": "张", "롤": "卷", "봉": "袋", "권": "本", "갑": "盒", "정": "片", "포": "袋", "원": "KRW", "달러": "USD", "개입": "包" },
+  es: { "개": "ud", "병": "bot", "팩": "paq", "통": "lata", "박스": "caja", "상자": "caja", "세트": "set", "켤레": "par", "장": "ud", "롤": "rollo", "봉": "bolsa", "권": "ej", "갑": "paq", "정": "comp", "포": "sobre", "원": "KRW", "달러": "USD", "개입": "paq" },
+  fr: { "개": "u.", "병": "bout", "팩": "paq", "통": "boîte", "박스": "boîte", "상자": "boîte", "세트": "lot", "켤레": "paire", "장": "pce", "롤": "roul", "봉": "sac", "권": "ex", "갑": "paq", "정": "comp", "포": "sachet", "원": "KRW", "달러": "USD", "개입": "paq" },
+  de: { "개": "Stk", "병": "Fl", "팩": "Pck", "통": "Dose", "박스": "Karton", "상자": "Box", "세트": "Set", "켤레": "Paar", "장": "Stk", "롤": "Rolle", "봉": "Beutel", "권": "Ex", "갑": "Pck", "정": "Tabl", "포": "Btl", "원": "KRW", "달러": "USD", "개입": "Pck" },
+};
+
 function krStockScale(item) {
   return item.id === "drinking-water" ? 1000 : 1;
 }
 
 function krStockUnit(item, lang = "ko") {
   if (item.id === "drinking-water") return "L";
-  return lang === "en" ? (KR_UNIT_EN[item.unit] || item.unit) : item.unit;
+  if (lang === "ko") return item.unit;
+  return KR_UNIT_I18N[lang]?.[item.unit] || KR_UNIT_EN[item.unit] || item.unit;
 }
 
 function krStockFormat(item, stored) {
@@ -68,8 +78,8 @@ function krDateLabel(item, lang = "ko") {
 
 /** Quick expiry buttons sized to the product: batteries last years, medicine and food months to a few years. */
 function krExpiryPresets(item, lang = "ko") {
-  const yr = lang === "en" ? "y" : "년";
-  const mo = lang === "en" ? "m" : "개월";
+  const yr = lang !== "ko" ? "y" : "년";
+  const mo = lang !== "ko" ? "m" : "개월";
   if (item.date_label === "사용 권장기한") return [[36, `+3${yr}`], [60, `+5${yr}`], [120, `+10${yr}`]];
   if (item.date_label === "사용기한") return [[12, `+1${yr}`], [24, `+2${yr}`], [36, `+3${yr}`]];
   return [[6, `+6${mo}`], [12, `+1${yr}`], [24, `+2${yr}`]];
@@ -293,12 +303,171 @@ function krBoundedInt(value, min, max) {
   return number >= min && number <= max ? number : null;
 }
 
-const KR_ASSET_VERSION = "0.14.0";
+const KR_ASSET_VERSION = "0.15.0";
+
+const KR_LANGS = {
+  ko: { code: "ko", flag: "🇰🇷", label: "한국어", short: "KO" },
+  en: { code: "en", flag: "🇺🇸", label: "English", short: "EN" },
+  ja: { code: "ja", flag: "🇯🇵", label: "日本語", short: "JA" },
+  zh: { code: "zh", flag: "🇨🇳", label: "中文", short: "ZH" },
+  es: { code: "es", flag: "🇪🇸", label: "Español", short: "ES" },
+  fr: { code: "fr", flag: "🇫🇷", label: "Français", short: "FR" },
+  de: { code: "de", flag: "🇩🇪", label: "Deutsch", short: "DE" },
+};
+
+const KR_UI_TRANS = {
+  ja: {
+    "Stockpile": "備蓄管理", "Guide": "緊急ガイド", "Home Stockpile": "家庭備蓄管理",
+    "2D Shelf": "2D 棚", "3D View": "3D 倉庫", "All": "すべて", "Shortage": "不足",
+    "Needs Check": "要確認", "Expiring": "期限間近", "Ready": "完備", "Low": "不足",
+    "Check": "要確認", "Expired": "期限切れ", "Inactive": "未使用", "Edit": "編集", "Set": "設定",
+    "No Target": "目標未設定", "Unset": "未設定", "Shelter Rank": "シェルターランク",
+    "Urgent Quests": "緊急クエスト", "Essential Supplies": "基本備蓄品", "Optional Supplies": "任意備蓄品",
+    "By Storage Location": "保管場所別", "Essentials Rack": "基本備蓄ラック", "Optional Rack": "任意備蓄ラック",
+    "Active Only": "使用中のみ", "Auto Time": "時刻自動", "Dawn": "夜明け", "Day": "昼", "Sunset": "夕暮れ", "Night": "夜",
+    "Auto Weather": "天気自動", "Clear": "晴れ", "Rain": "雨", "Snow": "雪", "Storm": "雷雨",
+    "Auto Spin": "自動回転", "Reset View": "視点リセット", "Click to edit": "クリックして編集",
+    "+ Add Custom Item": "+ 品目を追加", "⚡ Quick ±1": "⚡ クイック±1", "⚡ Quick ±1 ON": "⚡ クイック±1 ON",
+    "Save": "保存", "Cancel": "キャンセル", "Reset": "初期値", "Emergency Guide": "緊急ガイド",
+    "First Actions": "初期行動", "Immediate Action": "最優先行動", "Next Steps": "次の手順",
+    "Peacetime": "平時", "Civil Defense Alerts": "民防衛警報", "Utility Outages": "ライフライン停止",
+    "Language": "言語", "Theme": "テーマ", "Dashboard Settings": "ダッシュボード設定",
+  },
+  zh: {
+    "Stockpile": "储备管理", "Guide": "应急指南", "Home Stockpile": "家庭储备管理",
+    "2D Shelf": "2D 货架", "3D View": "3D 仓库", "All": "全部", "Shortage": "不足",
+    "Needs Check": "待盘点", "Expiring": "临期", "Ready": "齐备", "Low": "不足",
+    "Check": "待盘点", "Expired": "已过期", "Inactive": "未使用", "Edit": "编辑", "Set": "设置",
+    "No Target": "未设目标", "Unset": "未设置", "Shelter Rank": "避难所等级",
+    "Urgent Quests": "紧急任务", "Essential Supplies": "基础储备物资", "Optional Supplies": "可选储备物资",
+    "By Storage Location": "按存放位置", "Essentials Rack": "基础储备货架", "Optional Rack": "可选储备货架",
+    "Active Only": "仅显示启用", "Auto Time": "自动时间", "Dawn": "黎明", "Day": "白天", "Sunset": "黄昏", "Night": "夜晚",
+    "Auto Weather": "自动天气", "Clear": "晴朗", "Rain": "下雨", "Snow": "下雪", "Storm": "雷暴",
+    "Auto Spin": "自动旋转", "Reset View": "重置视角", "Click to edit": "点击编辑",
+    "+ Add Custom Item": "+ 添加自定义物资", "⚡ Quick ±1": "⚡ 快速±1", "⚡ Quick ±1 ON": "⚡ 快速±1 开",
+    "Save": "保存", "Cancel": "取消", "Reset": "恢复默认", "Emergency Guide": "应急指南",
+    "First Actions": "首要行动", "Immediate Action": "立即行动", "Next Steps": "后续步骤",
+    "Peacetime": "平时", "Civil Defense Alerts": "民防警报", "Utility Outages": "水电中断",
+    "Language": "语言", "Theme": "主题", "Dashboard Settings": "仪表盘设置",
+  },
+  es: {
+    "Stockpile": "Reservas", "Guide": "Guía", "Home Stockpile": "Reservas del Hogar",
+    "2D Shelf": "Estante 2D", "3D View": "Vista 3D", "All": "Todo", "Shortage": "Escaso",
+    "Needs Check": "Revisar", "Expiring": "Por vencer", "Ready": "Listo", "Low": "Bajo",
+    "Check": "Revisar", "Expired": "Vencido", "Inactive": "Inactivo", "Edit": "Editar", "Set": "Fijar",
+    "No Target": "Sin meta", "Unset": "Sin meta", "Shelter Rank": "Rango Refugio",
+    "Urgent Quests": "Misiones Urgentes", "Essential Supplies": "Suministros Básicos", "Optional Supplies": "Suministros Opcionales",
+    "By Storage Location": "Por Ubicación", "Essentials Rack": "Estante Básico", "Optional Rack": "Estante Opcional",
+    "Active Only": "Solo activos", "Auto Time": "Hora Auto", "Dawn": "Alba", "Day": "Día", "Sunset": "Ocaso", "Night": "Noche",
+    "Auto Weather": "Clima Auto", "Clear": "Despejado", "Rain": "Lluvia", "Snow": "Nieve", "Storm": "Tormenta",
+    "Auto Spin": "Giro Auto", "Reset View": "Reiniciar Vista", "Click to edit": "Clic para editar",
+    "+ Add Custom Item": "+ Añadir artículo", "⚡ Quick ±1": "⚡ Rápido ±1", "⚡ Quick ±1 ON": "⚡ Rápido ±1 ON",
+    "Save": "Guardar", "Cancel": "Cancelar", "Reset": "Restablecer", "Emergency Guide": "Guía de Emergencia",
+    "First Actions": "Primeras Acciones", "Immediate Action": "Acción Inmediata", "Next Steps": "Siguientes Pasos",
+    "Peacetime": "Tiempo de Paz", "Civil Defense Alerts": "Alertas Civiles", "Utility Outages": "Cortes de Servicio",
+    "Language": "Idioma", "Theme": "Tema", "Dashboard Settings": "Ajustes",
+  },
+  fr: {
+    "Stockpile": "Stocks", "Guide": "Guide", "Home Stockpile": "Gestion des Stocks",
+    "2D Shelf": "Étagère 2D", "3D View": "Vue 3D", "All": "Tout", "Shortage": "Manque",
+    "Needs Check": "À vérifier", "Expiring": "Expire bientôt", "Ready": "Prêt", "Low": "Bas",
+    "Check": "Vérifier", "Expired": "Expiré", "Inactive": "Inactif", "Edit": "Modifier", "Set": "Définir",
+    "No Target": "Sans objectif", "Unset": "Non défini", "Shelter Rank": "Rang Abri",
+    "Urgent Quests": "Quêtes Urgentes", "Essential Supplies": "Réserves Essentielles", "Optional Supplies": "Réserves Optionnelles",
+    "By Storage Location": "Par Emplacement", "Essentials Rack": "Rayon Essentiel", "Optional Rack": "Rayon Optionnel",
+    "Active Only": "Actifs seul.", "Auto Time": "Heure Auto", "Dawn": "Aube", "Day": "Jour", "Sunset": "Crépuscule", "Night": "Nuit",
+    "Auto Weather": "Météo Auto", "Clear": "Clair", "Rain": "Pluie", "Snow": "Neige", "Storm": "Orage",
+    "Auto Spin": "Rotation Auto", "Reset View": "Réinit. Vue", "Click to edit": "Cliquer pour modifier",
+    "+ Add Custom Item": "+ Ajouter un article", "⚡ Quick ±1": "⚡ Rapide ±1", "⚡ Quick ±1 ON": "⚡ Rapide ±1 ON",
+    "Save": "Enregistrer", "Cancel": "Annuler", "Reset": "Réinitialiser", "Emergency Guide": "Guide d'Urgence",
+    "First Actions": "Premiers Gestes", "Immediate Action": "Action Immédiate", "Next Steps": "Étapes Suivantes",
+    "Peacetime": "Temps de Paix", "Civil Defense Alerts": "Alertes Civiles", "Utility Outages": "Pannes Réseau",
+    "Language": "Langue", "Theme": "Thème", "Dashboard Settings": "Paramètres",
+  },
+  de: {
+    "Stockpile": "Vorrat", "Guide": "Leitfaden", "Home Stockpile": "Hausvorrat",
+    "2D Shelf": "2D Regal", "3D View": "3D Lager", "All": "Alle", "Shortage": "Knapp",
+    "Needs Check": "Prüfen", "Expiring": "Läuft ab", "Ready": "Bereit", "Low": "Knapp",
+    "Check": "Prüfen", "Expired": "Abgelaufen", "Inactive": "Inaktiv", "Edit": "Bearbeiten", "Set": "Festlegen",
+    "No Target": "Kein Ziel", "Unset": "Offen", "Shelter Rank": "Schutzrang",
+    "Urgent Quests": "Dringende Aufgaben", "Essential Supplies": "Grundvorrat", "Optional Supplies": "Optionale Vorräte",
+    "By Storage Location": "Nach Lagerort", "Essentials Rack": "Grundregal", "Optional Rack": "Optionsregal",
+    "Active Only": "Nur aktive", "Auto Time": "Zeit Auto", "Dawn": "Morgen", "Day": "Tag", "Sunset": "Abend", "Night": "Nacht",
+    "Auto Weather": "Wetter Auto", "Clear": "Klar", "Rain": "Regen", "Snow": "Schnee", "Storm": "Gewitter",
+    "Auto Spin": "Auto-Drehung", "Reset View": "Ansicht Reset", "Click to edit": "Zum Bearbeiten klicken",
+    "+ Add Custom Item": "+ Artikel hinzufügen", "⚡ Quick ±1": "⚡ Schnell ±1", "⚡ Quick ±1 ON": "⚡ Schnell ±1 AN",
+    "Save": "Speichern", "Cancel": "Abbrechen", "Reset": "Zurücksetzen", "Emergency Guide": "Notfall-Leitfaden",
+    "First Actions": "Erste Maßnahmen", "Immediate Action": "Sofortmaßnahme", "Next Steps": "Nächste Schritte",
+    "Peacetime": "Friedenszeit", "Civil Defense Alerts": "Zivilschutz", "Utility Outages": "Versorgungsausfall",
+    "Language": "Sprache", "Theme": "Design", "Dashboard Settings": "Einstellungen",
+  },
+};
+
+const KR_ITEM_I18N = {
+  ja: {
+    "drinking-water": "飲料水", "instant-rice": "パックご飯", "cup-noodles": "カップ麺", "shelf-stable-meal": "レトルト食品",
+    "spam-canned-ham": "缶詰ハム", "canned-tuna": "ツナ缶", "canned-pupa": "さなぎ缶", "canned-whelk": "つぶ貝缶",
+    "canned-fruit": "果物缶", "canned-food": "その他缶詰", hygiene: "トイレットペーパー", "wet-wipes": "ウェットティッシュ",
+    flashlight: "懐中電灯", batteries: "単3電池", "batteries-aaa": "単4電池", "batteries-special": "ボタン電池",
+    "batteries-c": "単2電池", "batteries-d": "単1電池", backpack: "避難リュック", blanket: "毛布",
+    "first-aid-kit": "消毒液", "otc-medicine": "解熱鎮痛薬", "digestive-medicine": "胃腸薬", "cold-medicine": "風邪薬",
+    antidiarrheal: "止瀉薬", "wound-ointment": "傷軟膏", "sterile-gauze": "滅菌ガーゼ", "elastic-bandage": "弾性包帯",
+    "adhesive-bandages": "絆創膏", "medical-tape": "医療テープ", radio: "防災ラジオ", "power-bank": "モバイルバッテリー",
+    "portable-power-station": "ポータブル電源", "portable-stove": "カセットコンロ", "butane-canister": "カセットガス",
+    "portable-water-filter": "携帯浄水器", "gas-mask": "防毒マスク", masks: "マスク",
+  },
+  zh: {
+    "drinking-water": "饮用水", "instant-rice": "即食米饭", "cup-noodles": "方便面", "shelf-stable-meal": "即食软罐头",
+    "spam-canned-ham": "午餐肉罐头", "canned-tuna": "金枪鱼罐头", "canned-pupa": "蚕蛹罐头", "canned-whelk": "海螺罐头",
+    "canned-fruit": "水果罐头", "canned-food": "其他罐头", hygiene: "卷纸", "wet-wipes": "湿巾",
+    flashlight: "手电筒", batteries: "5号电池", "batteries-aaa": "7号电池", "batteries-special": "纽扣电池",
+    "batteries-c": "2号电池", "batteries-d": "1号电池", backpack: "应急背包", blanket: "毛毯",
+    "first-aid-kit": "消毒液", "otc-medicine": "退烧止痛药", "digestive-medicine": "肠胃药", "cold-medicine": "感冒药",
+    antidiarrheal: "止泻药", "wound-ointment": "外伤药膏", "sterile-gauze": "无菌纱布", "elastic-bandage": "弹性绷带",
+    "adhesive-bandages": "创可贴", "medical-tape": "医用胶带", radio: "应急收音机", "power-bank": "充电宝",
+    "portable-power-station": "户外电源", "portable-stove": "便携燃气炉", "butane-canister": "丁烷气罐",
+    "portable-water-filter": "便携净水器", "gas-mask": "防毒面具", masks: "防护口罩",
+  },
+  es: {
+    "drinking-water": "Agua Potable", "instant-rice": "Arroz Listo", "cup-noodles": "Fideos Vaso", "shelf-stable-meal": "Comida Lista",
+    "spam-canned-ham": "Jamón Lata", "canned-tuna": "Atún Lata", "canned-fruit": "Fruta Lata", hygiene: "Papel Higiénico",
+    "wet-wipes": "Toallitas", flashlight: "Linterna", batteries: "Pilas AA", "batteries-aaa": "Pilas AAA",
+    "batteries-special": "Pilas Botón", "batteries-c": "Pilas C", "batteries-d": "Pilas D", backpack: "Mochila Emerg.",
+    blanket: "Mantas", "first-aid-kit": "Antiséptico", "otc-medicine": "Analgésicos", "digestive-medicine": "Digestivo",
+    "cold-medicine": "Antigripal", antidiarrheal: "Antidiarreico", "wound-ointment": "Pomada", "sterile-gauze": "Gasa Estéril",
+    "elastic-bandage": "Venda Elástica", "adhesive-bandages": "Tiritas", "medical-tape": "Esparadrapo",
+  },
+  fr: {
+    "drinking-water": "Eau Potable", "instant-rice": "Riz Prêt", "cup-noodles": "Nouilles", "shelf-stable-meal": "Plats Prêts",
+    "spam-canned-ham": "Jambon Boîte", "canned-tuna": "Thon Boîte", "canned-fruit": "Fruits Boîte", hygiene: "Papier Toilette",
+    "wet-wipes": "Lingettes", flashlight: "Lampe Torche", batteries: "Piles AA", "batteries-aaa": "Piles AAA",
+    "batteries-special": "Piles Bouton", "batteries-c": "Piles C", "batteries-d": "Piles D", backpack: "Sac d'Évac.",
+    blanket: "Couvertures", "first-aid-kit": "Antiseptique", "otc-medicine": "Antalgiques", "digestive-medicine": "Digestif",
+    "cold-medicine": "Rhume", antidiarrheal: "Antidiarrhéique", "wound-ointment": "Pommade", "sterile-gauze": "Gaze Stérile",
+    "elastic-bandage": "Bandage", "adhesive-bandages": "Pansements", "medical-tape": "Sparadrap",
+  },
+  de: {
+    "drinking-water": "Trinkwasser", "instant-rice": "Fertigreis", "cup-noodles": "Instant-Nudeln", "shelf-stable-meal": "Fertiggerichte",
+    "spam-canned-ham": "Dosenfleisch", "canned-tuna": "Thunfischdose", "canned-fruit": "Obstkonserve", hygiene: "Toilettenpapier",
+    "wet-wipes": "Feuchttücher", flashlight: "Taschenlampe", batteries: "AA-Batterien", "batteries-aaa": "AAA-Batterien",
+    "batteries-special": "Knopfzellen", "batteries-c": "C-Batterien", "batteries-d": "D-Batterien", backpack: "Notfallrucksack",
+    blanket: "Decken", "first-aid-kit": "Desinfektion", "otc-medicine": "Schmerzmittel", "digestive-medicine": "Magenmittel",
+    "cold-medicine": "Erkältungsmittel", antidiarrheal: "Durchfallmittel", "wound-ointment": "Wundsalbe", "sterile-gauze": "Sterile Mull",
+    "elastic-bandage": "Elast. Binde", "adhesive-bandages": "Pflaster", "medical-tape": "Heftpflaster",
+  },
+};
 
 function krGetLang() {
-  try { return window.localStorage?.getItem("kr_survival_kit_lang") === "en" ? "en" : "ko"; } catch { return "ko"; }
+  try {
+    const saved = window.localStorage?.getItem("kr_survival_kit_lang");
+    return Object.hasOwn(KR_LANGS, saved) ? saved : "ko";
+  } catch { return "ko"; }
 }
-function krT(lang, ko, en) { return lang === "en" ? en : ko; }
+function krT(lang, ko, en) {
+  if (!lang || lang === "ko") return ko;
+  if (lang === "en") return en;
+  return KR_UI_TRANS[lang]?.[en] || en;
+}
 const KR_EN_NAMES = {
   "drinking-water": "Drinking Water", "instant-rice": "Instant Rice", "cup-noodles": "Cup Noodles",
   "shelf-stable-meal": "Retort Meals", "spam-canned-ham": "Canned Ham", "canned-tuna": "Canned Tuna",
@@ -346,7 +515,9 @@ const KR_EN_NAMES = {
   "window-locks": "Window Locks",
 };
 function krItemDisplayName(item, lang) {
-  if (lang === "en" && KR_EN_NAMES[item.id]) return KR_EN_NAMES[item.id];
+  if (lang && lang !== "ko") {
+    return KR_ITEM_I18N[lang]?.[item.id] || KR_EN_NAMES[item.id] || item.name;
+  }
   return KR_READY_SHORT_NAMES[item.id] || item.name;
 }
 
@@ -590,9 +761,9 @@ function krStockRankView(snapshot, open = false, lang = "ko") {
   const index = Math.min(KR_STOCK_RANKS.length - 1, Math.floor(score / 10));
   const [rankKo, color] = KR_STOCK_RANKS[index];
   const enRanks = ["Iron", "Bronze", "Silver", "Gold", "Platinum", "Emerald", "Diamond", "Master", "Grandmaster", "Challenger"];
-  const rank = lang === "en" ? enRanks[index] : rankKo;
+  const rank = lang !== "ko" ? enRanks[index] : rankKo;
   const enPct = ["Getting Started", "Top 82%", "Top 68%", "Top 52%", "Top 38%", "Top 25%", "Top 15%", "Top 7%", "Top 3%", "Top 1%"];
-  const pct = lang === "en" ? enPct[index] : KR_PERCENTILE_LABELS[index];
+  const pct = lang !== "ko" ? enPct[index] : KR_PERCENTILE_LABELS[index];
   const next = KR_STOCK_RANKS[index + 1];
   const nextEn = enRanks[index + 1];
   const message = next
@@ -635,7 +806,7 @@ function krStockShelvesOnly(snapshot, escape, showInactive, editing, filter, opt
   if (!optional.length) return shelves;
   const catEn = KR_OPTIONAL_CATEGORIES_EN;
   const categoryBar = `<div class="opt-toolbar"><div class="opt-cats" role="group" aria-label="${T("선택 물품 분류", "Optional Categories")}">${KR_OPTIONAL_CATEGORIES.map((cat) =>
-    `<button type="button" data-opt-cat="${cat.id}" aria-pressed="${optCategory === cat.id}">${lang === "en" ? (catEn[cat.id] || cat.label) : cat.label}</button>`).join("")}</div><input id="opt-search" type="search" placeholder="${T("품목 검색...", "Search items...")}" aria-label="${T("미사용 선택 물품 검색", "Search unused optional items")}" value="${escape(optSearch)}"></div>`;
+    `<button type="button" data-opt-cat="${cat.id}" aria-pressed="${optCategory === cat.id}">${lang !== "ko" ? (catEn[cat.id] || cat.label) : cat.label}</button>`).join("")}</div><input id="opt-search" type="search" placeholder="${T("품목 검색...", "Search items...")}" aria-label="${T("미사용 선택 물품 검색", "Search unused optional items")}" value="${escape(optSearch)}"></div>`;
   const backupBar = `<div class="backup-bar"><button type="button" id="backup-export">${T("💾 재고 백업 저장 (JSON)", "💾 Export Backup (JSON)")}</button><button type="button" id="backup-import-btn">${T("📂 백업 복원", "📂 Import Backup")}</button><input type="file" id="backup-import" accept="application/json,.json" hidden aria-hidden="true" tabindex="-1"></div>`;
   return shelves + `<section class="ready-panel" aria-labelledby="optional-shelf-title"><div class="shelf-head"><h3 id="optional-shelf-title">${T("선택 물품", "Optional Supplies")} <span>${T(`사용 중 ${active.length}종 · 완비 ${ready.filter(krIsSelectable).length}종`, `${active.length} Active · ${ready.filter(krIsSelectable).length} Ready`)}</span></h3><button type="button" id="add-custom" class="add-custom" ${editing ? "disabled" : ""}>${T("＋ 물품 직접 추가", "+ Add Custom Item")}</button></div>
     ${active.length ? krReadyGrid(snapshot, escape, active, editing, quickMode, lang) : `<p class="ready-empty">${T("표시할 선택 물품이 없습니다.", "No optional items to display.")}</p>`}
@@ -702,7 +873,7 @@ function krMissionView(snapshot, escape, animate = false, open = false, lang = "
   const T = (ko, en) => krT(lang, ko, en);
   const missions = krMissionState(snapshot);
   const complete = missions.filter((mission) => mission.complete).length;
-  const names = lang === "en"
+  const names = lang !== "ko"
     ? ["Start Quests", "Initial Prep", "Survival+", "Elite Shelter", "Master Shelter"]
     : ["퀘스트 시작", "초동 대비", "생존 확장", "정예 쉘터", "마스터 쉘터"];
   const mTitleEn = { water: "Drinking Water", food: "Food & Rations", light: "Light & Power", care: "First Aid & Meds" };
@@ -713,7 +884,7 @@ function krMissionView(snapshot, escape, animate = false, open = false, lang = "
     (quests.length ? `<div class="quest-list">${quests.map((q) => `<button type="button" class="quest-btn" data-edit="${escape(q.itemId)}"><span class="quest-tag">${escape(q.tag)}</span><strong class="quest-title">${escape(q.title)}</strong><span class="quest-reward">${escape(q.reward)}</span></button>`).join("")}</div>` : `<p class="quest-clear">${T("🎉 현재 시급한 미션을 모두 완료했습니다!", "🎉 All urgent quests completed!")}</p>`) +
     `<div class="mission-grid">${missions.map((mission) => `<div class="mission-item ${mission.complete ? `done${animate ? " unlock" : ""}` : "pending"}">` +
       `<span class="mission-art" aria-hidden="true">${mission.complete ? mission.art : "○"}</span>` +
-      `<span class="mission-title">${escape(lang === "en" ? (mTitleEn[mission.id] || mission.title) : mission.title)}</span><span class="mission-state">${mission.complete ? T("클리어", "Cleared") : mission.mode === "any" ? T("대상 중 완비 0개", "0 ready") : T(`완비 ${mission.count}/${mission.ids.length}개`, `${mission.count}/${mission.ids.length} ready`)}</span></div>`).join("")}</div></div></details>`;
+      `<span class="mission-title">${escape(lang !== "ko" ? (mTitleEn[mission.id] || mission.title) : mission.title)}</span><span class="mission-state">${mission.complete ? T("클리어", "Cleared") : mission.mode === "any" ? T("대상 중 완비 0개", "0 ready") : T(`완비 ${mission.count}/${mission.ids.length}개`, `${mission.count}/${mission.ids.length} ready`)}</span></div>`).join("")}</div></div></details>`;
 }
 
 function krAddMonths(isoDate, months) {
@@ -752,7 +923,10 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
   }
 
   setLang(lang) {
-    this._lang = lang === "en" ? "en" : "ko";
+    this._lang = Object.hasOwn(KR_LANGS, lang) ? lang : "ko";
+    if (this._viewMode === "3d" && this._engine3d) {
+      this._stop3D();
+    }
     this._render();
   }
 
@@ -1321,9 +1495,7 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const people = snapshot?.household_size ?? 4;
     const lang = this._lang || krGetLang();
     const T = (ko, en) => krT(lang, ko, en);
-    const states = lang === "en"
-      ? { shortage: "Shortage", needs_check: "Check Needed", sufficient: "Ready", not_applicable: "Inactive" }
-      : { shortage: "부족", needs_check: "확인 필요", sufficient: "충족", not_applicable: "해당 없음" };
+    const states = { shortage: T("부족", "Shortage"), needs_check: T("확인 필요", "Needs Check"), sufficient: T("충족", "Ready"), not_applicable: T("해당 없음", "Inactive") };
     const items = snapshot?.catalog.map((item) => ({ ...item, status: snapshot.summary.items[item.id] })) ?? [];
     const recommendations = new Map([
       ...(snapshot?.household?.items || []), ...(snapshot?.household?.optional_items || []),
@@ -1405,11 +1577,11 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
     const animateMission = Boolean(snapshot && missionSignature !== this._missionSignature);
     this._missionSignature = missionSignature;
     const catEn3d = KR_OPTIONAL_CATEGORIES_EN;
-    const optCatSelect = `<select id="zone-3d-cat" data-3d-cat aria-label="${T("3D 선택 물품 분류", "3D Optional Category")}">${KR_OPTIONAL_CATEGORIES.map((c) => `<option value="${c.id}">${lang === "en" ? (catEn3d[c.id] || c.label) : c.label}</option>`).join("")}</select>`;
+    const optCatSelect = `<select id="zone-3d-cat" data-3d-cat aria-label="${T("3D 선택 물품 분류", "3D Optional Category")}">${KR_OPTIONAL_CATEGORIES.map((c) => `<option value="${c.id}">${lang !== "ko" ? (catEn3d[c.id] || c.label) : c.label}</option>`).join("")}</select>`;
     const stage3d = this._viewMode === "3d" && snapshot ? `<section class="warehouse-3d-stage" aria-label="${T("3D 입체 창고 뷰", "3D Warehouse View")}"><div class="warehouse-3d-bar"><div class="controls" role="group" aria-label="${T("창고 구역", "Warehouse Zone")}"><button type="button" data-3d-zone="essentials" aria-pressed="true">${T("기본 비축 랙", "Essentials Rack")}</button><button type="button" data-3d-zone="optional" aria-pressed="false">${T("선택 물품 랙", "Optional Rack")}</button>${optCatSelect}<button type="button" id="toggle-3d-active" aria-pressed="false">${T("사용 중만", "Active Only")}</button></div><div class="controls" role="group" aria-label="${T("창고 환경", "Environment")}"><select data-3d-time aria-label="${T("시간대", "Time of Day")}"><option value="auto">${T("시간 자동", "Auto Time")}</option><option value="dawn">${T("새벽", "Dawn")}</option><option value="day">${T("낮", "Day")}</option><option value="sunset">${T("노을", "Sunset")}</option><option value="night">${T("밤", "Night")}</option></select><select data-3d-weather aria-label="${T("날씨", "Weather")}"><option value="auto">${T("날씨 자동", "Auto Weather")}</option><option value="clear">${T("맑음", "Clear")}</option><option value="rain">${T("비", "Rain")}</option><option value="snow">${T("눈", "Snow")}</option><option value="storm">${T("뇌우", "Storm")}</option></select><span class="env-chip" id="env-3d-chip" role="status"></span></div><div class="controls"><button type="button" id="toggle-3d-spin" aria-pressed="true">${T("자동 회전", "Auto Spin")}</button><button type="button" id="reset-3d-cam">${T("시점 초기화", "Reset View")}</button></div></div><canvas id="warehouse-3d-canvas"></canvas><div id="warehouse-3d-tooltip" role="status" hidden></div></section>` : "";
     const surv = krSurvivalDays(snapshot);
     const display = krDisplay(snapshot);
-    const titleText = display.title === KR_DEFAULT_TITLE && lang === "en" ? "Home Stockpile" : display.title;
+    const titleText = display.title === KR_DEFAULT_TITLE && lang !== "ko" ? T(KR_DEFAULT_TITLE, "Home Stockpile") : display.title;
     const survChip = snapshot && display.show_survival ? `<span class="survival-chip" title="${T(`${people}인 가구 기준 예상 생존 가능 일수`, `Estimated survival days for ${people}-person household`)}">${T(`💧 생수 ${surv.waterDays}일분 · 🍱 식량 ${surv.foodDays}일분`, `💧 Water ${surv.waterDays}d · 🍱 Food ${surv.foodDays}d`)}</span>` : "";
     // Keep the live 3D stage (WebGL context, camera, weather particles) across re-renders such as the 30s inventory poll.
     const keptStage = this._viewMode === "3d" && snapshot && this._engine3d ? this.shadowRoot.querySelector(".warehouse-3d-stage") : null;
@@ -1929,10 +2101,16 @@ class KrSurvivalKitInventoryCard extends HTMLElement {
       spinButton?.setAttribute("aria-pressed", String(krSpinPreference()));
       import(`${base}kr-warehouse-3d.js?v=${KR_ASSET_VERSION}`).then(({ KrWarehouseThreeEngine }) => {
         if (!this.shadowRoot.contains(canvas3d)) return;
+        const localize = {
+          getLang: () => this._lang || krGetLang(),
+          itemName: (item) => krItemDisplayName(item, this._lang || krGetLang()),
+          unit: (item) => krStockUnit(item, this._lang || krGetLang()),
+          t: (ko, en) => krT(this._lang || krGetLang(), ko, en),
+        };
         this._engine3d = new KrWarehouseThreeEngine(
           canvas3d, tooltip3d,
           () => this._snapshot, () => this._statusFilter,
-          (item) => this._edit(item, false), getTheme, getEnv,
+          (item) => this._edit(item, false), getTheme, getEnv, localize,
         );
         this._engine3d.autoRotate = krSpinPreference();
         this._engine3d.timeMode = envPrefs.time;
@@ -2017,10 +2195,11 @@ class KrSurvivalKitGuideCard extends HTMLElement {
   }
 
   setLang(lang) {
-    this._lang = lang === "en" ? "en" : "ko";
+    this._lang = Object.hasOwn(KR_LANGS, lang) ? lang : "ko";
     if (this._guideKo) {
-      this._guide = this._lang === "en" && this._guideEn ? this._guideEn : this._guideKo;
-      this._loadQuiz(this._lang === "en" && this._quizEn ? this._quizEn : this._quizKo);
+      const useEn = this._lang !== "ko";
+      this._guide = useEn && this._guideEn ? this._guideEn : this._guideKo;
+      this._loadQuiz(useEn && this._quizEn ? this._quizEn : this._quizKo);
       this._render();
     }
   }
@@ -2162,15 +2341,16 @@ class KrSurvivalKitGuideCard extends HTMLElement {
   setConfig(config) {
     this._assetPath = config.asset_path || "/local";
     this._showInventoryLink = config.show_inventory_link !== false;
-    if (config.lang) this._lang = config.lang === "en" ? "en" : "ko";
+    if (config.lang) this._lang = Object.hasOwn(KR_LANGS, config.lang) ? config.lang : "ko";
     const parseJson = (val) => (typeof val === "string" ? JSON.parse(val) : val);
     this._guideKo = parseJson(config.guide_data);
     this._guideEn = config.guide_en_data ? parseJson(config.guide_en_data) : null;
     this._quizKo = config.quiz_data;
     this._quizEn = config.quiz_en_data || null;
-    this._guide = this._lang === "en" && this._guideEn ? this._guideEn : this._guideKo;
+    const useEn = this._lang !== "ko";
+    this._guide = useEn && this._guideEn ? this._guideEn : this._guideKo;
     if (!this._guide?.scenarios?.length || !this._guide?.playbook?.length) throw new Error("상황 안내 자료가 없습니다.");
-    this._loadQuiz(this._lang === "en" && this._quizEn ? this._quizEn : this._quizKo);
+    this._loadQuiz(useEn && this._quizEn ? this._quizEn : this._quizKo);
     this._render();
   }
 
@@ -2437,11 +2617,15 @@ class KrSurvivalKitPanel extends HTMLElement {
         .theme-meta{display:flex;flex-direction:column;line-height:1.2;min-width:0}
         .theme-meta strong{font-size:.82rem}
         .theme-meta small{font-size:.7rem;color:var(--kr-muted)}
-        .lang-switch{display:flex;gap:3px;padding:2px;border:1px solid var(--kr-line);border-radius:9px;background:var(--kr-bg)}
-        .lang-switch button{min-height:30px;padding:.2rem .55rem;border:0;border-radius:7px;color:var(--kr-muted);background:transparent;cursor:pointer;font:inherit;font-size:.78rem;font-weight:700}
-        .lang-switch button[aria-pressed="true"]{background:var(--kr-accent);color:var(--kr-accent-ink)}
-        #theme-picker-btn:focus-visible,.theme-opt:focus-visible,.lang-switch button:focus-visible{outline:2px solid var(--kr-accent);outline-offset:2px}
-        @media(max-width:600px){.panel-controls{width:100%;margin-inline-start:0;justify-content:flex-end}.theme-popover{left:0;right:auto;width:100%;grid-template-columns:1fr}}
+        #lang-picker-btn{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:.3rem .7rem;border:1px solid var(--kr-line);border-radius:9px;color:var(--kr-text);background:var(--kr-bg);cursor:pointer;font:inherit;font-size:.82rem;font-weight:700}
+        #lang-picker-btn:hover,#lang-picker-btn[aria-expanded="true"]{border-color:var(--kr-accent);background:var(--kr-glow)}
+        .lang-popover{position:absolute;top:calc(100% + 8px);right:0;z-index:55;min-width:170px;padding:6px;border:1px solid var(--kr-line);border-radius:12px;background:var(--kr-surface);box-shadow:0 18px 48px rgba(0,0,0,.38);display:grid;gap:4px}
+        .lang-popover[hidden]{display:none}
+        .lang-opt{display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;min-height:38px;padding:6px 10px;border:1px solid transparent;border-radius:8px;color:var(--kr-text);background:var(--kr-bg);cursor:pointer;font:inherit;font-size:.84rem;font-weight:600}
+        .lang-opt:hover{border-color:var(--kr-accent);background:var(--kr-glow)}
+        .lang-opt[aria-pressed="true"]{border-color:var(--kr-accent);background:var(--kr-accent);color:var(--kr-accent-ink);font-weight:700}
+        #theme-picker-btn:focus-visible,.theme-opt:focus-visible,#lang-picker-btn:focus-visible,.lang-opt:focus-visible{outline:2px solid var(--kr-accent);outline-offset:2px}
+        @media(max-width:600px){.panel-controls{width:100%;margin-inline-start:0;justify-content:flex-end}.theme-popover{left:0;right:auto;width:100%;grid-template-columns:1fr}.lang-popover{right:0;min-width:165px}}
         main { padding: clamp(4px, 2vw, 20px); }
       </style>
       <header>
@@ -2458,27 +2642,45 @@ class KrSurvivalKitPanel extends HTMLElement {
           </button>
           <div class="theme-popover" id="theme-popover" role="group" aria-label="${T("화면 테마", "Theme")}" hidden>
             ${Object.entries(KR_PANEL_THEMES).map(([id, theme]) =>
-              `<button type="button" class="theme-opt" data-theme="${id}" aria-pressed="false"><span class="theme-dot" style="background:linear-gradient(135deg,${theme.bg} 50%,${theme.accent} 50%)"></span><span class="theme-meta"><strong>${this._lang === "en" ? theme.enName : theme.name}</strong><small>${this._lang === "en" ? theme.enTagline : theme.tagline}</small></span></button>`).join("")}
+              `<button type="button" class="theme-opt" data-theme="${id}" aria-pressed="false"><span class="theme-dot" style="background:linear-gradient(135deg,${theme.bg} 50%,${theme.accent} 50%)"></span><span class="theme-meta"><strong>${this._lang !== "ko" ? theme.enName : theme.name}</strong><small>${this._lang !== "ko" ? theme.enTagline : theme.tagline}</small></span></button>`).join("")}
           </div>
-          <div class="lang-switch" role="group" aria-label="${T("언어 선택", "Language")}">
-            <button type="button" data-lang="ko" aria-pressed="${this._lang === "ko"}">KO</button>
-            <button type="button" data-lang="en" aria-pressed="${this._lang === "en"}">EN</button>
+          <button type="button" id="lang-picker-btn" aria-haspopup="true" aria-expanded="false" aria-label="${T("언어 선택", "Language")}">
+            <span id="lang-picker-label">${KR_LANGS[this._lang].flag} ${KR_LANGS[this._lang].label}</span>
+            <span aria-hidden="true">▾</span>
+          </button>
+          <div class="lang-popover" id="lang-popover" role="group" aria-label="${T("언어 선택", "Language")}" hidden>
+            ${Object.values(KR_LANGS).map((l) =>
+              `<button type="button" class="lang-opt" data-lang="${l.code}" aria-pressed="${this._lang === l.code}"><span>${l.flag} ${l.label}</span><small>${l.short}</small></button>`).join("")}
           </div>
         </div>
       </header>
       <main></main>`;
     const pickerBtn = this.shadowRoot.querySelector("#theme-picker-btn");
     const popover = this.shadowRoot.querySelector("#theme-popover");
+    const langBtn = this.shadowRoot.querySelector("#lang-picker-btn");
+    const langPopover = this.shadowRoot.querySelector("#lang-popover");
     pickerBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      langPopover.hidden = true;
+      langBtn.setAttribute("aria-expanded", "false");
       const open = popover.hidden;
       popover.hidden = !open;
       pickerBtn.setAttribute("aria-expanded", String(open));
     });
+    langBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      popover.hidden = true;
+      pickerBtn.setAttribute("aria-expanded", "false");
+      const open = langPopover.hidden;
+      langPopover.hidden = !open;
+      langBtn.setAttribute("aria-expanded", String(open));
+    });
     this.shadowRoot.addEventListener("click", (e) => {
-      if (!popover.hidden && !e.target.closest?.(".panel-controls")) {
+      if (!e.target.closest?.(".panel-controls")) {
         popover.hidden = true;
         pickerBtn.setAttribute("aria-expanded", "false");
+        langPopover.hidden = true;
+        langBtn.setAttribute("aria-expanded", "false");
       }
     });
     this.shadowRoot.querySelectorAll("[data-theme]").forEach((button) => button.addEventListener("click", () => {
@@ -2489,6 +2691,8 @@ class KrSurvivalKitPanel extends HTMLElement {
     }));
     this.shadowRoot.querySelectorAll("[data-lang]").forEach((button) => button.addEventListener("click", () => {
       this._applyLang(button.dataset.lang);
+      langPopover.hidden = true;
+      langBtn.setAttribute("aria-expanded", "false");
     }));
   }
 
@@ -2505,7 +2709,7 @@ class KrSurvivalKitPanel extends HTMLElement {
       if (!["name", "enName", "tagline", "enTagline"].includes(key)) this.style.setProperty(`--kr-${key}`, value);
     }
     const label = this.shadowRoot.querySelector("#theme-picker-label");
-    if (label) label.textContent = krT(this._lang, `테마: ${theme.name}`, `Theme: ${theme.enName}`);
+    if (label) label.textContent = `${krT(this._lang, "테마", "Theme")}: ${this._lang === "ko" ? theme.name : theme.enName}`;
     const dot = this.shadowRoot.querySelector("#theme-picker-btn .theme-dot");
     if (dot) dot.style.background = `linear-gradient(135deg,${theme.bg} 50%,${theme.accent} 50%)`;
     for (const button of this.shadowRoot.querySelectorAll("[data-theme]")) {
@@ -2515,22 +2719,25 @@ class KrSurvivalKitPanel extends HTMLElement {
   }
 
   _applyLang(lang) {
-    this._lang = lang === "en" ? "en" : "ko";
+    this._lang = Object.hasOwn(KR_LANGS, lang) ? lang : "ko";
     try { window.localStorage.setItem("kr_survival_kit_lang", this._lang); } catch { /* optional */ }
     const homeLink = this.shadowRoot.querySelector('[data-nav="home"]');
     const guideLink = this.shadowRoot.querySelector('[data-nav="guide"]');
     if (homeLink) homeLink.textContent = krT(this._lang, "비축 관리", "Stockpile");
     if (guideLink) guideLink.textContent = krT(this._lang, "상황 안내", "Guide");
+    const langInfo = KR_LANGS[this._lang];
+    const langLabel = this.shadowRoot.querySelector("#lang-picker-label");
+    if (langLabel && langInfo) langLabel.textContent = `${langInfo.flag} ${langInfo.label}`;
     const theme = KR_PANEL_THEMES[this._theme];
     const label = this.shadowRoot.querySelector("#theme-picker-label");
-    if (label && theme) label.textContent = krT(this._lang, `테마: ${theme.name}`, `Theme: ${theme.enName}`);
+    if (label && theme) label.textContent = `${krT(this._lang, "테마", "Theme")}: ${this._lang === "ko" ? theme.name : theme.enName}`;
     for (const button of this.shadowRoot.querySelectorAll("[data-theme]")) {
       const th = KR_PANEL_THEMES[button.dataset.theme];
       if (th) {
         const strong = button.querySelector("strong");
         const small = button.querySelector("small");
-        if (strong) strong.textContent = this._lang === "en" ? th.enName : th.name;
-        if (small) small.textContent = this._lang === "en" ? th.enTagline : th.tagline;
+        if (strong) strong.textContent = this._lang !== "ko" ? th.enName : th.name;
+        if (small) small.textContent = this._lang !== "ko" ? th.enTagline : th.tagline;
       }
     }
     for (const button of this.shadowRoot.querySelectorAll("[data-lang]")) {

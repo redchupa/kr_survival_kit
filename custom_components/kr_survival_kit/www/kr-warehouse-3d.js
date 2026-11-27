@@ -79,7 +79,10 @@ const DAYPART_LABEL = { dawn: "🌅 새벽", day: "☀️ 낮", sunset: "🌇 �
 const DAYPART_LABEL_EN = { dawn: "🌅 Dawn", day: "☀️ Day", sunset: "🌇 Sunset", night: "🌙 Night" };
 
 function isEnglishLang() {
-  try { return window.localStorage?.getItem("kr_survival_kit_lang") === "en"; } catch { return false; }
+  try {
+    const l = window.localStorage?.getItem("kr_survival_kit_lang");
+    return Boolean(l && l !== "ko");
+  } catch { return false; }
 }
 
 /** Map a Home Assistant weather condition onto the 4 scene weather modes. */
@@ -1117,7 +1120,7 @@ function disposeTree(root) {
 }
 
 export class KrWarehouseThreeEngine {
-  constructor(canvas, tooltipEl, getSnapshot, getFilter, onSelectItem, getTheme, getEnvironment) {
+  constructor(canvas, tooltipEl, getSnapshot, getFilter, onSelectItem, getTheme, getEnvironment, localize = null) {
     this.canvas = canvas;
     this.tooltip = tooltipEl;
     this.getSnapshot = getSnapshot;
@@ -1125,6 +1128,7 @@ export class KrWarehouseThreeEngine {
     this.onSelectItem = onSelectItem;
     this.getTheme = getTheme;
     this.getEnvironment = getEnvironment;
+    this.localize = localize;
     this.onEnvChange = null;
 
     this.yaw = -0.62;
@@ -1334,9 +1338,11 @@ export class KrWarehouseThreeEngine {
     this.topDeckMat = new THREE.MeshStandardMaterial({ color: 0x6a899e, roughness: 0.32, metalness: 0.75 });
     const beamAmber = new THREE.MeshStandardMaterial({ color: 0xf4a261, emissive: 0x5c2608, emissiveIntensity: 0.22, roughness: 0.3, metalness: 0.72 });
     const beamCyan = new THREE.MeshStandardMaterial({ color: 0x38e4ff, emissive: 0x0a5a70, emissiveIntensity: 0.32, roughness: 0.25, metalness: 0.78 });
-    const isEn = isEnglishLang();
-    const zoneTitle = this.zone === "optional" ? (isEn ? "Optional Rack" : "선택 물품 랙") : (isEn ? "Essentials Rack" : "기본 비축 랙");
-    const zoneShort = this.zone === "optional" ? (isEn ? "Opt" : "선택") : (isEn ? "Ess" : "기본");
+    const lang = this.localize?.getLang ? this.localize.getLang() : (isEnglishLang() ? "en" : "ko");
+    const isKo = lang === "ko";
+    const t = (ko, en) => (this.localize?.t ? this.localize.t(ko, en) : (isKo ? ko : en));
+    const zoneTitle = this.zone === "optional" ? t("선택 물품 랙", "Optional Rack") : t("기본 비축 랙", "Essentials Rack");
+    const zoneShort = this.zone === "optional" ? (isKo ? "선택" : "Opt") : (isKo ? "기본" : "Ess");
 
     for (let r = 0; r < rows; r++) {
       const z = rowZ(r);
@@ -1363,7 +1369,7 @@ export class KrWarehouseThreeEngine {
       // End-cap row signs on both rack ends.
       const first = r * cols + 1;
       const last = Math.min(itemsToShow.length, (r + 1) * cols);
-      const tex = makePlateTexture(isEn ? `Row ${ROW_LETTERS[r % ROW_LETTERS.length]}` : `${ROW_LETTERS[r % ROW_LETTERS.length]}열`, `${zoneShort} · ${String(first).padStart(2, "0")}–${String(last).padStart(2, "0")}${isEn ? "" : "번"}`, "#52f2a8");
+      const tex = makePlateTexture(isKo ? `${ROW_LETTERS[r % ROW_LETTERS.length]}열` : `Row ${ROW_LETTERS[r % ROW_LETTERS.length]}`, `${zoneShort} · ${String(first).padStart(2, "0")}–${String(last).padStart(2, "0")}${isKo ? "번" : ""}`, "#52f2a8");
       for (const side of [-1, 1]) {
         const sign = makeSign(tex, 0.86, 0.27);
         sign.position.set(side * (rackW / 2 + 0.03), 1.25, z);
@@ -1382,7 +1388,7 @@ export class KrWarehouseThreeEngine {
       else if (s?.state === "shortage" || s?.expired_quantity > 0) acc.short++;
       return acc;
     }, { ready: 0, short: 0 });
-    const boardTex = makePlateTexture(`${zoneTitle} · ${itemsToShow.length}${isEn ? "" : "종"}`, isEn ? `Ready ${counts.ready} · Low ${counts.short} · Click to edit` : `완비 ${counts.ready} · 부족 ${counts.short} · 클릭해서 수정`, "#ffd166", 768, 160);
+    const boardTex = makePlateTexture(`${zoneTitle} · ${itemsToShow.length}${isKo ? "종" : ""}`, `${t("완비", "Ready")} ${counts.ready} · ${t("부족", "Low")} ${counts.short} · ${t("클릭하여 수정", "Click to edit")}`, "#ffd166", 768, 160);
     const board = makeSign(boardTex, 2.9, 0.6);
     const boardZ = backZ - 0.45;
     board.position.set(0, 2.5, boardZ);
@@ -1425,15 +1431,15 @@ export class KrWarehouseThreeEngine {
       hitMesh.position.y = 0.41;
       slot.add(hitMesh);
 
-      const shortName = SHORT_NAMES[item.id] || item.name;
+      const shortName = this.localize?.itemName ? this.localize.itemName(item) : (SHORT_NAMES[item.id] || item.name);
       const sprite = makeLabelSprite(shortName, toneHex);
       sprite.position.set(0, 0.92, 0);
       slot.add(sprite);
 
-      const unit = item.id === "drinking-water" ? "L" : item.unit;
+      const unit = this.localize?.unit ? this.localize.unit(item) : (item.id === "drinking-water" ? "L" : item.unit);
       const scale = item.id === "drinking-water" ? 1000 : 1;
-      const qtyText = `${((status.usable ?? 0) + (status.unknown_date_quantity ?? 0)) / scale} ${unit} / ${status.target == null ? (isEn ? "Unset" : "미설정") : `${status.target / scale} ${unit}`}`;
-      const statusLabel = ready ? (isEn ? "Ready" : "완비") : status.state === "shortage" ? (isEn ? "Low" : "부족") : status.expiring_quantity > 0 ? (isEn ? "Expiring" : "기한 임박") : (isEn ? "Check" : "실사 필요");
+      const qtyText = `${((status.usable ?? 0) + (status.unknown_date_quantity ?? 0)) / scale} ${unit} / ${status.target == null ? t("미설정", "Unset") : `${status.target / scale} ${unit}`}`;
+      const statusLabel = ready ? t("완비", "Ready") : status.state === "shortage" ? t("부족", "Low") : status.expiring_quantity > 0 ? t("기한 임박", "Expiring") : t("실사 필요", "Check");
       const slotNo = `${ROW_LETTERS[r % ROW_LETTERS.length]}-${String(col + 1).padStart(2, "0")}`;
 
       const places = [...new Set((snapshot.items[item.id]?.lots || []).map((lot) => String(lot.location || "").trim()).filter(Boolean))];
@@ -1950,7 +1956,7 @@ export class KrWarehouseThreeEngine {
       this.tooltip.style.top = `${Math.max(10, py - 20)}px`;
       const esc = (value) => String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
       const places = hit.userData.places?.length ? `<span>📍 ${esc(hit.userData.places.join(" · "))}</span>` : "";
-      const editHint = isEnglishLang() ? "Click to edit" : "클릭하여 수정";
+      const editHint = this.localize?.t ? this.localize.t("클릭하여 수정", "Click to edit") : (isEnglishLang() ? "Click to edit" : "클릭하여 수정");
       this.tooltip.innerHTML = `<strong>${esc(hit.userData.name)} <small>${hit.userData.slotNo}</small></strong><span>${esc(hit.userData.qtyText)} · ${hit.userData.statusLabel}</span>${places}<small>${editHint}</small>`;
     } else {
       this.tooltip.hidden = true;
