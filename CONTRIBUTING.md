@@ -44,5 +44,5 @@
 ## 3. Home Assistant Marketplace / HACS 등록 준비
 
 이 저장소는 `hacs.json`과 `custom_components/kr_survival_kit/manifest.json` 규칙을 준수합니다.
-- **사용자 정의 저장소(Custom Repository)**: 현재도 HA의 HACS/Marketplace에서 `redchupa/kr_survival_kit`을 입력해 바로 설치할 수 있습니다.
-- **공식 기본 목록(검색 노출) 등록**: GitHub에서 정식 Release(예: `v0.7.0`)를 발행하고 저장소 토픽(`home-assistant`, `hacs`)과 설명을 설정한 뒤, `hacs/default` 저장소에 등록 PR을 제출해 승인되면 모든 사용자가 검색만으로 바로 찾을 수 있습니다.
+- **HACS 기본 목록 등록 완료**: 2026-11-18 `hacs/default`에 등록되어, HACS/Marketplace에서 `KR Survival Kit`을 검색만 하면 바로 설치할 수 있습니다.
+- **새 버전 배포**: GitHub에서 정식 Release를 발행하면 HACS 사용자에게 업데이트로 표시됩니다.

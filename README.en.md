@@ -51,14 +51,14 @@ Requires **Home Assistant 2026.11 or newer** and an administrator account.
 
 ### Via HACS (Recommended)
 
-Click the button to open this repository in HACS on your own Home Assistant — no URL copy-paste needed.
+KR Survival Kit is in the default HACS list, so there is no need to add a custom repository. Click the button to open KR Survival Kit in HACS on your own Home Assistant.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=redchupa&repository=kr_survival_kit&category=integration)
 
 If the button doesn't work, follow these steps:
 
 1. Open **HACS** in Home Assistant.
-2. Search for **KR Survival Kit** (or add `https://github.com/redchupa/kr_survival_kit` as a custom **Integration** repository).
+2. Search for **KR Survival Kit** and select it.
 3. Click **Download** and restart Home Assistant.
 4. Go to **Settings -> Devices & Services -> Add Integration -> KR Survival Kit**, then enter your household size and default inspection interval.
 5. **KR Survival Kit** will appear in your sidebar.

@@ -56,7 +56,7 @@ Home Assistant 2026.11 이상 및 관리자 계정이 필요합니다.
 
 ### HACS로 설치 (권장)
 
-아래 버튼을 누르면 내 Home Assistant의 HACS에서 이 저장소가 바로 열립니다. URL을 복사해 붙여넣을 필요가 없어요.
+KR Survival Kit은 HACS 기본 목록에 등록되어 있어 저장소를 따로 추가하지 않아도 됩니다. 아래 버튼을 누르면 내 Home Assistant의 HACS에서 KR Survival Kit 화면이 바로 열립니다.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=redchupa&repository=kr_survival_kit&category=integration)
 
@@ -67,12 +67,6 @@ Home Assistant 2026.11 이상 및 관리자 계정이 필요합니다.
 3. **다운로드**를 누른 뒤 Home Assistant를 재시작합니다.
 4. **설정 → 기기 및 서비스 → 통합 추가 → KR Survival Kit**를 선택하고 가구 인원과 기본 점검 주기를 입력합니다.
 5. 왼쪽 사이드바에 **KR Survival Kit** 메뉴가 추가됩니다.
-
-<details>
-<summary>HACS 검색 결과에 보이지 않는 경우</summary>
-
-HACS 우측 상단 메뉴에서 **사용자 지정 저장소(Custom repositories)**를 열고 저장소 주소 `https://github.com/redchupa/kr_survival_kit`을 입력한 뒤, 유형을 **통합(Integration)**으로 선택해 추가하세요. 이후 위 3단계부터 진행하면 됩니다.
-</details>
 
 <details>
 <summary>수동 설치</summary>
